@@ -4,7 +4,7 @@
 
 | Documento                                  | Contenido                                                                         |
 | ------------------------------------------ | --------------------------------------------------------------------------------- |
-| [arquitectura.md](arquitectura.md)         | Caso de aplicación, alcance, ciclo de vida, modelo de datos, módulos y límites.   |
+| [arquitectura.md](arquitectura.md)         | Tipo de arquitectura, componentes, comunicación, modelos, módulos y límites.      |
 | [base-de-datos.md](base-de-datos.md)       | Tablas, columnas, constraints, índices, seed y estructura congelada.              |
 | [puesta-en-marcha.md](puesta-en-marcha.md) | Requisitos, configuración, comandos y problemas conocidos.                        |
 | [referencias.md](referencias.md)           | Fuentes bibliográficas y artefactos del proyecto que viven fuera del repositorio. |

@@ -34,7 +34,7 @@ Los requisitos, el resto de los comandos y los problemas conocidos están en [do
 
 El índice completo está en [docs/README.md](docs/README.md). Los documentos principales:
 
-- [Arquitectura](docs/arquitectura.md): caso de aplicación, alcance, ciclo de vida de una transacción y límites.
+- [Arquitectura](docs/arquitectura.md): tipo de arquitectura, componentes, comunicación y límites.
 - [Base de datos](docs/base-de-datos.md): tablas, constraints, índices y datos de prueba.
 - [Decisiones](docs/adr/README.md): los ADR del proyecto.
 - [Referencias](docs/referencias.md): fuentes y artefactos que viven fuera del repositorio.

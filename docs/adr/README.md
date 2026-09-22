@@ -10,8 +10,9 @@ Un ADR registra una decisión difícil de revertir, junto con su contexto y sus 
 | [0002](0002-postgresql-como-persistencia.md)               | PostgreSQL como persistencia                    | aceptado  |
 | [0003](0003-estructura-del-repositorio-y-documentacion.md) | Estructura del repositorio y documentación      | aceptado  |
 | [0004](0004-modelo-de-saldos-aportes-y-retiros.md)         | Modelo de saldos, aportes y retiros             | propuesto |
+| [0005](0005-arquitectura-en-capas-con-nucleo-aislado.md)   | Arquitectura en capas con el núcleo aislado     | propuesto |
 
-El ADR-0004 está en estado `propuesto`: todavía no está refrendado por el equipo. No bloquea el trabajo sobre la base de datos, porque la estructura del esquema está congelada.
+Los ADR-0004 y 0005 están en estado `propuesto`: todavía no están refrendados por el equipo. Ninguno de los dos bloquea el trabajo sobre la base de datos, porque la estructura del esquema está congelada.
 
 ## Cuándo escribir uno
 
