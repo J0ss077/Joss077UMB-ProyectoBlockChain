@@ -49,8 +49,8 @@ La comunicación entre capas es una llamada dentro del mismo proceso, porque el 
    │  │        │      │ negocio  │ │
    │  └────────┘      └──────────┘ │
    └───────────────┬───────────────┘
-                    │
-                    ▼
+                   │
+                   ▼
    ┌───────────────────────────────┐
    │          Persistencia         │
    │  ┌────────────┐  ┌──────────┐ │
@@ -159,26 +159,33 @@ Tres entidades, con las transacciones como entidad central.
 
 El detalle de columnas, constraints e índices está en `base-de-datos.md`. La estructura del esquema está congelada: cualquier cambio requiere confirmación explícita de los desarrolladores.
 
-## Estructura de módulos prevista
+## Estructura de módulos
 
-Todavía no existe código de aplicación. Esta es la forma que la implementación debería tomar, sujeta a revisión cuando se diseñe la fase de backend.
+El backend vive en `src/`. El primer corte cubre la persistencia; las reglas de negocio se agregan en los mismos archivos.
 
 ```
 src/
-├── wallet.py         # par de llaves, firma y verificación
-├── transaction.py    # la transacción y sus reglas de validación
-├── block.py          # estructura del bloque y cálculo del hash
-├── blockchain.py     # el componente Blockchain: pool, agrupación y verificación
-├── persistence/      # acceso a PostgreSQL, detrás de una interfaz propia
-└── main.py           # punto de entrada
+├── config.py            # cadena de conexión, desde el entorno o desde .env
+├── wallet.py            # entidad Wallet
+├── transaction.py       # entidad Transaction y el enum TransactionStatus
+├── block.py             # entidad Block
+├── blockchain.py        # fachada sobre los tres repositorios
+├── persistence/
+│   ├── ports.py         # protocolos de repositorio: el límite del ADR-0005
+│   ├── connection.py    # conexión con PostgreSQL
+│   ├── repositories.py  # implementación PostgreSQL de cada repositorio
+│   └── factory.py       # ensamblado del ledger
+└── main.py              # punto de entrada
 ```
 
-El criterio de fondo es que la lógica de validación y de encadenamiento no dependa de la base de datos: son reglas del dominio que deben poder probarse sin levantar PostgreSQL.
+El criterio de fondo es que la lógica de validación y de encadenamiento no dependa de la base de datos: son reglas del dominio que deben poder probarse sin levantar PostgreSQL. Ese límite ya está trazado en `persistence/ports.py`, y `blockchain.py` no importa psycopg.
 
 ## Diseño pendiente
 
 Los siguientes puntos todavía no están resueltos y no deben darse por cerrados por inferencia. Cualquier propuesta sobre ellos se confirma con los desarrolladores antes de implementarse.
 
+- Las reglas de negocio del backend: cálculo del hash, firma, validación de saldo y verificación de la integridad de la cadena.
+- La agrupación de transacciones pendientes en un bloque.
 - La integración de los tres modelos: casos de uso, clases y modelo relacional.
 - La forma que tomará la capa de presentación.
 

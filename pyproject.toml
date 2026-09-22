@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "blockchain-transaccional"
+version = "0.1.0"
+description = "Backend del prototipo de sistema transaccional basado en blockchain"
+requires-python = ">=3.11"
+dependencies = [
+    "psycopg[binary]>=3.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.6",
+]
+
+[tool.setuptools]
+packages = [
+    "src",
+    "src.persistence",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+exclude = [".venv"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

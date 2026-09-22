@@ -7,8 +7,7 @@ Cómo levantar el entorno local y verificar que quedó bien. El modelo de datos 
 - Docker y Docker Compose. En esta máquina el binario `docker` es un alias a `podman`.
 - `make`, para los atajos del `Makefile`. Todos los comandos tienen su equivalente directo de Docker Compose, así que `make` es opcional.
 - Cliente `psql` solo si se quiere conectar desde el anfitrión. El contenedor ya trae uno.
-
-No hace falta Python para nada de lo que existe hoy: todavía no hay código de aplicación.
+- Python 3.11 o superior, para el backend de `src/`.
 
 ## Configuración
 
@@ -76,6 +75,95 @@ make reset   # destruye el volumen y vuelve a aplicar esquema y seed
 - **El puerto está ocupado**: cambiar `POSTGRES_PORT` en `.env`. El contenedor siempre escucha en 5432 internamente; esa variable solo mueve el puerto publicado en el anfitrión.
 - **`docker compose` falla al arrancar el motor de contenedores**: como `docker` es un alias a `podman` sin demonio, un fallo de configuración de podman aparece como un fallo de Docker. `podman info` muestra la causa real.
 
+## Backend
+
+El código vive en `src/`. El primer corte implementa la capa de persistencia y el acceso a datos: conexión, entidades y operaciones CRUD sobre las tres tablas. Las reglas de validación, la firma, el cálculo del hash y la verificación de la cadena todavía no están implementados.
+
+### Preparar el entorno
+
+```bash
+make venv
+```
+
+Crea `.venv/` e instala las dependencias declaradas en `pyproject.toml`. Sin `make`:
+
+```bash
+python -m venv .venv
+.venv/bin/pip install -e ".[dev]"
+```
+
+### Comprobar la conexión
+
+```bash
+make backend
+# Equivalente: .venv/bin/python -m src.main
+```
+
+Se conecta, informa la versión del servidor y cuenta las filas de las tres tablas. No acepta argumentos ni ejecuta operaciones. Con el contenedor arriba y el seed aplicado, la salida es:
+
+```
+PostgreSQL: 16.15
+wallets: 3
+blocks: 2
+transactions: 3
+```
+
+La versión del servidor cambia si se actualiza la imagen. Los conteos son los del seed de `02_seed.sql`: tres wallets, dos bloques y tres transacciones.
+
+### Operar la base a mano
+
+El CRUD se hace desde una sesión interactiva de Python. `open_ledger()` abre la conexión y arma los repositorios.
+
+```bash
+.venv/bin/python -i -c "from src.persistence.factory import open_ledger; chain = open_ledger()"
+```
+
+Dentro de la sesión:
+
+```python
+chain.counts()                                  # conteo de las tres tablas
+chain.wallets.list()                            # lee todas las wallets
+chain.blocks.list()                             # lee todos los bloques
+chain.transactions.list()                       # lee todas las transacciones
+chain.transactions.list(status=TransactionStatus.CONFIRMED)
+chain.wallets.get(<uuid>)                       # una wallet, o None
+chain.wallets.delete(<uuid>)                    # True si borró algo
+```
+
+Para crear una transacción pendiente hacen falta dos wallets distintas:
+
+```python
+from decimal import Decimal
+
+wallets = chain.wallets.list()
+chain.transactions.create(
+    sender_id=wallets[0].id,
+    receiver_id=wallets[1].id,
+    amount=Decimal("10.00"),
+    signature="firma_de_prueba",
+)
+```
+
+Confirmar una transacción exige crear antes un bloque y asociarlo. El esquema rechaza una transacción confirmada sin bloque, y también una pendiente con bloque:
+
+```python
+from src.transaction import TransactionStatus
+
+bloques = chain.blocks.list()
+bloque = chain.blocks.create(
+    block_index=len(bloques),
+    previous_hash=bloques[-1].hash,
+    block_hash="0" * 64,
+)
+
+transaccion = chain.transactions.get(<uuid>)
+transaccion.status = TransactionStatus.CONFIRMED
+transaccion.block_id = bloque.id
+chain.transactions.update(transaccion)
+```
+
+La capa de persistencia no repite las reglas del esquema. Si una escritura viola un `CHECK`, una clave foránea o una restricción de unicidad, el error de PostgreSQL se muestra tal cual. Por eso crear un bloque con un `block_index` repetido, o borrar una wallet con transacciones asociadas, falla con el mensaje del motor y no con uno propio.
+
 ## Alcance de esta etapa
 
-No hay backend, ni CRUD, ni conexión desde una aplicación: solo el contenedor y el SQL. Las siguientes fases añaden el código Python descrito en `arquitectura.md`.
+Hay contenedor, esquema, datos de prueba y un backend que se conecta y opera la base. Todavía no hay reglas de negocio: no se calculan hashes, no se firma, no se valida el saldo y no se verifica la integridad de la cadena. La base no se modifica desde el código: no hay DDL, porque la estructura del esquema está congelada.
