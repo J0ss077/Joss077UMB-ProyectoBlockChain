@@ -216,3 +216,15 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# ---------------------------------------------------------------------------
+# Proyecto: sistema transaccional basado en blockchain
+# Las reglas de Python, de entornos virtuales y de archivos .env ya quedan
+# cubiertas por la plantilla de arriba. Aquí van solo las de este proyecto.
+# ---------------------------------------------------------------------------
+
+# Datos del contenedor PostgreSQL si el volumen se monta como directorio local
+pgdata/
+
+# Archivos temporales de trabajo de scripts
+.tmp_*

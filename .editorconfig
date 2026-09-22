@@ -1,0 +1,27 @@
+# EditorConfig: https://editorconfig.org
+# Unifica el formato de edición para todo el repositorio.
+
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+[*.{yml,yaml,json}]
+indent_size = 4
+
+[*.md]
+# La documentación escribe cada párrafo en una sola línea continua, así que los
+# espacios finales que usa markdown para forzar salto de línea se conservan.
+trim_trailing_whitespace = false
+
+[Makefile]
+indent_style = tab
+
+[*.sql]
+indent_style = space
+indent_size = 4

@@ -1,151 +1,93 @@
 # Sistema Transaccional Basado en Blockchain
 
-Diseño y prototipo de un sistema transaccional que valida e integra transacciones sin depender de una autoridad central.
+Diseño y prototipo de un sistema transaccional que valida e integra transacciones sin depender de una autoridad central, aplicado al registro de aportes y retiros de una organización del sector solidario.
 
 ## Resumen
 
-Los sistemas transaccionales tradicionales dependen de una entidad central para validar cada operación, lo que crea un punto único de fallo. Este proyecto propone una arquitectura alternativa basada en blockchain: wallets con par de llaves, transacciones firmadas, validación automática y bloques enlazados por hash, todo corriendo en un solo nodo local.
+Los sistemas transaccionales tradicionales confían la validación de cada operación a una entidad central, lo que crea un punto único de fallo. Este proyecto propone una arquitectura alternativa basada en blockchain: wallets con par de llaves, transacciones firmadas, validación automática y bloques enlazados por hash, todo corriendo en un solo nodo local.
 
-## Qué es
+El caso de aplicación son los fondos de empleados y asociaciones mutuales, donde el registro de los aportes de los asociados suele recaer en una sola figura y no existe un mecanismo independiente para comprobar el historial. El sistema no reemplaza a esa figura: hace que su palabra deje de ser la única garantía, porque vuelve detectable cualquier alteración.
 
-Un prototipo funcional (no una red blockchain de producción) que implementa las operaciones básicas de un sistema transaccional descentralizado:
+No es una red blockchain de producción. Es un prototipo que aísla los mecanismos de integridad —hash encadenado, validación automática, evidencia de manipulación— antes de escalar a un sistema distribuido.
 
-- Registro de wallets.
-- Creación de transacciones entre wallets.
-- Validación automática de cada transacción.
-- Agrupación de transacciones válidas en bloques.
-- Encadenamiento de bloques por hash.
-- Verificación de integridad de toda la cadena.
-- Consulta de historial de transacciones.
+## Estado
 
-## La idea
+| Entregable                | Estado                                |
+| ------------------------- | ------------------------------------- |
+| Diseño de la arquitectura | documentado en `docs/arquitectura.md` |
+| Persistencia PostgreSQL   | esquema, seed y contenedor listos     |
+| Backend Python            | no iniciado                           |
 
-En vez de confiar la integridad de los datos a un servidor central, cada bloque guarda el hash del bloque anterior. Si alguien altera una transacción ya confirmada, el hash del bloque deja de coincidir y la cadena queda marcada como inválida. No hay red P2P ni consenso distribuido real: el objetivo es aislar y entender los mecanismos de integridad (hash encadenado, validación automática, inmutabilidad) antes de escalar a un sistema distribuido.
+Hoy el repositorio contiene la base de datos, su documentación y las decisiones de arquitectura. Todavía no hay código de aplicación, y por lo tanto tampoco hay tests ni dependencias que instalar.
 
-La arquitectura se organiza en capas:
+## Inicio rápido
 
-- **UI**: interacción del usuario (crear transacciones, ver historial).
-- **Lógica de negocio**: reglas de validación de transacciones.
-- **Gestión de datos**: pool de transacciones pendientes y generación de bloques.
-- **Persistencia**: almacenamiento de wallets, transacciones y bloques.
-
-## Arquitectura
-
-```
-                Usuario
-                   │
-                   ▼
-   ┌───────────────────────────────┐
-   │           Aplicación          │
-   │  ┌────────┐      ┌──────────┐ │
-   │  │   UI   │ ───▶ │ Lógica de│ │
-   │  │        │      │ negocio  │ │
-   │  └────────┘      └──────────┘ │
-   └───────────────┬───────────────┘
-                    │
-                    ▼
-   ┌───────────────────────────────┐
-   │          Persistencia         │
-   │  ┌────────────┐  ┌──────────┐ │
-   │  │ Acceso a   │─▶│ Base de  │ │
-   │  │ datos      │  │ datos    │ │
-   │  └────────────┘  └──────────┘ │
-   └───────────────────────────────┘
+```bash
+cp .env.example .env
+make up        # equivalente a: docker compose up -d
+make counts    # verifica que esquema y seed se aplicaron
 ```
 
-## Alcance actual
+Los requisitos, el resto de los comandos y los problemas conocidos están en [docs/puesta-en-marcha.md](docs/puesta-en-marcha.md).
 
-- 1 nodo, ejecución local.
-- Sin red P2P ni consenso distribuido.
-- Sin validación legal (transacciones simuladas).
-- CRUD completo sobre transacciones.
+## Documentación
+
+El índice completo está en [docs/README.md](docs/README.md). Los documentos principales:
+
+- [Arquitectura](docs/arquitectura.md): caso de aplicación, alcance, ciclo de vida de una transacción y límites.
+- [Base de datos](docs/base-de-datos.md): tablas, constraints, índices y datos de prueba.
+- [Decisiones](docs/adr/README.md): los ADR del proyecto.
+- [Referencias](docs/referencias.md): fuentes y artefactos que viven fuera del repositorio.
+
+El vocabulario del dominio está en [CONTEXT.md](CONTEXT.md) y las convenciones de trabajo del repositorio en [AGENTS.md](AGENTS.md).
 
 ## Stack
 
-- **Lenguaje**: Python 3.11+
-- **Hashing**: `hashlib` (SHA-256) para el encadenamiento de bloques
-- **Persistencia**: SQLite o JSON (por definir según volumen de datos)
-- **Pruebas**: `pytest`
+| Componente        | Elección                           |
+| ----------------- | ---------------------------------- |
+| Persistencia      | PostgreSQL 16 sobre Docker Compose |
+| Lenguaje previsto | Python 3.11 o superior             |
+| Encadenamiento    | SHA-256 de `hashlib`               |
+| Firma             | ECDSA                              |
+| Pruebas           | `pytest`                           |
 
-## Requisitos
-
-- Python 3.11 o superior
-- pip
-- git
-
-## Estructura del proyecto (prototipado)
+## Estructura del repositorio
 
 ```
-├── src/
-│   ├── wallet.py         # generación y gestión de wallets
-│   ├── transaction.py    # creación y validación de transacciones
-│   ├── block.py          # estructura de bloque y hash encadenado
-│   ├── blockchain.py     # cadena, verificación de integridad
-│   ├── persistence.py    # almacenamiento (SQLite / JSON)
-│   └── main.py           # punto de entrada
-├── tests/
-├── requirements.txt
-└── README.md
+├── database/init/      # esquema y seed: la fuente de verdad de la base
+├── docs/               # arquitectura, base de datos y ADR
+├── .scratch/           # tracker de issues local
+├── docker-compose.yml
+├── Makefile
+├── CONTEXT.md          # glosario del dominio
+└── AGENTS.md           # convenciones de trabajo del repositorio
 ```
 
-## Comandos de lanzamiento (prototipado)
+## Alcance
 
-Aún no hay código implementado, estos son los comandos previstos para cuando el prototipo esté listo.
+Lo que el prototipo implementa:
 
-```bash
-# Clonar el repositorio
-git clone <url-del-repo>
-cd <repo>
+- Encadenamiento criptográfico por hash, que localiza el punto exacto de una alteración.
+- Evidencia de manipulación: el sistema no impide alterar un registro, pero garantiza que la alteración sea detectable.
+- Autenticación de origen mediante firma digital con ECDSA.
+- Validación automática por reglas de firma, saldo y formato, antes de que la transacción entre al pool.
 
-# Crear y activar entorno virtual
-python -m venv venv
-source venv/bin/activate      # Windows: venv\Scripts\activate
+Lo que queda fuera, y que conviene tener presente porque son las limitaciones reales del prototipo:
 
-# Instalar dependencias
-pip install -r requirements.txt
+- Consenso distribuido, red P2P y descentralización.
+- Resistencia a la manipulación: quien controla el nodo puede recalcular la cadena completa.
+- Inmutabilidad garantizada. El proyecto va hacia inmutabilidad verificable.
+- Wallet no custodial: el nodo guarda el material cifrado de todas las llaves privadas.
+- Validación legal y valor real de los montos.
 
-# Ejecutar el prototipo
-python src/main.py
+El detalle está en [docs/arquitectura.md](docs/arquitectura.md), y las razones del recorte en el [ADR-0001](docs/adr/0001-nodo-unico-sin-consenso-distribuido.md).
 
-# Correr pruebas
-pytest tests/
-```
-
-## Ejemplo de uso (previsto)
-
-```python
-from src.wallet import Wallet
-from src.blockchain import Blockchain
-
-# Crear wallets
-alice = Wallet()
-bob = Wallet()
-
-# Iniciar la cadena
-chain = Blockchain()
-
-# Crear y registrar una transacción
-tx = alice.create_transaction(to=bob.public_key, amount=50)
-chain.add_transaction(tx)
-
-# Minar el bloque pendiente
-chain.mine_pending_transactions()
-
-# Verificar integridad de toda la cadena
-print(chain.is_valid())   # True
-```
-
-## Consideraciones de seguridad
-
-- Cada wallet se identifica por un par de llaves pública/privada; la llave privada nunca se comparte ni se persiste en texto plano.
-- Cada bloque guarda el hash del bloque anterior, así que modificar una transacción confirmada invalida toda la cadena a partir de ese punto.
-- La validación automática rechaza transacciones mal formadas o firmadas incorrectamente antes de que entren al pool de pendientes.
-- Este prototipo no reemplaza un sistema de producción: no hay consenso distribuido, por lo que la integridad depende del propio nodo.
-
-
-
-## Autores :)
+## Autores
 
 - José Camilo Pérez Daza
 - Sebastián Fernando Revelo Meneses
 - Tomás Alejandro Santiago Reyes
+
+## Licencia
+
+GNU General Public License v3.0. Ver [LICENSE](LICENSE).
