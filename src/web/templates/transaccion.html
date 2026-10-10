@@ -1,11 +1,11 @@
-{% extends "base.html" %} {% block titulo %}Transacción{% endblock %} {% block encabezado %}CU-02: proponer una transacción{% endblock %} {% block contenido %}
+{% extends "base.html" %} {% from "_macros.html" import corto, dato, copiar %} {% block titulo %}Nueva transacción{% endblock %} {% block encabezado %}Nueva transacción{% endblock %} {% block contenido %}
 <form method="post" action="/transacciones">
     <p>
         <label
             >Emisor
             <select name="sender_id">
                 {% for wallet in wallets %}
-                <option value="{{ wallet.id }}">{{ wallet.public_key }}</option>
+                <option value="{{ wallet.id }}">{{ corto(wallet.public_key) }}</option>
                 {% endfor %}
             </select>
         </label>
@@ -15,7 +15,7 @@
             >Receptor
             <select name="receiver_id">
                 {% for wallet in wallets %}
-                <option value="{{ wallet.id }}">{{ wallet.public_key }}</option>
+                <option value="{{ wallet.id }}">{{ corto(wallet.public_key) }}</option>
                 {% endfor %}
             </select>
         </label>
@@ -25,7 +25,6 @@
     </p>
     <button type="submit">Proponer</button>
 </form>
-<p>Las dos listas muestran hasta cien wallets, de la más antigua a la más nueva.</p>
 
 {% if error_formulario %}
 <div class="motivo">
@@ -35,9 +34,9 @@
 <div class="exito">
     <p>La transacción entró al pool.</p>
     {% if resultado.stored %}
-    <p><strong>identificador:</strong> <code>{{ resultado.stored.id }}</code></p>
-    <p><strong>estado:</strong> {{ resultado.stored.status }}</p>
-    <p><strong>monto:</strong> {{ "%.8f"|format(resultado.stored.amount) }}</p>
+    <p><strong>identificador:</strong> {{ dato(resultado.stored.id) }} {{ copiar(resultado.stored.id, "el identificador") }}</p>
+    <p><strong>estado:</strong> <code>{{ resultado.stored.status }}</code></p>
+    <p><strong>monto:</strong> <code>{{ "%.8f"|format(resultado.stored.amount) }}</code></p>
     {% endif %}
 </div>
 {% else %} {# El motivo se muestra porque el CU-02 lo pide: quien propone tiene que saber por qué no entró. #}
@@ -45,8 +44,8 @@
     <p>La transacción no entró al pool.</p>
     <p><strong>motivo:</strong> {{ resultado.reason }}</p>
     {% if resultado.stored %}
-    <p><strong>identificador:</strong> <code>{{ resultado.stored.id }}</code></p>
-    <p><strong>estado:</strong> {{ resultado.stored.status }}</p>
+    <p><strong>identificador:</strong> {{ dato(resultado.stored.id) }} {{ copiar(resultado.stored.id, "el identificador") }}</p>
+    <p><strong>estado:</strong> <code>{{ resultado.stored.status }}</code></p>
     {% endif %}
 </div>
 {% endif %} {% endif %} {% endblock %}

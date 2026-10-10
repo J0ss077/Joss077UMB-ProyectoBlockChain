@@ -3,8 +3,9 @@
 El caso de uso funcionaba, pero para demostrarlo había que teclear a mano una llave
 pública de 66 caracteres que no aparecía en ninguna página: `GET /wallets` solo
 mostraba el formulario y las wallets existentes únicamente se veían dentro del
-formulario de transacciones, donde no se pueden copiar. La lista va dentro de esa
-ruta, que ya existe (REQ-24 a REQ-29), para no agregar una sexta al eje.
+formulario de transacciones, donde no se pueden copiar. La lista vive ahora en el
+panel lateral de `base.html`, así que está en las cinco rutas —las que ya existen
+(REQ-24 a REQ-29)— sin agregar una sexta al eje.
 
 La prueba pide el cliente de Flask contra la base de verdad y con la fachada real,
 igual que `test_req_24_rutas.py`: lo que mide es el recorrido de la ruta y no la
@@ -47,7 +48,10 @@ def test_req_28_la_lista_de_wallets_lleva_al_historial(cliente, wallet_de_prueba
     listado = cliente.get("/wallets")
     assert listado.status_code == 200
     cuerpo = listado.get_data(as_text=True)
-    assert wallet_de_prueba.public_key in cuerpo      # la llave completa, copiable
+    # El valor completo sigue en el marcado (`title` y `data-copiar`) y la forma
+    # corta es la que se ve; el enlace directo lleva al historial.
+    assert wallet_de_prueba.public_key in cuerpo
+    assert wallet_de_prueba.public_key[:8] in cuerpo
     enlace = f"/historial/{wallet_de_prueba.id}"
     assert enlace in cuerpo                            # el enlace directo
     assert cliente.get(enlace).status_code == 200       # y el enlace funciona

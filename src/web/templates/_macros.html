@@ -1,0 +1,24 @@
+{# Macros de los datos que se muestran en todas las páginas.
+
+   `corto` recorta una clave, un identificador o un hash a su forma corta. `dato` la
+   pinta en monoespaciada y deja el valor completo en `title` y en `data-copiar`, así
+   que la pantalla muestra poco sin perder el dato. `copiar` es el botón accesible que
+   copia ese mismo valor: sin el valor completo a un clic, la forma corta convertiría
+   en pérdida lo que antes se podía copiar. #}
+
+{% macro corto(valor) -%}
+{%- set texto = valor|string -%}
+{{ texto[:8] }}…{{ texto[-4:] }}
+{%- endmacro %}
+
+
+{% macro dato(valor) -%}
+{%- set texto = valor|string -%}
+<span class="mono" title="{{ texto }}" data-copiar="{{ texto }}">{{ texto[:8] }}…{{ texto[-4:] }}</span>
+{%- endmacro %}
+
+
+{% macro copiar(valor, que="el valor completo") -%}
+{%- set texto = valor|string -%}
+<button type="button" class="copiar" data-copiar="{{ texto }}" aria-label="Copiar {{ que }}" title="Copiar {{ que }}">Copiar</button>
+{%- endmacro %}

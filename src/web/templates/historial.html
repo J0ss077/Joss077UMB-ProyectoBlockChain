@@ -1,5 +1,5 @@
-{% extends "base.html" %} {% block titulo %}Historial{% endblock %} {% block encabezado %}CU-05: historial de una wallet{% endblock %} {% block contenido %}
-<p><strong>wallet:</strong> <code>{{ wallet_id }}</code></p>
+{% extends "base.html" %} {% from "_macros.html" import dato, copiar %} {% block titulo %}Historial{% endblock %} {% block encabezado %}Historial{% endblock %} {% block contenido %}
+<p><strong>wallet:</strong> {{ dato(wallet_id) }} {{ copiar(wallet_id, "el identificador") }}</p>
 <table>
     <thead>
         <tr>
@@ -14,12 +14,12 @@
     <tbody>
         {% for transaction in transacciones %}
         <tr>
-            <td><code>{{ transaction.id }}</code></td>
-            <td><code>{{ transaction.sender_id }}</code></td>
-            <td><code>{{ transaction.receiver_id }}</code></td>
-            <td>{{ "%.8f"|format(transaction.amount) }}</td>
-            <td>{{ transaction.status }}</td>
-            <td>{% if transaction.block_id %}<code>{{ transaction.block_id }}</code>{% else %}—{% endif %}</td>
+            <td>{{ dato(transaction.id) }}</td>
+            <td>{{ dato(transaction.sender_id) }}</td>
+            <td>{{ dato(transaction.receiver_id) }}</td>
+            <td><code>{{ "%.8f"|format(transaction.amount) }}</code></td>
+            <td><code>{{ transaction.status }}</code></td>
+            <td>{% if transaction.block_id %}{{ dato(transaction.block_id) }}{% else %}—{% endif %}</td>
         </tr>
         {% else %}
         <tr>
@@ -28,6 +28,4 @@
         {% endfor %}
     </tbody>
 </table>
-<p>Se listan hasta cien transacciones, de la más antigua a la más nueva.</p>
-<p><a href="/wallets">Volver a la lista de wallets</a></p>
 {% endblock %}

@@ -1,8 +1,12 @@
-"""REQ-24 a REQ-28: la presentación hace los casos de uso del eje.
+"""REQ-24 a REQ-29: la presentación hace los casos de uso del eje.
 
 Cada ruta toma su formulario, llama a la fachada del ledger y devuelve una página
 con el resultado. Las pruebas piden el cliente contra la base de verdad y con la
 fachada real, porque lo que miden es el recorrido de la ruta y no la fachada.
+
+Los tres casos de REQ-29 viven aquí, con las demás pruebas de las páginas, porque
+miden lo que se ve: que la interfaz no explique el proyecto, que el panel lateral
+esté en todas las páginas y que los datos vayan en monoespaciada.
 
 El escenario es el de la demostración del arranque: el fondo y los asociados ya
 tienen saldo confirmado, así que las transacciones que proponen las pruebas se
@@ -66,6 +70,12 @@ def partes(cadena):
 
 
 @pytest.fixture
+def wallet_de_prueba(cadena):
+    """Una wallet registrada por la fachada, para que el panel lateral tenga qué mostrar."""
+    return cadena.register_wallet()
+
+
+@pytest.fixture
 def cadena_alterada(cadena, partes, conexion):
     """Una cadena con un bloque confirmado, la alteración hecha a mano y su índice.
 
@@ -86,12 +96,17 @@ def cadena_alterada(cadena, partes, conexion):
     return bloque.block_index
 
 
-def test_req_24_post_wallets_devuelve_200_con_la_publica(cliente):
+def test_req_24_post_wallets_devuelve_200_con_la_publica(cliente, cadena):
     """REQ-24: la ruta registra la wallet y la página muestra su clave pública."""
     respuesta = cliente.post("/wallets")
 
     assert respuesta.status_code == 200
-    assert "public_key" in respuesta.get_data(as_text=True)
+    registrada = cadena.wallets.list()[-1]
+    texto = respuesta.get_data(as_text=True)
+    # Con la forma corta, la llave completa sigue en el marcado (`title` y
+    # `data-copiar`) y la que se ve es la corta: la aserción no se debilita.
+    assert registrada.public_key in texto
+    assert registrada.public_key[:8] in texto
 
 
 def test_req_25_post_transacciones_devuelve_el_estado(cliente, partes):
@@ -232,3 +247,25 @@ def test_req_28_rf5_historial_con_uuid_invalido_o_inexistente_responde_una_pagin
     # Werkzeug describe el 404 en inglés; la página no puede mostrarlo así.
     assert "The requested URL was not found" not in ruta_que_no_existe.get_data(as_text=True)
     assert "No se encontró lo que buscaba" in ruta_que_no_existe.get_data(as_text=True)
+
+
+def test_req_29_la_interfaz_no_explica_el_proyecto(cliente):
+    """REQ-29: la interfaz no explica el proyecto. Sin «CU-0X» ni prosa sobre el eje."""
+    for ruta in ("/", "/wallets", "/transacciones", "/bloques", "/verificar"):
+        cuerpo = cliente.get(ruta).get_data(as_text=True)
+        assert "CU-0" not in cuerpo
+
+
+def test_req_29_el_panel_lateral_aparece_en_todas_las_paginas(cliente, wallet_de_prueba):
+    """REQ-29: el panel lateral lista las wallets en todas las páginas."""
+    for ruta in ("/", "/transacciones", "/verificar", f"/historial/{wallet_de_prueba.id}"):
+        cuerpo = cliente.get(ruta).get_data(as_text=True)
+        assert f"/historial/{wallet_de_prueba.id}" in cuerpo
+        assert wallet_de_prueba.public_key in cuerpo          # el valor completo sigue disponible
+        assert wallet_de_prueba.public_key[:8] in cuerpo      # y la forma corta es la que se ve
+
+
+def test_req_29_los_datos_numericos_van_en_monoespaciada(cliente, wallet_de_prueba):
+    """REQ-29: los identificadores y los montos van en monoespaciada."""
+    cuerpo = cliente.get(f"/historial/{wallet_de_prueba.id}").get_data(as_text=True)
+    assert 'class="mono"' in cuerpo

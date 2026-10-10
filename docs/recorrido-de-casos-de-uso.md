@@ -18,6 +18,20 @@ asegura el génesis con `ensure_genesis`, que es idempotente: comprueba
 `blocks.get_by_index(0)` y solo inserta el eslabón cero si falta. La portada `GET /`
 usa `ledger_state()` y hace un `SELECT count(*)` por tabla para mostrar los conteos.
 
+La interfaz no explica el proyecto: los títulos nombran la acción —«Registrar wallet»,
+«Nueva transacción», «Cerrar bloque», «Verificar cadena», «Historial»— y ninguna página
+lleva párrafos sobre el eje ni números de caso de uso. `base.html` pinta una barra
+superior con el nombre de la aplicación y los cuatro enlaces a las rutas, un panel
+lateral con las wallets —forma corta en monoespaciada, botón que copia la clave y
+enlace a su historial; «Todavía no hay wallets» cuando no hay ninguna— y el área de
+contenido. El panel no depende de que cada ruta lo pase: lo resuelve el procesador de
+contexto que registra `create_app` (`wallets_del_panel`), que llama a
+`chain.wallets.list()` al pintar cualquier página. Los identificadores, hashes, montos,
+fechas y conteos van en `code` o en la clase `.mono`; las claves, los identificadores y
+los hashes se ven en forma corta, y el valor completo sigue en el atributo `title` y en
+`data-copiar`, que es lo que copian los botones con el guion de ocho líneas de
+`base.html`.
+
 ## CU-01: registrar una wallet
 
 **Qué hace la persona.** Entra a `GET /wallets`, ve el formulario, lo envía por
@@ -25,7 +39,8 @@ usa `ledger_state()` y hace un `SELECT count(*)` por tabla para mostrar los cont
 
 **Qué ruta la recibe.** `wallets()` en `src/web/app.py` (REQ-24). El `GET` pinta
 `wallet.html` sin wallet; el `POST` llama a la fachada y pinta la misma plantilla con
-la wallet creada.
+la wallet creada. La lista de wallets no la pinta esta ruta: vive en el panel lateral,
+así que el CU-05 queda a un clic desde cualquier página.
 
 **Qué método del dominio decide.** `Blockchain.register_wallet()`
 (`src/domain/blockchain.py`) llama a `create_wallet()` (`src/domain/wallet.py`), que
@@ -252,7 +267,8 @@ El procedimiento manual, con la aplicación corriendo, está en el README.
 ## CU-05: consultar el historial de una wallet
 
 **Qué hace la persona.** Abre `/historial/<identificador>` con el identificador que
-vio al registrar la wallet, y recibe sus movimientos con el estado de cada uno.
+muestra el panel lateral —la forma corta; el valor completo viaja en el `title` y en el
+botón de copiar— y recibe sus movimientos con el estado de cada uno.
 
 **Qué ruta la recibe.** `historial(wallet)` en `src/web/app.py` (REQ-28). Convierte
 el texto a `UUID`: si no lo es, responde la página de error con 404 (RF-5). Después
@@ -263,8 +279,9 @@ del motor en pantalla.
 (`src/domain/blockchain.py`) delega en `transactions.list(wallet_id=...)`, que mira
 las dos direcciones: el historial de una wallet son sus envíos y sus recepciones
 (REQ-13). La ruta solo pinta `historial.html` con el identificador, el emisor, el
-receptor, el monto, el estado y el bloque de cada transacción; si no hay ninguna,
-muestra el historial vacío.
+receptor, el monto, el estado y el bloque de cada transacción, en forma corta y
+monoespaciada con el valor completo en el marcado; si no hay ninguna, muestra el
+historial vacío.
 
 **Qué tabla se toca.** Ninguna: solo lee `wallets` y `transactions`.
 
@@ -303,6 +320,7 @@ y `...::test_req_28_rf5_historial_con_uuid_invalido_o_inexistente_responde_una_p
 | ¿El dominio depende de PostgreSQL?                                       | No: habla con los protocolos de `ports.py`, y cargarlo no importa `psycopg`                                                                                      | `src/persistence/ports.py`, `tests/unit/test_req_16_dominio_aislado.py`, `tests/test_explicacion.py::test_req_17_las_pruebas_unitarias_no_dependen_de_la_base` |
 | ¿Por qué hay un índice único sobre la firma si el eje no lo trae?        | Es la única desviación, aprobada el 2026-10-10: el dominio informa el motivo y el esquema garantiza la unicidad                                                  | `db/init.sql`, `tests/integration/test_req_03_firma_repetida.py`                                                                                               |
 | ¿La presentación decide reglas de negocio?                               | No: cada ruta toma el formulario, llama a la fachada y pinta una plantilla (REQ-29)                                                                              | `src/web/app.py`, `tests/unit/test_req_29_presentacion.py`                                                                                                     |
+| ¿De dónde sale la lista de wallets que se ve en todas las páginas?       | Del procesador de contexto `wallets_del_panel`, que llama a `chain.wallets.list()`; la ruta no tiene que pasar la lista y sigue sin consultar por su cuenta      | `create_app`, `src/web/templates/base.html`, `tests/integration/test_req_24_rutas.py::test_req_29_el_panel_lateral_aparece_en_todas_las_paginas`               |
 | ¿Cómo se sabe que corre en el piso de Python 3.11?                       | `pyproject.toml` declara `requires-python = ">=3.11"`; la corrida dentro del contenedor del piso es la que lo confirma                                           | `pyproject.toml`, `tests/test_explicacion.py::test_req_20_el_interprete_cumple_el_piso_declarado`, README                                                      |
 | ¿Qué pasa si se pide el historial de una wallet que no existe?           | La ruta valida el identificador y responde la página de error con 404 (RF-5)                                                                                     | `src/web/app.py`, `tests/integration/test_req_24_rutas.py::test_req_28_rf5_historial_con_uuid_invalido_o_inexistente_responde_una_pagina_clara`                |
 | ¿Cómo se sabe que la explicación no se separó del código?                | Una prueba exige que los cinco casos de uso estén en este recorrido y que los 29 requerimientos tengan su `test_req_NN_`                                         | `tests/test_explicacion.py`                                                                                                                                    |

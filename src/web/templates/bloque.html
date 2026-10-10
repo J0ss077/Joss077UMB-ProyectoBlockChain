@@ -1,6 +1,6 @@
-{% extends "base.html" %} {% block titulo %}Bloque{% endblock %} {% block encabezado %}CU-03: agrupar el pool en un bloque{% endblock %} {% block contenido %}
+{% extends "base.html" %} {% from "_macros.html" import dato, copiar %} {% block titulo %}Cerrar bloque{% endblock %} {% block encabezado %}Cerrar bloque{% endblock %} {% block contenido %}
 <form method="post" action="/bloques">
-    <button type="submit">Agrupar</button>
+    <button type="submit">Cerrar bloque</button>
 </form>
 
 {% if bloque %}
@@ -10,19 +10,19 @@
         <tbody>
             <tr>
                 <th>Índice</th>
-                <td>{{ bloque.block_index }}</td>
+                <td><code>{{ bloque.block_index }}</code></td>
             </tr>
             <tr>
                 <th>Marca de tiempo</th>
-                <td>{{ bloque.timestamp.isoformat() }}</td>
+                <td><code>{{ bloque.timestamp.isoformat() }}</code></td>
             </tr>
             <tr>
                 <th>Hash previo</th>
-                <td><code>{{ bloque.previous_hash }}</code></td>
+                <td>{{ dato(bloque.previous_hash) }} {{ copiar(bloque.previous_hash, "el hash previo") }}</td>
             </tr>
             <tr>
                 <th>Hash</th>
-                <td><code>{{ bloque.hash }}</code></td>
+                <td>{{ dato(bloque.hash) }} {{ copiar(bloque.hash, "el hash del bloque") }}</td>
             </tr>
         </tbody>
     </table>
@@ -31,8 +31,8 @@
 <div class="aviso">
     <p>Había transacciones en el pool y ninguna entró al bloque.</p>
 </div>
-{% elif not habia_pool %}
+{% else %}
 <div class="aviso">
-    <p>El pool estaba vacío: no se creó bloque. Es el flujo alterno del CU-03.</p>
+    <p>El pool estaba vacío: no se creó bloque.</p>
 </div>
 {% endif %} {% endblock %}

@@ -42,6 +42,18 @@ def create_app(chain_factory: Callable[[], AbstractContextManager[Blockchain]]) 
             ensure_genesis(chain)
             yield chain
 
+    @app.context_processor
+    def panel_de_wallets():
+        """Expone las wallets del panel lateral a todas las plantillas (REQ-29).
+
+        El panel vive en `base.html` y tiene que estar en las cinco páginas, no solo
+        en la lista: la lista se resuelve aquí, una vez por página, en vez de depender
+        de que cada ruta se acuerde de pasarla. Es una lectura de la fachada, como las
+        demás, así que la presentación sigue sin decidir reglas ni consultar.
+        """
+        with abrir_cadena() as chain:
+            return {"wallets_del_panel": chain.wallets.list()}
+
     @app.get("/")
     def portada():
         """Portada: los conteos del ledger y el acceso a los cinco casos de uso."""
@@ -50,18 +62,15 @@ def create_app(chain_factory: Callable[[], AbstractContextManager[Blockchain]]) 
 
     @app.route("/wallets", methods=["GET", "POST"])
     def wallets():
-        """CU-01: registra una wallet y muestra la lista con sus claves públicas (REQ-24).
+        """CU-01: registra una wallet y muestra su clave pública (REQ-24).
 
-        La rama `GET` pasa además las wallets registradas porque el CU-05 necesita una
-        puerta visible: sin la lista habría que teclear a mano una llave pública de 66
-        caracteres que no aparece en ninguna otra página. La lista va dentro de esta
-        ruta, que ya existe, para no agregar una sexta al eje.
+        La lista de wallets no la pasa esta ruta: vive en el panel lateral y por eso el
+        CU-05 queda alcanzable desde cualquier página sin teclear una llave de 66
+        caracteres. Esa lista va dentro de una ruta que ya existe, para no agregar una
+        sexta al eje.
         """
         if request.method == "GET":
-            with abrir_cadena() as chain:
-                return render_template(
-                    "wallet.html", wallet=None, wallets=chain.wallets.list()
-                )
+            return render_template("wallet.html", wallet=None)
         with abrir_cadena() as chain:
             wallet = chain.register_wallet()
             return render_template("wallet.html", wallet=wallet)

@@ -1,3 +1,4 @@
+{% from "_macros.html" import dato, copiar -%}
 <!doctype html>
 <html lang="es">
     <head>
@@ -5,17 +6,70 @@
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>{% block titulo %}Ledger transaccional{% endblock %}</title>
         <style>
+            :root {
+                --mono: ui-monospace, "Cascadia Code", Consolas, monospace;
+            }
             body {
                 font-family: system-ui, sans-serif;
-                margin: 0 auto;
-                max-width: 60rem;
+                margin: 0;
+            }
+            .barra {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: baseline;
+                gap: 1rem;
+                padding: 0.8rem 1.5rem;
+                border-bottom: 1px solid #bbb;
+            }
+            .barra .marca {
+                font-weight: bold;
+                text-decoration: none;
+            }
+            .barra nav a {
+                margin-right: 1rem;
+            }
+            .columnas {
+                display: flex;
+                align-items: flex-start;
+                gap: 1.5rem;
                 padding: 1.5rem;
+            }
+            .panel {
+                flex: 0 0 19rem;
+                border-right: 1px solid #ddd;
+                padding-right: 1rem;
+            }
+            .panel h2 {
+                font-size: 1rem;
+                margin-top: 0;
+            }
+            .panel ul {
+                list-style: none;
+                margin: 0;
+                padding: 0;
+            }
+            .panel li {
+                margin-bottom: 0.6rem;
+            }
+            main {
+                flex: 1 1 auto;
+                min-width: 0;
             }
             h1 {
                 font-size: 1.5rem;
+                margin-top: 0;
             }
-            nav a {
-                margin-right: 1rem;
+            code,
+            .mono {
+                font-family: var(--mono);
+            }
+            code {
+                word-break: break-all;
+            }
+            /* El dato corto también copia al hacer clic; el botón de al lado es el
+               camino accesible, este es el atajo. */
+            .mono[data-copiar] {
+                cursor: copy;
             }
             table {
                 border-collapse: collapse;
@@ -50,20 +104,60 @@
                 padding: 0.8rem;
                 margin-top: 1rem;
             }
-            code {
-                word-break: break-all;
+            /* En pantalla angosta el panel deja de ser columna: se pierde la
+               comparación lado a lado, no el acceso a las wallets. */
+            @media (max-width: 40rem) {
+                .columnas {
+                    display: block;
+                }
+                .panel {
+                    flex: none;
+                    border-right: none;
+                    border-bottom: 1px solid #ddd;
+                    padding: 0 0 1rem;
+                }
             }
         </style>
     </head>
     <body>
-        <nav>
-            <a href="/">Portada</a>
-            <a href="/wallets">Registrar wallet</a>
-            <a href="/transacciones">Proponer transacción</a>
-            <a href="/bloques">Agrupar bloque</a>
-            <a href="/verificar">Verificar cadena</a>
-        </nav>
-        <h1>{% block encabezado %}Ledger transaccional{% endblock %}</h1>
-        {% block contenido %}{% endblock %}
+        <div class="barra">
+            <a class="marca" href="/">Ledger transaccional</a>
+            <nav>
+                <a href="/wallets">Registrar wallet</a>
+                <a href="/transacciones">Nueva transacción</a>
+                <a href="/bloques">Cerrar bloque</a>
+                <a href="/verificar">Verificar cadena</a>
+            </nav>
+        </div>
+        <div class="columnas">
+            <aside class="panel">
+                <h2>Wallets</h2>
+                {% if wallets_del_panel %}
+                <ul>
+                    {% for registrada in wallets_del_panel %}
+                    <li>
+                        {{ dato(registrada.public_key) }} {{ copiar(registrada.public_key, "la clave pública") }}
+                        <a href="/historial/{{ registrada.id }}">Historial</a>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p>Todavía no hay wallets.</p>
+                {% endif %}
+            </aside>
+            <main>
+                <h1>{% block encabezado %}{% endblock %}</h1>
+                {% block contenido %}{% endblock %}
+            </main>
+        </div>
+        <script>
+            // Un solo guion para los datos copiables de todas las páginas: cada
+            // `[data-copiar]` lleva su valor completo, así que copia lo que se ve.
+            document.addEventListener("click", (evento) => {
+                const boton = evento.target.closest("[data-copiar]");
+                if (!boton) return;
+                navigator.clipboard.writeText(boton.dataset.copiar);
+            });
+        </script>
     </body>
 </html>
