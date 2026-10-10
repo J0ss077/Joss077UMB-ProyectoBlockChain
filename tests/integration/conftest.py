@@ -80,7 +80,7 @@ def ledger(conexion, base_limpia, master_key) -> Blockchain:
     lo que las pruebas escriben hablen de las mismas filas; la agrupación abre su
     propia transacción de base de datos (REQ-18).
     """
-    chain = open_ledger(conexion, master_key=master_key, clock=lambda: BLOCK_AT)
+    chain = open_ledger(conexion, encryption_key=master_key, clock=lambda: BLOCK_AT)
     ensure_genesis(chain)
     return chain
 
@@ -95,7 +95,7 @@ def base_vacia_ejecutando_bootstrap(conexion, base_limpia, master_key) -> Blockc
     conexión de la sesión para poder consultar lo que el subproceso dejó escrito.
     """
     subprocess.run([sys.executable, "-m", "src.bootstrap"], check=True)
-    return open_ledger(conexion, master_key=master_key)
+    return open_ledger(conexion, encryption_key=master_key)
 
 
 @pytest.fixture

@@ -32,7 +32,7 @@ def cliente(conexion, base_limpia, master_key, base_vacia_ejecutando_bootstrap):
 
     @contextmanager
     def fabrica():
-        chain = open_ledger(conexion, master_key=master_key)
+        chain = open_ledger(conexion, encryption_key=master_key)
         ensure_genesis(chain)
         yield chain
 

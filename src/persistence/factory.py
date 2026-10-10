@@ -78,10 +78,14 @@ def _utc_now() -> datetime:
 def open_ledger(
     connection: psycopg.Connection,
     *,
-    master_key: bytes,
+    encryption_key: bytes,
     clock: Callable[[], datetime] | None = None,
 ) -> Blockchain:
     """Arma el ledger sobre una conexión abierta que este módulo no cierra.
+
+    `encryption_key` es la clave maestra con la que el ledger cifra y firma
+    (decisión 3); se llama así aquí para no tapar la función `master_key()`, que es
+    la que la lee del entorno.
 
     Los tres repositorios de lectura comparten esa conexión; la agrupación no,
     porque REQ-18 exige que sus dos escrituras ocurran en una sola transacción de
@@ -92,7 +96,7 @@ def open_ledger(
         blocks=PostgresBlockRepository(connection),
         transactions=PostgresTransactionRepository(connection),
         unit_of_work=lambda: PostgresUnitOfWork.open(database_url()),
-        master_key=master_key,
+        master_key=encryption_key,
         clock=clock if clock is not None else _utc_now,
     )
 
@@ -107,4 +111,4 @@ def ledger() -> Iterator[Blockchain]:
     """
     with psycopg.connect(database_url(), autocommit=True) as connection:
         connection.execute("SET TIME ZONE 'UTC'")
-        yield open_ledger(connection, master_key=master_key())
+        yield open_ledger(connection, encryption_key=master_key())
