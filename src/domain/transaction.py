@@ -105,6 +105,13 @@ class Transaction:
         Las públicas llegan en `None` cuando la wallet no existe: el dominio no
         consulta la base, solo valida lo que el ledger le entrega.
         """
+        # Un monto no finito (`NaN`, `sNaN`, `Infinity`) no se puede comparar ni
+        # cuantizar: las comparaciones dan falso y `quantize` levanta
+        # `InvalidOperation`, que es lo que hacía caer la ruta con un error del
+        # programa. Se rechaza antes de cualquier comparación, y el CHECK del esquema
+        # no lo respalda: PostgreSQL evalúa `'NaN'::numeric > 0` como verdadero.
+        if not self.amount.is_finite():
+            return ValidationResult(False, RejectionReason.AMOUNT_NOT_POSITIVE)
         if self.amount <= 0:
             return ValidationResult(False, RejectionReason.AMOUNT_NOT_POSITIVE)
         # El rango se comprueba antes de la precisión: `quantize` sobre un monto
@@ -120,7 +127,11 @@ class Transaction:
         payload = self.signing_payload(sender_public_key, receiver_public_key)
         if not verify(sender_public_key, self.signature, payload):
             return ValidationResult(False, RejectionReason.BAD_SIGNATURE)
-        if available < self.amount:
+        if available.is_nan() or available < self.amount:
+            # Un saldo `NaN` —una fila con ese monto insertada directo, que el CHECK
+            # del esquema no detiene— haría que la comparación levante
+            # `InvalidOperation`; rechazar por saldo es la lectura conservadora de un
+            # estado que no debería existir.
             return ValidationResult(False, RejectionReason.INSUFFICIENT_FUNDS)
         if signature_exists:
             return ValidationResult(False, RejectionReason.DUPLICATE_SIGNATURE)
