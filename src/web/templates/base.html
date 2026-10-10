@@ -163,20 +163,30 @@
         </div>
         <script>
             // Un solo guion para los datos copiables de todas las páginas: cada
-            // `[data-copiar]` lleva su valor completo, así que copia lo que se ve. La
-            // guarda evita reventar donde no hay portapapeles y el aviso confirma que
-            // el clic copió algo, que si no el botón no diría nada.
+            // `[data-copiar]` lleva su valor completo, así que copia lo que se ve. El
+            // aviso dice siempre qué pasó: sin la rama de rechazo, una escritura
+            // denegada se quedaría sin aviso y con la promesa sin manejar; y si falta
+            // la API, el clic tampoco puede quedar en silencio —el valor completo
+            // sigue en el `title` del dato—.
             document.addEventListener("click", (evento) => {
                 const origen = evento.target.closest("[data-copiar]");
-                if (!origen || !navigator.clipboard) return;
-                navigator.clipboard.writeText(origen.dataset.copiar).then(() => {
+                if (!origen) return;
+                const avisar = (texto) => {
                     const aviso = document.createElement("span");
                     aviso.className = "aviso-copia";
                     aviso.setAttribute("role", "status");
-                    aviso.textContent = " copiado";
+                    aviso.textContent = texto;
                     origen.after(aviso);
                     setTimeout(() => aviso.remove(), 1200);
-                });
+                };
+                if (!navigator.clipboard) {
+                    avisar(" no se pudo copiar");
+                    return;
+                }
+                navigator.clipboard
+                    .writeText(origen.dataset.copiar)
+                    .then(() => avisar(" copiado"))
+                    .catch(() => avisar(" no se pudo copiar"));
             });
         </script>
     </body>

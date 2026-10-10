@@ -33,8 +33,8 @@ montos, fechas y conteos van en `code` o en la clase `.mono`, y los controles de
 formulario —`select`, `option` e `input`— usan la misma pila monoespaciada; las claves,
 los identificadores y los hashes se ven en forma corta, y el valor completo sigue en el
 atributo `title` —también el de cada `option`— y en `data-copiar`, que es lo que copian
-los botones con el guion de `base.html`, que además avisa cuando el portapapeles no está
-disponible o cuando la copia salió bien.
+los botones con el guion de `base.html`: avisa «copiado» cuando la escritura sale bien y
+«no se pudo copiar» cuando el navegador no ofrece el portapapeles o la rechaza.
 
 ## CU-01: registrar una wallet
 
