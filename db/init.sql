@@ -79,7 +79,12 @@ CREATE TABLE transactions (
         ON DELETE RESTRICT ON UPDATE CASCADE,
 
     CONSTRAINT chk_transactions_amount_positive CHECK (amount > 0),
-    CONSTRAINT chk_transactions_sender_ne_receiver CHECK (sender_id <> receiver_id),
+    -- Segunda desviación del modelo relacional del eje, aprobada el 2026-10-10: el
+    -- eje prohíbe que el emisor y el receptor coincidan, y esa regla impide la única
+    -- fila con la que el ledger puede recibir valor de fuera, porque el modelo de
+    -- saldos no tiene emisión y toda transacción descuenta el saldo del emisor
+    -- (REQ-05). El capital de constitución de la demostración se acredita con esa
+    -- fila; el resto de las reglas de formato se aplican igual.
     CONSTRAINT chk_transactions_status CHECK (status IN ('pending', 'confirmed', 'rejected')),
     CONSTRAINT chk_transactions_signature_not_blank CHECK (length(trim(signature)) > 0),
     CONSTRAINT chk_transactions_block_status_consistency CHECK (

@@ -260,10 +260,12 @@ class PostgresTransactionRepository:
     def balance_terms(self, wallet_id: UUID) -> BalanceTerms:
         """Las tres sumas del saldo disponible (REQ-05) en una sola consulta.
 
-        El `JOIN` con `wallets` no filtra nada: existe para que una wallet sin
-        movimientos igual devuelva una fila, con ceros en vez de `NULL`. `pending_out`
-        solo cuenta las pendientes porque lo confirmado en contra ya está en
-        `confirmed_out`; sumar las dos sería contar dos veces lo mismo.
+        Las sumas van contra `transactions` y la wallet entra solo por el `WHERE`, sin
+        ninguna tabla que multiplicar: una wallet sin movimientos devuelve ceros
+        porque `SUM` sobre cero filas es `NULL` y el `COALESCE` lo lleva a cero, no
+        porque haya una fila artificial. `pending_out` solo cuenta las pendientes
+        porque lo confirmado en contra ya está en `confirmed_out`; sumar las dos sería
+        contar dos veces lo mismo.
         """
         cursor = self._connection.cursor(row_factory=dict_row)
         cursor.execute(
@@ -279,10 +281,9 @@ class PostgresTransactionRepository:
                     CASE WHEN t.sender_id = %s AND t.status = 'pending' THEN t.amount END
                 ), 0) AS pending_out
             FROM transactions t
-            LEFT JOIN wallets w ON w.id = %s
             WHERE t.sender_id = %s OR t.receiver_id = %s
             """,
-            (wallet_id, wallet_id, wallet_id, wallet_id, wallet_id, wallet_id),
+            (wallet_id, wallet_id, wallet_id, wallet_id, wallet_id),
         )
         row = cursor.fetchone()
         return BalanceTerms(

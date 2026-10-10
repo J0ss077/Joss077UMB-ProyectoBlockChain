@@ -248,6 +248,15 @@ class Blockchain:
         """Los envíos y las recepciones de una wallet, en cualquier estado (CU-05, REQ-13)."""
         return self.transactions.list(wallet_id=wallet_id)
 
+    def available_balance(self, wallet_id: UUID) -> Decimal:
+        """Saldo disponible de una wallet: confirma a favor menos lo comprometido (REQ-05).
+
+        Es la misma cuenta que usa `create_transaction` para decidir si acepta una
+        transacción; se expone aquí para que el arranque y la presentación puedan
+        consultarla sin volver a armarla por su cuenta.
+        """
+        return available_balance(self.transactions.balance_terms(wallet_id))
+
     def ledger_state(self) -> dict[str, int]:
         """Cuántas filas tiene cada tabla, para la portada y para las pruebas (REQ-13)."""
         return {
