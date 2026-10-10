@@ -2,8 +2,8 @@
 
 Son `Protocol` y no clases base porque describen la forma, no la herencia: el
 dominio depende de estos nombres —y no de `psycopg`—, y así cargarlo no arrastra
-el driver. Los adaptadores PostgreSQL que cumplen los tres contratos llegan en la
-tarea 6 y la unidad de trabajo, en la 7.
+el driver. Los adaptadores que cumplen estos contratos viven en `postgres.py` y la
+unidad de trabajo, en `unit_of_work.py`.
 """
 from collections.abc import Sequence
 from typing import Protocol
@@ -74,9 +74,9 @@ class TransactionRepository(Protocol):
 class UnitOfWork(Protocol):
     """Agrupa los tres repositorios y cierra el trabajo en una sola transacción.
 
-    La implementación (tarea 7) es el contexto que hace atómica la agrupación de
-    REQ-18: `commit` aplica todo o nada y `rollback` deshace lo escrito cuando
-    algo falla a mitad.
+    La implementación es el contexto que hace atómica la agrupación de REQ-18:
+    `commit` aplica todo o nada y `rollback` deshace lo escrito cuando algo falla
+    a mitad.
     """
 
     wallets: WalletRepository

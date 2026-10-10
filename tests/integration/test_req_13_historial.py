@@ -1,6 +1,7 @@
 """REQ-13: consultar el historial y el estado del ledger.
 
-Los listados se filtran por estado y por wallet, los conteos salen de la base, y
+El criterio cubre las tres tablas: se listan y se cuentan wallets, bloques y
+transacciones, el listado de transacciones se filtra por estado y por wallet, y
 `balance_terms` resuelve las tres sumas del saldo disponible (REQ-05) en una
 sola consulta sobre `transactions`.
 """
@@ -60,6 +61,25 @@ def historial(transacciones, base_limpia, emisora, receptora, bloque, transaccio
         "receptora": receptora,
         "tercera": tercera,
     }
+
+
+def test_req_13_se_listan_y_cuentan_las_wallets_y_los_bloques(wallets, bloques, historial):
+    """Las wallets y los bloques también se listan y se cuentan, y el bloque se busca por índice.
+
+    El criterio de REQ-13 habla de las tres tablas, no solo de las transacciones.
+    """
+    assert wallets.count() == 3
+    assert {wallet.id for wallet in wallets.list()} == {
+        historial["emisora"].id,
+        historial["receptora"].id,
+        historial["tercera"].id,
+    }
+
+    assert bloques.count() == 1
+    assert [block.id for block in bloques.list()] == [historial["bloque"].id]
+    assert bloques.last().id == historial["bloque"].id
+    assert bloques.get_by_index(0).id == historial["bloque"].id
+    assert bloques.get_by_index(1) is None
 
 
 def test_req_13_se_listan_las_transacciones_y_se_cuentan_las_filas(transacciones, historial):

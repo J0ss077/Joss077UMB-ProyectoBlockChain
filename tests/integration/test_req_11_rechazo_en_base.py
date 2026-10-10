@@ -2,19 +2,47 @@
 
 La fila rechazada se guarda con `block_id` nulo y nunca entra a un bloque; el
 esquema es el que impide lo contrario con su CHECK de coherencia entre estado y
-bloque (REQ-12), cuyos dos lados se provocan aquí.
+bloque (REQ-12), cuyos dos lados se provocan aquí. En el ledger, además, la fila
+`rejected` solo se escribe cuando el esquema la admite: los motivos que el propio
+esquema ya impide —monto no positivo, emisor igual al receptor, wallet
+inexistente y firma repetida— se informan sin escribir, como manda la sección
+"Conducta observable ante una transacción inválida" del diseño.
 """
+from datetime import datetime, timezone
+from decimal import Decimal
+from uuid import UUID, uuid4
+
 import psycopg
 import pytest
 
-from src.domain.transaction import TransactionStatus
+from src.domain import blockchain
+from src.domain.transaction import RejectionReason, TransactionStatus
 from src.persistence.postgres import PostgresTransactionRepository
+
+# Identificador y marca de tiempo fijos: la firma canónica los incluye, así que
+# repetirlos es la forma de repetir la firma sin tocar la criptografía.
+CREATED_AT = datetime(2026, 10, 10, 12, 0, tzinfo=timezone.utc)
+FIXED_ID = UUID("00000000-0000-4000-8000-000000000011")
 
 
 @pytest.fixture
 def transacciones(conexion):
     """El repositorio de transacciones contra la conexión de la sesión."""
     return PostgresTransactionRepository(conexion)
+
+
+@pytest.fixture
+def emisora_fondeada(ledger, emisora, receptora, transaccion):
+    """Emisora con saldo confirmado: sin fondos, toda transacción saliente se rechaza.
+
+    El ingreso se confirma por el camino real —se escribe pendiente y se agrupa—
+    para que el saldo salga de `balance_terms` y no de un número inventado.
+    """
+    ledger.transactions.add(
+        transaccion(sender=receptora, receiver=emisora, amount=Decimal("100.00000000"))
+    )
+    ledger.group_pending()
+    return emisora
 
 
 def test_req_11_una_rechazada_se_guarda_con_block_id_nulo(transacciones, base_limpia, transaccion):
@@ -51,3 +79,119 @@ def test_req_11_una_pendiente_con_bloque_levanta_check_violation(
         transacciones.add(pendiente_con_bloque)
 
     assert transacciones.count() == 0
+
+
+def test_req_11_la_transaccion_valida_queda_pendiente_en_el_pool(
+    ledger, emisora_fondeada, receptora
+):
+    """El camino válido guarda la fila como `pending`, sin bloque, dentro del pool."""
+    resultado = ledger.create_transaction(
+        sender_id=emisora_fondeada.id,
+        receiver_id=receptora.id,
+        amount=Decimal("25.00000000"),
+    )
+
+    assert resultado.accepted is True
+    assert resultado.reason is None
+    assert resultado.stored is not None
+    assert resultado.stored.status is TransactionStatus.PENDING
+    assert resultado.stored.block_id is None
+    assert [fila.id for fila in ledger.transactions.pending()] == [resultado.stored.id]
+
+
+def test_req_11_el_saldo_insuficiente_se_guarda_como_rejected(ledger, emisora, receptora):
+    """El saldo insuficiente cabe en el esquema, así que la fila queda en `rejected`."""
+    resultado = ledger.create_transaction(
+        sender_id=emisora.id,
+        receiver_id=receptora.id,
+        amount=Decimal("1.00000000"),
+    )
+
+    assert resultado.accepted is False
+    assert resultado.reason is RejectionReason.INSUFFICIENT_FUNDS
+    assert resultado.stored is not None
+    assert resultado.stored.status is TransactionStatus.REJECTED
+    assert resultado.stored.block_id is None
+    assert ledger.transactions.pending() == []
+    assert ledger.transactions.count() == 1
+
+
+def test_req_11_el_monto_no_positivo_se_informa_sin_fila(ledger, emisora, receptora):
+    """El CHECK del monto lo impide: el rechazo se informa sin escribir."""
+    resultado = ledger.create_transaction(
+        sender_id=emisora.id,
+        receiver_id=receptora.id,
+        amount=Decimal("0"),
+    )
+
+    assert resultado.accepted is False
+    assert resultado.reason is RejectionReason.AMOUNT_NOT_POSITIVE
+    assert resultado.stored is None
+    assert ledger.transactions.count() == 0
+
+
+def test_req_11_el_emisor_igual_al_receptor_se_informa_sin_fila(ledger, emisora):
+    """El CHECK del emisor distinto del receptor lo impide: se informa sin escribir."""
+    resultado = ledger.create_transaction(
+        sender_id=emisora.id,
+        receiver_id=emisora.id,
+        amount=Decimal("1.00000000"),
+    )
+
+    assert resultado.accepted is False
+    assert resultado.reason is RejectionReason.SAME_SENDER_AND_RECEIVER
+    assert resultado.stored is None
+    assert ledger.transactions.count() == 0
+
+
+def test_req_11_la_wallet_inexistente_se_informa_sin_fila(ledger, emisora):
+    """La clave foránea la impide: se informa sin escribir y sin dejar el motivo en la base."""
+    resultado = ledger.create_transaction(
+        sender_id=emisora.id,
+        receiver_id=uuid4(),
+        amount=Decimal("1.00000000"),
+    )
+
+    assert resultado.accepted is False
+    assert resultado.reason is RejectionReason.UNKNOWN_WALLET
+    assert resultado.stored is None
+    assert ledger.transactions.count() == 0
+
+
+def test_req_11_la_firma_repetida_se_informa_sin_fila(
+    ledger, emisora_fondeada, receptora, monkeypatch
+):
+    """El índice único la impide: el motivo sale del dominio y la repetición no deja fila.
+
+    La firma ECDSA no es determinista, así que el mismo envío produce firmas
+    distintas y esta rama no se alcanzaría sola. Se fija el valor que devuelve el
+    firmante para representar "la misma transacción presentada dos veces", que es
+    justo lo que el índice único de la decisión 4 rechazaría.
+    """
+    presentada = ledger.create_transaction(
+        sender_id=emisora_fondeada.id,
+        receiver_id=receptora.id,
+        amount=Decimal("1.00000000"),
+        transaction_id=FIXED_ID,
+        created_at=CREATED_AT,
+    )
+    assert presentada.accepted is True
+    assert presentada.stored is not None
+
+    monkeypatch.setattr(
+        blockchain, "sign_payload", lambda wallet, payload, key: presentada.stored.signature
+    )
+    repetida = ledger.create_transaction(
+        sender_id=emisora_fondeada.id,
+        receiver_id=receptora.id,
+        amount=Decimal("1.00000000"),
+        transaction_id=FIXED_ID,
+        created_at=CREATED_AT,
+    )
+
+    assert repetida.accepted is False
+    assert repetida.reason is RejectionReason.DUPLICATE_SIGNATURE
+    assert repetida.stored is None
+    # El ingreso confirmado de la emisora y la primera transacción: la repetición
+    # no agrega fila.
+    assert ledger.transactions.count() == 2

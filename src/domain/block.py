@@ -1,9 +1,8 @@
 """Bloque del ledger: agrupa transacciones y fija el hash de su contenido.
 
 Resuelve cómo se representa un bloque, cómo se calcula el hash que lo encadena al
-anterior y cómo ese hash cubre las transacciones que agrupa (REQ-07). La
-agrupación y el encadenamiento llegan en las tareas 7 y 8; aquí vive la forma del
-bloque y el cálculo del hash que ambas usan.
+anterior y cómo ese hash cubre las transacciones que agrupa (REQ-07): es la forma
+que usan la agrupación y la verificación de `blockchain.py`.
 """
 from collections.abc import Sequence
 from dataclasses import dataclass
