@@ -1,0 +1,17 @@
+# Piso de Python, configuración de la suite y del lint (REQ-20).
+[project]
+name = "blockchain-transaccional"
+version = "0.1.0"
+description = "Prototipo transaccional basado en blockchain (reconstrucción del eje, Grupo 1, UMB)"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+# `pythonpath` pone la raíz del repositorio en sys.path para que las pruebas
+# importen `src.*` sin instalar el proyecto.
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+# El mismo piso gobierna el lint: ninguna regla puede exigir sintaxis posterior a 3.11.
+target-version = "py311"
+line-length = 100
