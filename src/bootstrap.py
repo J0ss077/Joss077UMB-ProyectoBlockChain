@@ -43,8 +43,10 @@ CONSTITUYENTE_ID = uuid5(NAMESPACE_URL, "blockchain-transaccional/constituyente"
 # Montos de la demostración. El constituyente dota al fondo con el capital de
 # constitución; el fondo entrega de ahí el capital de asociación a cada asociado,
 # con el que cada uno hace su primer aporte; y el fondo gira retiros por menos de lo
-# que cobró en aportes, así que retiene fondos propios y ningún saldo queda negativo
-# (REQ-05).
+# que cobró en aportes, así que retiene fondos propios. El constituyente es la
+# puerta por la que el capital entra al ledger —el modelo del eje no tiene emisión—
+# y por eso es la única wallet de la demostración que termina con saldo disponible
+# negativo; el fondo y los asociados quedan todos en positivo (REQ-05).
 CAPITAL_CONSTITUCION = Decimal("3000.00000000")
 CAPITAL_ASOCIACION = Decimal("1000.00000000")
 APORTE = Decimal("700.00000000")
@@ -91,7 +93,7 @@ def wallet_del_fondo(master_key: bytes) -> Wallet:
 
 
 def wallet_del_constituyente(master_key: bytes) -> Wallet:
-    """Arma la wallet del constituyente, la que recibe y entrega el capital de constitución."""
+    """Arma la wallet del constituyente, la puerta por la que el capital entra al ledger."""
     return _wallet(CONSTITUYENTE_ID, CONSTITUYENTE_SEED, master_key)
 
 
@@ -102,17 +104,17 @@ def run(chain: Blockchain) -> Block | None:
     nulo, porque el arranque se puede repetir. El bloque nulo es también el flujo
     alterno del CU-03: sin aportes en el pool no hay nada que agrupar.
 
-    El ciclo del eje se reproduce en cuatro tiempos, y cada uno se confirma antes
-    del siguiente porque el saldo disponible de REQ-05 solo suma lo confirmado a
-    favor: sin ese orden, la validación de la pata siguiente vería saldo cero.
+    El ciclo del eje se reproduce en tres tiempos, y cada uno se confirma antes del
+    siguiente porque el saldo disponible de REQ-05 solo suma lo confirmado a favor:
+    sin ese orden, la validación de la pata siguiente vería saldo cero.
 
-    Primero, el bloque fundacional acredita al constituyente el capital de
-    constitución y lo entrega al fondo: es la única entrada de valor externo, porque
-    el modelo de saldos no tiene emisión. Segundo, el fondo gira el capital de
-    asociación a los asociados y se confirma. Tercero, los asociados aportan con
-    cargo a ese capital y sus aportes se confirman, que es lo que deja al fondo con
-    fondos propios. Cuarto, el fondo gira los retiros, que quedan en el pool como el
-    ciclo que `POST /bloques` agruparía a continuación.
+    Primero, el constituyente emite el capital de constitución a favor del fondo: es
+    la única entrada de valor externo, porque el modelo del eje no tiene emisión.
+    Segundo, el fondo gira el capital de asociación a los asociados y se confirma.
+    Tercero, los asociados aportan con cargo a ese capital y sus aportes se
+    confirman, que es lo que deja al fondo con fondos propios; después el fondo gira
+    los retiros, que quedan en el pool como el ciclo que `POST /bloques` agruparía a
+    continuación.
     """
     if chain.wallets.count() > 0:
         return None
@@ -121,7 +123,6 @@ def run(chain: Blockchain) -> Block | None:
     fondo = chain.wallets.add(wallet_del_fondo(chain._master_key))
     asociados = [chain.register_wallet() for _ in range(ASOCIADOS)]
 
-    chain.transactions.add(_capital_de_constitucion(chain, constituyente.id))
     chain.transactions.add(
         _entrega_de_capital(chain, constituyente.id, fondo.id, CAPITAL_CONSTITUCION)
     )
@@ -142,40 +143,20 @@ def run(chain: Blockchain) -> Block | None:
     return bloque
 
 
-def _capital_de_constitucion(chain: Blockchain, constituyente_id: UUID) -> Transaction:
-    """Arma el capital de constitución, la fila con la que el valor entra desde fuera.
-
-    Se escribe por el repositorio y no por `create_transaction` porque esa puerta
-    valida el saldo del emisor (REQ-05) y el constituyente nace sin saldo: es
-    justamente esta fila la que se lo da, ya que el modelo de saldos no tiene
-    emisión. Por eso el emisor y el receptor son la misma wallet: el modelo no admite
-    otra forma de acreditar sin cobrarle a alguien, así que el esquema no aplica el
-    CHECK de emisor distinto del receptor a esta fila (desviación aprobada del
-    2026-10-10, anotada en `db/init.sql`). El constituyente queda con saldo disponible
-    negativo por el mismo monto, que es el costo del aporte fundacional, y por eso
-    queda fuera de la regla de saldo que comprueba la demostración.
-    """
-    return Transaction(
-        id=uuid4(),
-        sender_id=constituyente_id,
-        receiver_id=constituyente_id,
-        amount=CAPITAL_CONSTITUCION,
-        status=TransactionStatus.PENDING,
-        signature=_firma_fundacional(),
-        block_id=None,
-        created_at=chain._clock(),
-    )
-
-
 def _entrega_de_capital(
     chain: Blockchain, emisor_id: UUID, receptor_id: UUID, monto: Decimal
 ) -> Transaction:
-    """Arma una entrega del capital de constitución, del constituyente a su receptor.
+    """Arma una entrega de capital, del emisor a su receptor.
 
-    Se escribe por el repositorio porque comparte bloque con el capital de
-    constitución y en ese instante el saldo del constituyente todavía no está en la
-    base. La firma lleva el identificador de la fila porque el esquema tiene un
-    índice único sobre `signature` (decisión 4) y hay varias entregas por corrida.
+    Se escribe por el repositorio y no por `create_transaction` porque esa puerta
+    valida el saldo del emisor (REQ-05) y el constituyente nace sin saldo: es esta
+    fila la que lo dota, ya que el modelo del eje no tiene emisión. Por eso el
+    constituyente queda con saldo disponible negativo —es la única wallet de la
+    demostración a la que se le permite, porque es la puerta por la que el capital
+    entra al ledger— y las demás filas se mueven por el camino normal.
+
+    La firma lleva el identificador de la fila porque el esquema tiene un índice
+    único sobre `signature` (decisión 4) y hay varias entregas por corrida.
     """
     transaction_id = uuid4()
     return Transaction(
@@ -188,16 +169,6 @@ def _entrega_de_capital(
         block_id=None,
         created_at=chain._clock(),
     )
-
-
-def _firma_fundacional() -> str:
-    """Firma de la fila fundacional, que no corresponde a ninguna privada.
-
-    El aporte de constitución no se firma porque viene de fuera del sistema: lo que
-    acredita no es una llave sino el acto del arranque. La columna no admite vacío,
-    así que lleva la marca del arranque y el identificador que la hace única.
-    """
-    return f"aporte-de-constitucion:{uuid4()}"
 
 
 def main() -> None:
