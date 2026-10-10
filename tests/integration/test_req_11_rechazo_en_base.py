@@ -117,6 +117,36 @@ def test_req_11_el_saldo_insuficiente_se_guarda_como_rejected(ledger, emisora, r
     assert ledger.transactions.count() == 1
 
 
+def test_req_06_dos_transacciones_que_juntas_exceden_no_entran_las_dos(
+    ledger, emisora_fondeada, receptora
+):
+    """REQ-06: dos transacciones que por separado caben pero juntas exceden no entran las dos.
+
+    El saldo disponible descuenta lo que la primera comprometió en el pool, así que la
+    segunda se rechaza por saldo; se comprueba por los dos caminos reales de
+    `create_transaction` y no con un `BalanceTerms` armado a mano.
+    """
+    primera = ledger.create_transaction(
+        sender_id=emisora_fondeada.id,
+        receiver_id=receptora.id,
+        amount=Decimal("60.00000000"),
+    )
+    segunda = ledger.create_transaction(
+        sender_id=emisora_fondeada.id,
+        receiver_id=receptora.id,
+        amount=Decimal("60.00000000"),
+    )
+
+    assert primera.accepted is True
+    assert segunda.accepted is False
+    assert segunda.reason is RejectionReason.INSUFFICIENT_FUNDS
+    assert segunda.stored is not None
+    assert segunda.stored.status is TransactionStatus.REJECTED
+    # La primera comprometió 60 de los 100 confirmados; la rechazada no cuenta.
+    assert ledger.available_balance(emisora_fondeada.id) == Decimal("40.00000000")
+    assert [fila.id for fila in ledger.transactions.pending()] == [primera.stored.id]
+
+
 def test_req_11_el_monto_no_positivo_se_informa_sin_fila(ledger, emisora, receptora):
     """El CHECK del monto lo impide: el rechazo se informa sin escribir."""
     resultado = ledger.create_transaction(

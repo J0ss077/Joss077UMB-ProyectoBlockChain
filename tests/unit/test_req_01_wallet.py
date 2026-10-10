@@ -1,7 +1,7 @@
 """REQ-01: la pública queda en claro y única; el material privado nunca en claro."""
 from cryptography.fernet import Fernet
 
-from src.domain.wallet import create_wallet, decrypt_private_key
+from src.domain.wallet import create_wallet, decrypt_private_key, public_key_from_hex
 
 
 def test_req_01_la_privada_no_esta_en_claro_en_la_wallet():
@@ -18,4 +18,11 @@ def test_req_01_dos_wallets_no_comparten_publica():
     master = Fernet.generate_key()
     primera = create_wallet(master_key=master)
     segunda = create_wallet(master_key=master)
+
+    assert primera.public_key and segunda.public_key, "la pública no puede ir vacía"
     assert primera.public_key != segunda.public_key
+    # Punto comprimido de secp256k1 en hexadecimal: si la wallet guardara otra cosa,
+    # reconstruir la llave desde ese texto fallaría.
+    assert len(primera.public_key) == 66
+    reconstruida = public_key_from_hex(primera.public_key)
+    assert reconstruida.key_size == 256

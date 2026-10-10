@@ -4,8 +4,10 @@ Las pruebas de formato y de saldo llaman `validate(available=..., signature_exis
 sin pasar llaves públicas: esta fábrica resuelve la pública del emisor y la del
 receptor a partir de los identificadores de la transacción y firma con la privada
 correspondiente, de modo que la firma verifique y lo que se mida sea el formato o
-el saldo, no la firma. `Transaction.validate` conserva sus parámetros
-`sender_public_key` y `receiver_public_key` para las pruebas de firma ajena (REQ-02).
+el saldo, no la firma. Un identificador que no sea el del emisor ni el del receptor
+resuelve `None`, así que la transacción llega a `UNKNOWN_WALLET` en vez de colarse con
+una llave prestada. `Transaction.validate` conserva sus parámetros `sender_public_key`
+y `receiver_public_key` para las pruebas de firma ajena (REQ-02).
 """
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -29,8 +31,8 @@ class SignedTransaction:
     """Una `Transaction` con la pública de su emisor y la de su receptor resueltas."""
 
     transaction: Transaction
-    sender_public_key: str
-    receiver_public_key: str
+    sender_public_key: str | None
+    receiver_public_key: str | None
 
     def validate(self, *, available: Decimal, signature_exists: bool) -> ValidationResult:
         """Valida con la pública del emisor y la del receptor ya cableadas."""
@@ -60,13 +62,18 @@ def _transaction(*, sender_id: UUID, receiver_id: UUID, **fields) -> Transaction
     return Transaction(sender_id=sender_id, receiver_id=receiver_id, **defaults)
 
 
-def _public_key_for(wallet_id: UUID, sender: Wallet, receiver: Wallet, fallback: str) -> str:
-    """Resuelve la pública de un identificador conocido; si no lo es, usa la de referencia."""
+def _public_key_for(wallet_id: UUID, sender: Wallet, receiver: Wallet) -> str | None:
+    """Resuelve la pública de un identificador conocido; `None` si no es ninguna.
+
+    Devolver `None` y no una pública de referencia es lo que hace que una transacción
+    con un identificador desconocido llegue a `UNKNOWN_WALLET`: con una llave prestada
+    pasaría las reglas de wallet y de firma, y la prueba mediría otra cosa.
+    """
     if wallet_id == sender.id:
         return sender.public_key
     if wallet_id == receiver.id:
         return receiver.public_key
-    return fallback
+    return None
 
 
 def _signed_transaction(
@@ -77,12 +84,8 @@ def _signed_transaction(
     signer: Wallet | None = None,
 ) -> SignedTransaction:
     """Firma la transacción y devuelve el objeto con sus dos públicas cableadas."""
-    sender_public_key = _public_key_for(
-        transaction.sender_id, sender, receiver, sender.public_key
-    )
-    receiver_public_key = _public_key_for(
-        transaction.receiver_id, sender, receiver, receiver.public_key
-    )
+    sender_public_key = _public_key_for(transaction.sender_id, sender, receiver)
+    receiver_public_key = _public_key_for(transaction.receiver_id, sender, receiver)
     # Por defecto firma quien dice ser el emisor, para que la firma verifique.
     signer = signer or (receiver if sender_public_key == receiver.public_key else sender)
     transaction.signature = sign_payload(
