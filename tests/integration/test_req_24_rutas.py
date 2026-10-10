@@ -126,10 +126,13 @@ def test_req_24_post_wallets_devuelve_200_con_la_publica(cliente, cadena):
     assert respuesta.status_code == 200
     registrada = cadena.wallets.list()[-1]
     texto = respuesta.get_data(as_text=True)
+    corta = f"{registrada.public_key[:8]}…{registrada.public_key[-4:]}"
     # Con la forma corta, la llave completa sigue en el marcado (`title` y
     # `data-copiar`) y la que se ve es la corta: la aserción no se debilita.
     assert registrada.public_key in texto
-    assert registrada.public_key[:8] in texto
+    assert f">{corta}<" in texto
+    assert f'title="{registrada.public_key}"' in texto
+    assert registrada.public_key not in _texto_visible(texto)
 
 
 def test_req_25_post_transacciones_devuelve_el_estado(cliente, partes):
@@ -325,15 +328,19 @@ def test_req_29_los_controles_del_formulario_van_en_monoespaciada(cliente, walle
     assert _MONO_EN_LOS_CONTROLES.search(cuerpo)
 
 
-def test_req_29_los_datos_numericos_van_en_monoespaciada(cliente, wallet_de_prueba, partes):
+def test_req_29_los_datos_numericos_van_en_monoespaciada(cliente, cadena, wallet_de_prueba, partes):
     """REQ-29: los identificadores y los montos del historial van en monoespaciada.
 
-    La wallet de la prueba tiene una transacción en el pool, así que la aserción cae
-    sobre una fila de la tabla y no sobre el panel o la cabecera.
+    La wallet de la prueba tiene una transacción en el pool, así que la aserción del
+    identificador de la transacción solo la puede satisfacer una celda de la tabla: el
+    panel lateral lista wallets y la cabecera, el identificador de la wallet.
     """
     cuerpo = cliente.get(f"/historial/{wallet_de_prueba.id}").get_data(as_text=True)
     emisor = partes["fondo"].public_key
+    transaccion = str(cadena.wallet_history(wallet_de_prueba.id)[0].id)
+    corta = f"{transaccion[:8]}…{transaccion[-4:]}"
 
+    assert f">{corta}<" in cuerpo                          # la transacción, en su celda
     assert f">{emisor[:8]}…{emisor[-4:]}<" in cuerpo      # el emisor, corto y en mono
     assert f"<td><code>{MONTO}</code></td>" in cuerpo      # el monto, en `code`
     assert "<td><code>pending</code></td>" in cuerpo       # el estado, en `code`
