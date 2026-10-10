@@ -50,9 +50,18 @@ def create_app(chain_factory: Callable[[], AbstractContextManager[Blockchain]]) 
 
     @app.route("/wallets", methods=["GET", "POST"])
     def wallets():
-        """CU-01: registra una wallet y muestra su clave pública (REQ-24)."""
+        """CU-01: registra una wallet y muestra la lista con sus claves públicas (REQ-24).
+
+        La rama `GET` pasa además las wallets registradas porque el CU-05 necesita una
+        puerta visible: sin la lista habría que teclear a mano una llave pública de 66
+        caracteres que no aparece en ninguna otra página. La lista va dentro de esta
+        ruta, que ya existe, para no agregar una sexta al eje.
+        """
         if request.method == "GET":
-            return render_template("wallet.html", wallet=None)
+            with abrir_cadena() as chain:
+                return render_template(
+                    "wallet.html", wallet=None, wallets=chain.wallets.list()
+                )
         with abrir_cadena() as chain:
             wallet = chain.register_wallet()
             return render_template("wallet.html", wallet=wallet)

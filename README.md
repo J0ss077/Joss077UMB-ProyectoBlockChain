@@ -155,6 +155,10 @@ desarrollo local.
 no existe, responde la página de error con `404` y nunca un error del motor en
 pantalla (RF-5).
 
+`GET /wallets` es la misma ruta del CU-01 y además lista las wallets registradas con su
+llave pública **completa** dentro de `<code>` y el enlace «Ver su historial». El CU-05 se
+alcanza desde esa lista: no hay que teclear el identificador a mano.
+
 ## Los datos de demostración
 
 `python -m src.bootstrap` deja **5 wallets, 4 bloques y 10 transacciones** (7
@@ -309,6 +313,53 @@ el guardado (REQ-10), y no escribe nada (REQ-22).
 La alteración deja la base modificada a propósito. Para volver a los datos de
 demostración, borre el volumen y vuelva a sembrar: `docker compose down -v`,
 `docker compose up -d` (o con Podman) y `<venv> -m src.bootstrap`.
+
+## Apagar y limpiar
+
+**Detener la aplicación.** En la terminal donde corre `<venv> -m src.web`, `Ctrl+C`. No
+queda nada a medias: cada petición abre su conexión y la cierra al terminar, y la
+agrupación de un bloque es una sola transacción de base de datos (REQ-18), así que o se
+confirmó completa o no ocurrió.
+
+**Apagar PostgreSQL 16.** `docker compose down` (o `podman compose down`) quita el
+contenedor **y conserva los datos**: el volumen `postgres_data` sigue en el equipo, así
+que el próximo `docker compose up -d` levanta el mismo ledger. `docker compose down -v`
+es el que borra el volumen y, con él, las tres tablas. Tras borrarlo, el esquema de
+`db/init.sql` se vuelve a aplicar solo en el próximo `up` (el punto de entrada de la
+imagen lo lee al crear el volumen de nuevo), la base queda vacía y hay que volver a
+sembrar la demostración:
+
+```text
+docker compose down -v
+docker compose up -d
+<venv> -m src.bootstrap
+```
+
+**Deshacer la alteración de la demostración.** La alteración a mano del apartado anterior
+cambia una fila sin pasar por la cadena, y la aplicación no tiene una operación que la
+deshaga: el camino de vuelta es el reinicio limpio de arriba —borrar el volumen, `up` y
+`<venv> -m src.bootstrap`—. Si lo que quiere es ver el dictamen sin ensuciar la
+demostración, `tests/integration/test_req_10_alteracion.py` hace la misma alteración
+sobre una base desechable.
+
+**Qué se puede borrar sin miedo.** Nada de esto está versionado (`.gitignore`), así que
+borrarlo no ensucia el repositorio:
+
+| Ruta               | Qué es                                                            | Si la borra                                                                                               |
+| ------------------ | ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `.venv/`           | El entorno virtual con las dependencias fijadas                   | Se recrea con `python -m venv .venv` y la instalación de `requirements.txt`.                              |
+| `.reference/`      | El extracto del documento del eje y el material de consulta       | No rompe nada: no lo importan el código ni las pruebas. Se pierde la copia local del extracto del eje.    |
+| `.superpowers/`    | Los planes y los informes de las tareas, sin versionar            | No rompe nada: no lo importa nadie. Se pierden los planes y los informes, que no están en el repositorio. |
+| `.legacy-project/` | El prototipo anterior, que solo se conserva como referencia       | No rompe nada: no lo importa nadie. Se pierde el prototipo anterior, que no es el entregable.             |
+| `.env`             | Los secretos locales: `DATABASE_URL`, `POSTGRES_*` y `MASTER_KEY` | Obliga a copiar `.env.example` otra vez y a generar una `MASTER_KEY` nueva; lea la advertencia de abajo.  |
+
+**Antes de borrar `.env`.** `.env` guarda la `MASTER_KEY` con la que se cifra el material
+privado de las wallets (decisión 3 del diseño). Con otra clave, las wallets ya guardadas
+quedan ilegibles: su llave privada no se puede descifrar y no pueden volver a firmar. Por
+eso, después de cambiar la clave hay que reiniciar los datos —`docker compose down -v`,
+`docker compose up -d` y `<venv> -m src.bootstrap`—, que siembra wallets nuevas cifradas
+con la clave nueva. El arranque solo siembra cuando la tabla de wallets está vacía: un
+`.env` nuevo con los datos viejos deja un ledger que no puede firmar.
 
 ## Qué está verificado
 

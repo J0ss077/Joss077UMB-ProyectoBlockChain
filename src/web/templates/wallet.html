@@ -9,4 +9,25 @@
     <p><strong>public_key:</strong> <code>{{ wallet.public_key }}</code></p>
     <p><a href="/historial/{{ wallet.id }}">Ver su historial</a></p>
 </div>
+{% endif %} {# La llave va completa y en `code` para poder copiarla: es el dato del CU-05 y teclearla a mano era el problema. Solo se pinta en la rama GET, que es la que recibe la lista. #} {% if wallets %}
+<h2>Wallets registradas</h2>
+<table>
+    <thead>
+        <tr>
+            <th>Identificador</th>
+            <th>Clave pública</th>
+            <th>Historial</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for registrada in wallets %}
+        <tr>
+            <td><code>{{ registrada.id }}</code></td>
+            <td><code>{{ registrada.public_key }}</code></td>
+            <td><a href="/historial/{{ registrada.id }}">Ver su historial</a></td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+<p>Se listan hasta cien wallets, de la más antigua a la más nueva. El enlace de cada fila abre el CU-05 sin escribir el identificador.</p>
 {% endif %} {% endblock %}

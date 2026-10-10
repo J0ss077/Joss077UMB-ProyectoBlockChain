@@ -937,3 +937,58 @@ git commit -m "docs: recorrido de casos de uso, README y coherencia de la explic
 - **Review Focus**: RF-1 y RF-2 en la tarea 2; RF-3 y RF-4 en la tarea 8; RF-5 en la tarea 10.
 - **Consistencia de tipos**: `validate` recibe `available` y `signature_exists` en las tareas 2, 4 y 7; `calculate_hash(transactions)` en 3 y 8; `balance_terms` en 5, 6 y 7; `VerificationReport` en 7 y 8.
 - **Explicabilidad**: cada tarea incluye los docstrings y los comentarios del porqué, y la tarea 11 los verifica contra el recorrido.
+
+---
+
+### Task 12: Entrada visible al CU-05 y cierre del proyecto en el README
+
+Surgió al probar la aplicación: el CU-05 funciona, pero para demostrarlo hay que teclear a mano una llave pública de 66 caracteres que no aparece en ningún listado, porque `GET /wallets` solo muestra el formulario y las wallets existentes únicamente se ven dentro del formulario de transacciones, donde no se pueden copiar.
+
+**Files:**
+- Modify: `src/web/app.py` (solo la rama `GET` de la ruta `wallets`), `src/web/templates/wallet.html`, `src/web/templates/index.html`, `src/web/templates/historial.html`, `README.md`
+- Create: `tests/integration/test_req_28_historial_desde_la_lista.py`
+
+**Interfaces:**
+- Consumes: `Blockchain.wallets.list()`, `Blockchain.wallet_history(wallet_id)`, `Blockchain.register_wallet()`.
+- Produces: la ruta `GET /wallets` renderiza además `wallets=<secuencia de Wallet>`. **No se agregan rutas**: las cinco del eje se mantienen, y la lista va dentro de una que ya existe.
+
+- [ ] **Step 1: Escribir la prueba que falla**
+
+```python
+"""REQ-28 y CU-05: el historial de cualquier wallet se alcanza desde la lista de wallets."""
+def test_req_28_la_lista_de_wallets_lleva_al_historial(cliente, wallet_de_prueba):
+    listado = cliente.get("/wallets")
+    assert listado.status_code == 200
+    cuerpo = listado.get_data(as_text=True)
+    assert wallet_de_prueba.public_key in cuerpo      # la llave completa, copiable
+    enlace = f"/historial/{wallet_de_prueba.id}"
+    assert enlace in cuerpo                            # el enlace directo
+    assert cliente.get(enlace).status_code == 200       # y el enlace funciona
+```
+
+El `cliente` y su forma de sembrar datos ya existen en `tests/integration/test_req_24_rutas.py`; replica esa forma con `base_limpia` y una wallet registrada por la fachada.
+
+- [ ] **Step 2: Correr la prueba y ver que falla**
+
+Run: `.venv/bin/pytest tests/integration/test_req_28_historial_desde_la_lista.py -v`
+Expected: FAIL porque la lista no aparece en la página
+
+- [ ] **Step 3: Implementar**
+
+`GET /wallets` pasa también `wallets=chain.wallets.list()`. `wallet.html` lista las wallets registradas con la llave pública **completa** dentro de `<code>` (para poder seleccionarla y copiarla), su identificador y un enlace «Ver su historial». `historial.html` enlaza de vuelta a `/wallets`. `index.html` reemplaza la frase que manda a teclear el identificador por el enlace a la lista. Nada de reglas ni consultas en la ruta (REQ-29).
+
+- [ ] **Step 4: Correr la suite completa**
+
+Run: `.venv/bin/pytest tests -q`
+Expected: verde, con una prueba más
+
+- [ ] **Step 5: README — apagar y limpiar**
+
+Agregar una sección que cubra: detener la aplicación (Ctrl+C); `docker compose down` conserva los datos y `docker compose down -v` borra el volumen, tras lo cual el esquema se reaplica solo en el próximo `up` y hay que volver a sembrar con `python -m src.bootstrap`; cómo deshacer la alteración de la demostración; y qué se puede borrar sin miedo (`.venv/`, `.reference/`, `.superpowers/`, `.legacy-project/` y `.env`, advirtiendo que borrar `.env` obliga a generar otra `MASTER_KEY` y volver a sembrar, porque las wallets ya guardadas quedan ilegibles).
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add src/web README.md tests/integration/test_req_28_historial_desde_la_lista.py
+git commit -m "feat: el historial de cada wallet se alcanza desde la lista, y el README explica como apagar y limpiar"
+```
