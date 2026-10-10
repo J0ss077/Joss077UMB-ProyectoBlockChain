@@ -105,3 +105,34 @@ def test_req_10_rf4_marca_de_tiempo_del_genesis_alterada_se_detecta(cadena_de_tr
 
     assert informe.valid is False
     assert informe.altered_block_index == 0
+
+
+def test_req_10_borrar_el_genesis_señala_la_cabeza(bloque):
+    """Borrar el génesis deja los hashes de 1..n intactos, así que hay que señalar la cabeza."""
+    genesis = bloque(0)
+    segundo = bloque(1, genesis)
+    chain = build_chain(blocks=[segundo])
+
+    informe = chain.verify_chain()
+
+    assert informe.valid is False
+    assert informe.altered_block_index == 1
+
+
+def test_req_10_una_cadena_sin_bloques_no_es_valida():
+    """Sin ningún bloque falta el génesis, así que la cadena no puede darse por válida."""
+    informe = build_chain().verify_chain()
+
+    assert informe.valid is False
+    assert informe.altered_block_index == 0
+
+
+def test_req_10_la_cabeza_declara_el_hash_previo_del_genesis(bloque):
+    """Un eslabón cero con un hash previo distinto de los sesenta y cuatro ceros se señala."""
+    ajeno = bloque(0, previous_hash="b" * 64)
+    chain = build_chain(blocks=[ajeno])
+
+    informe = chain.verify_chain()
+
+    assert informe.valid is False
+    assert informe.altered_block_index == 0

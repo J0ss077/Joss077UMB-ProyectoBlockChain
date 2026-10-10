@@ -215,21 +215,33 @@ class Blockchain:
     def verify_chain(self) -> VerificationReport:
         """Recalcula la cadena y localiza el primer bloque que no encaja (CU-04, REQ-10).
 
-        Para cada bloque recalcula su hash propio con las transacciones que tiene
-        ligadas y lo compara con el guardado, y encadena cada eslabón con el hash
-        del anterior comparando también el índice: un hueco en los índices no
-        cambia ningún hash, así que sin esa comparación una cadena 0, 1, 3 se vería
-        válida (RF-3). Recalcula además el hash del génesis: el CU-04 habla de
-        "para cada bloque desde el índice 1" porque describe el encadenamiento,
-        pero sin recalcular el eslabón cero alterar su marca de tiempo dejando el
-        hash guardado intacto pasaría inadvertido (decisión 13).
+        La cabeza tiene que ser el génesis: índice cero y hash previo de sesenta y
+        cuatro ceros. Sin esa comprobación, borrar el eslabón cero deja una cadena
+        1..n con todos sus hashes intactos y la alteración pasaría inadvertida
+        (decisión 13). El recorte por la cola queda fuera de alcance: para notarlo
+        habría que saber cuál era el último bloque y el historial no lo guarda.
 
-        Solo lee: no escribe ni confirma nada (REQ-22). Ante la primera
-        discrepancia detiene el recorrido y devuelve su índice; seguir no cambia el
-        dictamen.
+        En el recorrido, cada bloque se recalcula con las transacciones que tiene
+        ligadas y se compara con el hash guardado; el encadenamiento compara el
+        `previous_hash` con el del bloque anterior **y** que el índice sea el
+        siguiente, porque un hueco en los índices no cambia ningún hash y una cadena
+        0, 1, 3 se vería válida (RF-3). El génesis también se recalcula: sin eso,
+        alterar su marca de tiempo dejando su hash intacto pasaría inadvertido
+        (decisión 13).
+
+        Solo lee (REQ-22) y, ante la primera discrepancia, detiene el recorrido y
+        devuelve su índice; seguir no cambia el dictamen.
         """
+        blocks = self.blocks.list()
+        if not blocks:
+            # Sin ningún bloque falta el eslabón cero, que es el que se señala.
+            return VerificationReport(valid=False, altered_block_index=0)
+        head = blocks[0]
+        if head.block_index != 0 or head.previous_hash != GENESIS_PREVIOUS_HASH:
+            return VerificationReport(valid=False, altered_block_index=head.block_index)
+
         anterior: Block | None = None
-        for block in self.blocks.list():
+        for block in blocks:
             if block.calculate_hash(self.transactions.of_block(block.id)) != block.hash:
                 return VerificationReport(valid=False, altered_block_index=block.block_index)
             if anterior is not None:
