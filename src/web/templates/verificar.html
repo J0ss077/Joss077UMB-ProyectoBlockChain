@@ -1,0 +1,16 @@
+{% extends "base.html" %} {% block titulo %}Verificación{% endblock %} {% block encabezado %}CU-04: verificar la cadena{% endblock %} {% block contenido %}
+<form method="get" action="/verificar">
+    <button type="submit">Verificar</button>
+</form>
+
+{% if dictamen.valid %}
+<div class="exito">
+    <p>La cadena es válida: ningún bloque fue alterado.</p>
+</div>
+{% else %}
+<div class="motivo">
+    <p>La cadena no es válida.</p>
+    <p><strong>bloque alterado:</strong> {{ dictamen.altered_block_index }}</p>
+    <p>El primer bloque que no encaja es el de índice <code>{{ dictamen.altered_block_index }}</code>.</p>
+</div>
+{% endif %} {% endblock %}

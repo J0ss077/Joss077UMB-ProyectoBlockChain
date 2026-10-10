@@ -1,0 +1,38 @@
+{% extends "base.html" %} {% block titulo %}Bloque{% endblock %} {% block encabezado %}CU-03: agrupar el pool en un bloque{% endblock %} {% block contenido %}
+<form method="post" action="/bloques">
+    <button type="submit">Agrupar</button>
+</form>
+
+{% if bloque %}
+<div class="exito">
+    <p>Bloque creado y encadenado con el último.</p>
+    <table>
+        <tbody>
+            <tr>
+                <th>Índice</th>
+                <td>{{ bloque.block_index }}</td>
+            </tr>
+            <tr>
+                <th>Marca de tiempo</th>
+                <td>{{ bloque.timestamp.isoformat() }}</td>
+            </tr>
+            <tr>
+                <th>Hash previo</th>
+                <td><code>{{ bloque.previous_hash }}</code></td>
+            </tr>
+            <tr>
+                <th>Hash</th>
+                <td><code>{{ bloque.hash }}</code></td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+{% elif habia_pool %}
+<div class="aviso">
+    <p>Había transacciones en el pool y ninguna entró al bloque.</p>
+</div>
+{% elif not habia_pool %}
+<div class="aviso">
+    <p>El pool estaba vacío: no se creó bloque. Es el flujo alterno del CU-03.</p>
+</div>
+{% endif %} {% endblock %}

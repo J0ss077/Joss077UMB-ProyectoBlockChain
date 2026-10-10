@@ -9,27 +9,8 @@ repositorio anterior.
 import subprocess
 import sys
 
-import psycopg
-import pytest
-
 from src.bootstrap import FONDO, wallet_del_constituyente
-from src.persistence.factory import database_url, master_key, open_ledger
-
-
-@pytest.fixture
-def base_vacia_ejecutando_bootstrap(base_limpia):
-    """Base vacía, el arranque corrido como se corre de verdad, y la fachada para leer.
-
-    El arranque se ejecuta en un subproceso porque su contrato es el punto de
-    entrada (`python -m src.bootstrap`) y no una función interna: así la prueba
-    cubre el mismo camino que usa el equipo. Después se abre la fachada sobre una
-    conexión viva para poder consultar lo que el subproceso dejó escrito.
-    """
-    subprocess.run([sys.executable, "-m", "src.bootstrap"], check=True)
-
-    with psycopg.connect(database_url(), autocommit=True) as connection:
-        connection.execute("SET TIME ZONE 'UTC'")
-        yield open_ledger(connection, master_key=master_key())
+from src.persistence.factory import master_key
 
 
 def test_los_aportes_financian_los_retiros(base_vacia_ejecutando_bootstrap):
@@ -38,20 +19,20 @@ def test_los_aportes_financian_los_retiros(base_vacia_ejecutando_bootstrap):
     fondo = chain.wallets.get_by_public_key(FONDO)
     assert fondo is not None, "la demostración tiene que tener la wallet del fondo"
 
-    # Los asociados son las tres wallets del demonio que no son el fondo ni la
+    # Los asociados son las tres wallets de la demostración que no son el fondo ni la
     # wallet del constituyente. El constituyente queda fuera de la regla de saldo a
     # propósito: es la puerta por la que el capital de constitución entra al ledger
     # —el modelo de saldos no tiene emisión—, así que su saldo es un dato del
     # arranque y no del ciclo de aportes y retiros. La regla se comprueba sobre el
     # fondo y sobre cada asociado, que son los actores del caso del eje.
-    constituyente = chain.wallets.get(wallet_del_constituyente(master_key()).id)
+    constituyente = wallet_del_constituyente(master_key())
     asociados = [
         w for w in chain.wallets.list() if w.id not in {fondo.id, constituyente.id}
     ]
     assert len(asociados) == 3, "la demostración tiene tres asociados"
 
-    for asociado in asociados:
-        assert chain.available_balance(asociado.id) >= 0
+    for wallet in [fondo, *asociados]:
+        assert chain.available_balance(wallet.id) >= 0
 
 
 def test_el_bootstrap_es_idempotente(base_vacia_ejecutando_bootstrap):

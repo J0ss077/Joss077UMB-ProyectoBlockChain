@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="es">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>{% block titulo %}Ledger transaccional{% endblock %}</title>
+        <style>
+            body {
+                font-family: system-ui, sans-serif;
+                margin: 0 auto;
+                max-width: 60rem;
+                padding: 1.5rem;
+            }
+            h1 {
+                font-size: 1.5rem;
+            }
+            nav a {
+                margin-right: 1rem;
+            }
+            table {
+                border-collapse: collapse;
+                width: 100%;
+                margin-top: 1rem;
+            }
+            th,
+            td {
+                border: 1px solid #bbb;
+                padding: 0.4rem 0.6rem;
+                text-align: left;
+                vertical-align: top;
+            }
+            th {
+                background: #f0f0f0;
+            }
+            .motivo {
+                background: #ffe8e8;
+                border: 1px solid #c66;
+                padding: 0.8rem;
+                margin-top: 1rem;
+            }
+            .exito {
+                background: #e8ffe8;
+                border: 1px solid #6c6;
+                padding: 0.8rem;
+                margin-top: 1rem;
+            }
+            .aviso {
+                background: #fff8e0;
+                border: 1px solid #cc6;
+                padding: 0.8rem;
+                margin-top: 1rem;
+            }
+            code {
+                word-break: break-all;
+            }
+        </style>
+    </head>
+    <body>
+        <nav>
+            <a href="/">Portada</a>
+            <a href="/wallets">Registrar wallet</a>
+            <a href="/transacciones">Proponer transacción</a>
+            <a href="/bloques">Agrupar bloque</a>
+            <a href="/verificar">Verificar cadena</a>
+        </nav>
+        <h1>{% block encabezado %}Ledger transaccional{% endblock %}</h1>
+        {% block contenido %}{% endblock %}
+    </body>
+</html>

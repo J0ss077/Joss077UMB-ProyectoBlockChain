@@ -1,0 +1,32 @@
+{% extends "base.html" %} {% block titulo %}Ledger transaccional{% endblock %} {% block encabezado %}Estado del ledger{% endblock %} {% block contenido %}
+<p>Los conteos salen del ledger y los enlaces llevan a los cinco casos de uso.</p>
+<table>
+    <thead>
+        <tr>
+            <th>Tabla</th>
+            <th>Filas</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>wallets</td>
+            <td>{{ estado.wallets }}</td>
+        </tr>
+        <tr>
+            <td>blocks</td>
+            <td>{{ estado.blocks }}</td>
+        </tr>
+        <tr>
+            <td>transactions</td>
+            <td>{{ estado.transactions }}</td>
+        </tr>
+    </tbody>
+</table>
+<ul>
+    <li><a href="/wallets">CU-01: registrar una wallet</a></li>
+    <li><a href="/transacciones">CU-02: proponer una transacción</a></li>
+    <li><a href="/bloques">CU-03: agrupar el pool en un bloque</a></li>
+    <li><a href="/verificar">CU-04: verificar la cadena</a></li>
+</ul>
+<p>El CU-05 (historial de una wallet) se consulta desde <code>/historial/&lt;identificador&gt;</code>; el identificador de cada wallet se ve al registrarla.</p>
+{% endblock %}

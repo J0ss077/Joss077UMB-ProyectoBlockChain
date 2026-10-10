@@ -1,0 +1,51 @@
+{% extends "base.html" %} {% block titulo %}Transacción{% endblock %} {% block encabezado %}CU-02: proponer una transacción{% endblock %} {% block contenido %}
+<form method="post" action="/transacciones">
+    <p>
+        <label
+            >Emisor
+            <select name="sender_id">
+                {% for wallet in wallets %}
+                <option value="{{ wallet.id }}">{{ wallet.public_key }}</option>
+                {% endfor %}
+            </select>
+        </label>
+    </p>
+    <p>
+        <label
+            >Receptor
+            <select name="receiver_id">
+                {% for wallet in wallets %}
+                <option value="{{ wallet.id }}">{{ wallet.public_key }}</option>
+                {% endfor %}
+            </select>
+        </label>
+    </p>
+    <p>
+        <label>Monto <input name="amount" value="10.00000000" /></label>
+    </p>
+    <button type="submit">Proponer</button>
+</form>
+
+{% if error_formulario %}
+<div class="motivo">
+    <p><strong>motivo:</strong> {{ error_formulario }}</p>
+</div>
+{% endif %} {% if resultado %} {% if resultado.accepted %}
+<div class="exito">
+    <p>La transacción entró al pool.</p>
+    {% if resultado.stored %}
+    <p><strong>identificador:</strong> <code>{{ resultado.stored.id }}</code></p>
+    <p><strong>estado:</strong> {{ resultado.stored.status }}</p>
+    <p><strong>monto:</strong> {{ "%.8f"|format(resultado.stored.amount) }}</p>
+    {% endif %}
+</div>
+{% else %} {# El motivo se muestra porque el CU-02 lo pide: quien propone tiene que saber por qué no entró. #}
+<div class="motivo">
+    <p>La transacción no entró al pool.</p>
+    <p><strong>motivo:</strong> {{ resultado.reason }}</p>
+    {% if resultado.stored %}
+    <p><strong>identificador:</strong> <code>{{ resultado.stored.id }}</code></p>
+    <p><strong>estado:</strong> {{ resultado.stored.status }}</p>
+    {% endif %}
+</div>
+{% endif %} {% endif %} {% endblock %}

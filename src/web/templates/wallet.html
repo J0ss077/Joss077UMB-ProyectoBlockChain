@@ -1,0 +1,12 @@
+{% extends "base.html" %} {% block titulo %}Wallet{% endblock %} {% block encabezado %}CU-01: registrar una wallet{% endblock %} {% block contenido %}
+<form method="post" action="/wallets">
+    <button type="submit">Registrar wallet</button>
+</form>
+{% if wallet %}
+<div class="exito">
+    <p>Wallet registrada. Su clave pública es la que la identifica:</p>
+    <p><strong>identificador:</strong> <code>{{ wallet.id }}</code></p>
+    <p><strong>public_key:</strong> <code>{{ wallet.public_key }}</code></p>
+    <p><a href="/historial/{{ wallet.id }}">Ver su historial</a></p>
+</div>
+{% endif %} {% endblock %}

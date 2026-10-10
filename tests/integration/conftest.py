@@ -7,6 +7,8 @@ borran filas. La configuración del entorno la lee `src/persistence/factory.py`,
 que es también quien arma la fachada: las pruebas y la aplicación no pueden
 leer cosas distintas de `.env`.
 """
+import subprocess
+import sys
 from datetime import datetime, timezone
 from decimal import Decimal
 from hashlib import sha256
@@ -14,7 +16,6 @@ from uuid import UUID, uuid4
 
 import psycopg
 import pytest
-
 from src.domain.block import Block
 from src.domain.blockchain import Blockchain, ensure_genesis
 from src.domain.transaction import Transaction, TransactionStatus
@@ -82,6 +83,19 @@ def ledger(conexion, base_limpia, master_key) -> Blockchain:
     chain = open_ledger(conexion, master_key=master_key, clock=lambda: BLOCK_AT)
     ensure_genesis(chain)
     return chain
+
+
+@pytest.fixture
+def base_vacia_ejecutando_bootstrap(conexion, base_limpia, master_key) -> Blockchain:
+    """Base vacía, el arranque corrido como se corre de verdad, y la fachada para leer.
+
+    El arranque se ejecuta en un subproceso porque su contrato es el punto de
+    entrada (`python -m src.bootstrap`) y no una función interna: así las pruebas
+    cubren el mismo camino que usa el equipo. Después se abre la fachada sobre la
+    conexión de la sesión para poder consultar lo que el subproceso dejó escrito.
+    """
+    subprocess.run([sys.executable, "-m", "src.bootstrap"], check=True)
+    return open_ledger(conexion, master_key=master_key)
 
 
 @pytest.fixture
