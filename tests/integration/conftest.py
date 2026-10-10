@@ -11,7 +11,6 @@ import subprocess
 import sys
 from datetime import UTC, datetime
 from decimal import Decimal
-from hashlib import sha256
 from uuid import UUID, uuid4
 
 import psycopg
@@ -182,21 +181,24 @@ def bloques(conexion) -> BlockRepository:
 def bloque(bloques):
     """Fábrica de bloques ya escritos, distintos entre sí por índice y por hash.
 
+    El hash lo calcula `Block.calculate_hash`, la misma función que usa la
+    aplicación: con una fórmula paralela, una prueba que combinara estos bloques con
+    la verificación señalaría una alteración que nadie hizo.
+
     El `id` se genera en la aplicación, no con el valor por defecto del esquema,
     porque el camino real conoce el `id` antes de escribir (decisión 5).
     """
 
     def build(block_index: int = 0, previous_hash: str = "0" * 64) -> Block:
-        hash_propio = sha256(f"{block_index}|{previous_hash}".encode()).hexdigest()
-        return bloques.add(
-            Block(
-                id=uuid4(),
-                block_index=block_index,
-                timestamp=datetime(2026, 10, 10, 12, 0, tzinfo=UTC),
-                previous_hash=previous_hash,
-                hash=hash_propio,
-            )
+        creado = Block(
+            id=uuid4(),
+            block_index=block_index,
+            timestamp=datetime(2026, 10, 10, 12, 0, tzinfo=UTC),
+            previous_hash=previous_hash,
+            hash="",
         )
+        creado.hash = creado.calculate_hash([])
+        return bloques.add(creado)
 
     return build
 
