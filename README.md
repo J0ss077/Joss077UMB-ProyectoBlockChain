@@ -314,8 +314,9 @@ demostración, borre el volumen y vuelva a sembrar: `docker compose down -v`,
   wallet a sí misma lo rechazó el motor.
 - **Las reglas sin base de datos (REQ-17)**: `pytest tests/unit` pasa con
   `DATABASE_URL` sin definir y sin contenedor, porque el dominio no importa el driver.
-- **La suite completa contra el clúster PostgreSQL del equipo de desarrollo**: 84
-  pruebas (28 de reglas, 51 de integración y 5 de coherencia de la explicación).
+- **La suite completa** contra el clúster PostgreSQL del equipo de desarrollo: las
+  reglas, la integración y la coherencia de la explicación. La cobertura de los 29
+  requerimientos no se cuenta a mano: la exige `tests/test_explicacion.py`.
 - El piso de Python lo declara `pyproject.toml` (`requires-python = ">=3.11"`); la
   corrida de la suite dentro del contenedor del piso forma parte de la aceptación y no
   se afirma aquí.
