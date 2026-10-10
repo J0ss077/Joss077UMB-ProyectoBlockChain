@@ -189,10 +189,10 @@ def main() -> None:
         genesis = ensure_genesis(chain)
         bloque = run(chain)
         estado = chain.ledger_state()
-        sembrado = "con datos de demostración" if bloque is not None else "ya sembrada"
+        accion = "sembrada ahora" if bloque is not None else "sin cambios, ya estaba sembrada"
         print(f"génesis listo: índice {genesis.block_index}, hash {genesis.hash}")
         print(
-            f"demostración {sembrado}: {estado['wallets']} wallets, "
+            f"demostración {accion}: {estado['wallets']} wallets, "
             f"{estado['blocks']} bloques, {estado['transactions']} transacciones"
         )
 

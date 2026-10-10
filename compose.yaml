@@ -3,13 +3,20 @@
 services:
   postgres:
     image: postgres:16-alpine
-    # Credenciales y puerto desde `.env`, que no se versiona (REQ-21).
-    env_file: .env
+    # Solo las credenciales que PostgreSQL necesita, tomadas de `.env` por la
+    # sustitución de variables de compose (REQ-21). Pasarle el archivo entero le
+    # entregaría además `MASTER_KEY` y `DATABASE_URL`, que no usa y que no tienen
+    # por qué entrar al contenedor.
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
-      # El puerto del host es el que declara `.env`, y el de la derecha es el que
-      # escucha PostgreSQL dentro de la imagen: si los dos fueran fijos, cambiar
-      # `POSTGRES_PORT` dejaría a la aplicación sin poder conectarse.
-      - "${POSTGRES_PORT}:5432"
+      # Publicado solo en la interfaz local: la base no tiene por qué escuchar en
+      # toda la red. El puerto del host es el que declara `.env` y el de la derecha
+      # es el que escucha PostgreSQL dentro de la imagen: si los dos fueran fijos,
+      # cambiar `POSTGRES_PORT` dejaría a la aplicación sin poder conectarse.
+      - "127.0.0.1:${POSTGRES_PORT}:5432"
     volumes:
       # El esquema se aplica solo al crear el volumen; para volver a aplicarlo
       # hay que borrar el volumen (el reinicio limpio está en el README).
