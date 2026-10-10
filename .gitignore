@@ -15,3 +15,7 @@ __pycache__/
 # sin esta línea la carpeta no queda ignorada para el repositorio y los editores
 # la muestran como si fuera parte del proyecto.
 .ruff_cache/
+
+# Restos de intentar darle a `podman` un runtime escribible, que en este entorno
+# no sirve: `podman` necesita su almacén y sus espacios de nombres.
+.tmp-podman/
