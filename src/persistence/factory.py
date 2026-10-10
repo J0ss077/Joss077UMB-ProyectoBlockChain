@@ -80,6 +80,7 @@ def open_ledger(
     *,
     encryption_key: bytes,
     clock: Callable[[], datetime] | None = None,
+    database_dsn: str | None = None,
 ) -> Blockchain:
     """Arma el ledger sobre una conexión abierta que este módulo no cierra.
 
@@ -87,15 +88,21 @@ def open_ledger(
     (decisión 3); se llama así aquí para no tapar la función `master_key()`, que es
     la que la lee del entorno.
 
+    `database_dsn` es la cadena con la que se abre la unidad de trabajo; si no se
+    pasa, se resuelve del entorno **una sola vez** aquí. Resolverla una vez y no en
+    cada agrupación es lo que garantiza que las lecturas y las escrituras apunten a
+    la misma base aunque el entorno cambie a mitad de camino.
+
     Los tres repositorios de lectura comparten esa conexión; la agrupación no,
     porque REQ-18 exige que sus dos escrituras ocurran en una sola transacción de
     base de datos y para eso la unidad de trabajo abre la suya propia.
     """
+    dsn = database_dsn if database_dsn is not None else database_url()
     return Blockchain(
         wallets=PostgresWalletRepository(connection),
         blocks=PostgresBlockRepository(connection),
         transactions=PostgresTransactionRepository(connection),
-        unit_of_work=lambda: PostgresUnitOfWork.open(database_url()),
+        unit_of_work=lambda: PostgresUnitOfWork.open(dsn),
         master_key=encryption_key,
         clock=clock if clock is not None else _utc_now,
     )
@@ -107,8 +114,11 @@ def ledger() -> Iterator[Blockchain]:
 
     La conexión va en autocommit, igual que la de las pruebas: cada lectura ve lo
     último confirmado, incluido lo que la agrupación confirmó en su transacción
-    aparte. Es el punto de entrada de `src.bootstrap` y de la aplicación web.
+    aparte. Es el punto de entrada de `src.bootstrap` y de la aplicación web, y por
+    eso resuelve la cadena una sola vez y se la pasa a la fachada: la conexión que
+    abre y la unidad de trabajo usan el mismo destino.
     """
-    with psycopg.connect(database_url(), autocommit=True) as connection:
+    dsn = database_url()
+    with psycopg.connect(dsn, autocommit=True) as connection:
         connection.execute("SET TIME ZONE 'UTC'")
-        yield open_ledger(connection, encryption_key=master_key())
+        yield open_ledger(connection, encryption_key=master_key(), database_dsn=dsn)
