@@ -128,6 +128,48 @@ def test_req_25_post_transacciones_muestra_el_motivo_del_rechazo(cliente, partes
     assert "saldo disponible no alcanza" in respuesta.get_data(as_text=True)
 
 
+def test_req_25_post_transacciones_con_monto_nan_responde_el_rechazo(cliente, partes):
+    """REQ-25: un monto no finito responde el rechazo en la página y no una excepción."""
+    respuesta = cliente.post(
+        "/transacciones",
+        data={
+            "sender_id": str(partes["fondo"].id),
+            "receiver_id": str(partes["asociado"].id),
+            "amount": "NaN",
+        },
+    )
+
+    assert respuesta.status_code == 200
+    assert "el monto debe ser mayor que cero" in respuesta.get_data(as_text=True)
+
+
+def test_req_25_post_transacciones_con_una_fila_nan_en_la_base_no_cae(
+    cliente, partes, conexion
+):
+    """REQ-25: un saldo envenenado por una fila `NaN` insertada directo no es un 500.
+
+    El CHECK del esquema no detiene esa fila —PostgreSQL evalúa `'NaN'::numeric > 0`
+    como verdadero—, así que la defensa tiene que estar en el dominio.
+    """
+    conexion.execute(
+        "INSERT INTO transactions (id, sender_id, receiver_id, amount, status, signature, block_id)"
+        " VALUES (%s, %s, %s, 'NaN', 'pending', %s, NULL)",
+        (uuid4(), partes["fondo"].id, partes["asociado"].id, "firma-nan-de-la-prueba"),
+    )
+
+    respuesta = cliente.post(
+        "/transacciones",
+        data={
+            "sender_id": str(partes["fondo"].id),
+            "receiver_id": str(partes["asociado"].id),
+            "amount": MONTO,
+        },
+    )
+
+    assert respuesta.status_code == 200
+    assert "saldo disponible no alcanza" in respuesta.get_data(as_text=True)
+
+
 def test_req_26_post_bloques_devuelve_el_bloque_creado(cliente, cadena, partes):
     """REQ-26: la ruta agrupa el pool y la página muestra el bloque creado."""
     cadena.create_transaction(
@@ -175,7 +217,18 @@ def test_req_28_rf5_historial_con_uuid_invalido_o_inexistente_responde_una_pagin
 ):
     """REQ-28 (RF-5): un identificador inválido o inexistente responde 404.
 
-    La página de error es la respuesta, nunca el error del motor en pantalla.
+    La página de error es la respuesta, nunca el error del motor en pantalla, y el
+    texto va en español también cuando la ruta no existe.
     """
-    assert cliente.get("/historial/no-es-un-uuid").status_code == 404
-    assert cliente.get(f"/historial/{uuid4()}").status_code == 404
+    invalido = cliente.get("/historial/no-es-un-uuid")
+    inexistente = cliente.get(f"/historial/{uuid4()}")
+    ruta_que_no_existe = cliente.get("/no-existe")
+
+    assert invalido.status_code == 404
+    assert inexistente.status_code == 404
+    assert ruta_que_no_existe.status_code == 404
+    assert "El identificador no es un UUID válido." in invalido.get_data(as_text=True)
+    assert "No hay ninguna wallet registrada" in inexistente.get_data(as_text=True)
+    # Werkzeug describe el 404 en inglés; la página no puede mostrarlo así.
+    assert "The requested URL was not found" not in ruta_que_no_existe.get_data(as_text=True)
+    assert "No se encontró lo que buscaba" in ruta_que_no_existe.get_data(as_text=True)

@@ -17,6 +17,7 @@ from decimal import Decimal, InvalidOperation
 from uuid import UUID
 
 from flask import Flask, abort, render_template, request
+from werkzeug.exceptions import NotFound
 
 from src.domain.blockchain import Blockchain, ensure_genesis
 
@@ -122,10 +123,10 @@ def create_app(chain_factory: Callable[[], AbstractContextManager[Blockchain]]) 
         try:
             wallet_id = UUID(wallet)
         except ValueError:
-            abort(404)
+            abort(404, description="El identificador no es un UUID válido.")
         with abrir_cadena() as chain:
             if chain.wallets.get(wallet_id) is None:
-                abort(404)
+                abort(404, description="No hay ninguna wallet registrada con ese identificador.")
             return render_template(
                 "historial.html",
                 wallet_id=wallet_id,
@@ -134,8 +135,16 @@ def create_app(chain_factory: Callable[[], AbstractContextManager[Blockchain]]) 
 
     @app.errorhandler(404)
     def no_encontrado(error):
-        """Página de error clara para lo que no existe (RF-5)."""
-        return render_template("error.html", detalle=error.description), 404
+        """Página de error clara y en español para lo que no existe (RF-5).
+
+        Las rutas de este módulo pasan su descripción en español. Cuando la ruta no
+        existe, la descripción la pone Werkzeug en inglés, así que se reemplaza por
+        una propia en vez de mostrarla dentro de una página en español.
+        """
+        detalle = error.description
+        if not detalle or detalle == NotFound.description:
+            detalle = "No se encontró lo que buscaba."
+        return render_template("error.html", detalle=detalle), 404
 
     return app
 
