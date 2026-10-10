@@ -6,7 +6,10 @@ services:
     # Credenciales y puerto desde `.env`, que no se versiona (REQ-21).
     env_file: .env
     ports:
-      - "5432:5432"
+      # El puerto del host es el que declara `.env`, y el de la derecha es el que
+      # escucha PostgreSQL dentro de la imagen: si los dos fueran fijos, cambiar
+      # `POSTGRES_PORT` dejaría a la aplicación sin poder conectarse.
+      - "${POSTGRES_PORT}:5432"
     volumes:
       # El esquema se aplica solo al crear el volumen; para volver a aplicarlo
       # hay que borrar el volumen (el reinicio limpio está en el README).
