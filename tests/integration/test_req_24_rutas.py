@@ -12,6 +12,7 @@ El escenario es el de la demostración del arranque: el fondo y los asociados ya
 tienen saldo confirmado, así que las transacciones que proponen las pruebas se
 aceptan por las reglas reales (REQ-05) y no por un atajo.
 """
+import re
 from contextlib import contextmanager
 from decimal import Decimal
 from uuid import uuid4
@@ -24,6 +25,11 @@ from src.persistence.factory import open_ledger
 from src.web.app import create_app
 
 MONTO = "10.00000000"
+
+
+def _texto_visible(cuerpo: str) -> str:
+    """Lo que un lector ve: el HTML sin etiquetas, que es donde viven los atributos."""
+    return re.sub(r"<[^>]+>", "", cuerpo)
 
 
 @pytest.fixture
@@ -70,9 +76,20 @@ def partes(cadena):
 
 
 @pytest.fixture
-def wallet_de_prueba(cadena):
-    """Una wallet registrada por la fachada, para que el panel lateral tenga qué mostrar."""
-    return cadena.register_wallet()
+def wallet_de_prueba(cadena, partes):
+    """Una wallet con un movimiento, para que el panel y el historial tengan qué mostrar.
+
+    La transacción va del fondo a la wallet nueva y queda en el pool: así el historial
+    tiene una fila real que afirmar, y la forma corta de la clave del emisor tiene que
+    aparecer en una celda y no solo en el panel lateral.
+    """
+    registrada = cadena.register_wallet()
+    cadena.create_transaction(
+        sender_id=partes["fondo"].id,
+        receiver_id=registrada.id,
+        amount=Decimal(MONTO),
+    )
+    return registrada
 
 
 @pytest.fixture
@@ -249,6 +266,25 @@ def test_req_28_rf5_historial_con_uuid_invalido_o_inexistente_responde_una_pagin
     assert "No se encontró lo que buscaba" in ruta_que_no_existe.get_data(as_text=True)
 
 
+def test_req_28_rf5_la_pagina_de_error_no_depende_del_ledger():
+    """REQ-28 (RF-5): la página de error se pinta sin abrir el ledger.
+
+    El panel lateral lo pasa cada ruta y no un procesador de contexto: si el ledger no
+    abre, un identificador inválido tiene que seguir siendo un 404 en pantalla —nunca
+    un 500— y la página de error no puede llegar a escribir el génesis.
+    """
+
+    @contextmanager
+    def fabrica_rota():
+        raise RuntimeError("el ledger no abre")
+        yield  # pragma: no cover
+
+    cliente = create_app(fabrica_rota).test_client()
+
+    assert cliente.get("/historial/no-es-un-uuid").status_code == 404
+    assert cliente.get("/no-existe").status_code == 404
+
+
 def test_req_29_la_interfaz_no_explica_el_proyecto(cliente):
     """REQ-29: la interfaz no explica el proyecto. Sin «CU-0X» ni prosa sobre el eje."""
     for ruta in ("/", "/wallets", "/transacciones", "/bloques", "/verificar"):
@@ -258,14 +294,26 @@ def test_req_29_la_interfaz_no_explica_el_proyecto(cliente):
 
 def test_req_29_el_panel_lateral_aparece_en_todas_las_paginas(cliente, wallet_de_prueba):
     """REQ-29: el panel lateral lista las wallets en todas las páginas."""
-    for ruta in ("/", "/transacciones", "/verificar", f"/historial/{wallet_de_prueba.id}"):
+    clave = wallet_de_prueba.public_key
+    corta = f"{clave[:8]}…{clave[-4:]}"
+    rutas = ("/", "/wallets", "/transacciones", "/bloques", "/verificar")
+    for ruta in (*rutas, f"/historial/{wallet_de_prueba.id}"):
         cuerpo = cliente.get(ruta).get_data(as_text=True)
         assert f"/historial/{wallet_de_prueba.id}" in cuerpo
-        assert wallet_de_prueba.public_key in cuerpo          # el valor completo sigue disponible
-        assert wallet_de_prueba.public_key[:8] in cuerpo      # y la forma corta es la que se ve
+        assert f">{corta}<" in cuerpo                # la forma corta es la que se ve
+        assert f'title="{clave}"' in cuerpo          # el valor completo sigue disponible
+        assert clave not in _texto_visible(cuerpo)   # pero nunca como texto visible
 
 
-def test_req_29_los_datos_numericos_van_en_monoespaciada(cliente, wallet_de_prueba):
-    """REQ-29: los identificadores y los montos van en monoespaciada."""
+def test_req_29_los_datos_numericos_van_en_monoespaciada(cliente, wallet_de_prueba, partes):
+    """REQ-29: los identificadores y los montos del historial van en monoespaciada.
+
+    La wallet de la prueba tiene una transacción en el pool, así que la aserción cae
+    sobre una fila de la tabla y no sobre el panel o la cabecera.
+    """
     cuerpo = cliente.get(f"/historial/{wallet_de_prueba.id}").get_data(as_text=True)
-    assert 'class="mono"' in cuerpo
+    emisor = partes["fondo"].public_key
+
+    assert f">{emisor[:8]}…{emisor[-4:]}<" in cuerpo      # el emisor, corto y en mono
+    assert f"<td><code>{MONTO}</code></td>" in cuerpo      # el monto, en `code`
+    assert "<td><code>pending</code></td>" in cuerpo       # el estado, en `code`

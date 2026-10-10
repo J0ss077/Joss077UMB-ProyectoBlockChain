@@ -4,7 +4,7 @@
         <label
             >Emisor
             <select name="sender_id">
-                {% for wallet in wallets %}
+                {% for wallet in wallets_del_panel %}
                 <option value="{{ wallet.id }}">{{ corto(wallet.public_key) }}</option>
                 {% endfor %}
             </select>
@@ -14,7 +14,7 @@
         <label
             >Receptor
             <select name="receiver_id">
-                {% for wallet in wallets %}
+                {% for wallet in wallets_del_panel %}
                 <option value="{{ wallet.id }}">{{ corto(wallet.public_key) }}</option>
                 {% endfor %}
             </select>

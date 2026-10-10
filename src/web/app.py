@@ -42,52 +42,56 @@ def create_app(chain_factory: Callable[[], AbstractContextManager[Blockchain]]) 
             ensure_genesis(chain)
             yield chain
 
-    @app.context_processor
-    def panel_de_wallets():
-        """Expone las wallets del panel lateral a todas las plantillas (REQ-29).
-
-        El panel vive en `base.html` y tiene que estar en las cinco páginas, no solo
-        en la lista: la lista se resuelve aquí, una vez por página, en vez de depender
-        de que cada ruta se acuerde de pasarla. Es una lectura de la fachada, como las
-        demás, así que la presentación sigue sin decidir reglas ni consultar.
-        """
-        with abrir_cadena() as chain:
-            return {"wallets_del_panel": chain.wallets.list()}
+    # El panel lateral lo pasa cada ruta y no un procesador de contexto: un procesador
+    # abriría el ledger al pintar la página de error, así que un 404 sin base sería un
+    # 500 y hasta podría escribir el génesis. Pasarlo por ruta deja el error fuera del
+    # ledger y evita la segunda conexión por página.
 
     @app.get("/")
     def portada():
-        """Portada: los conteos del ledger y el acceso a los cinco casos de uso."""
+        """Portada: los conteos del ledger y el panel lateral."""
         with abrir_cadena() as chain:
-            return render_template("index.html", estado=chain.ledger_state())
+            return render_template(
+                "index.html",
+                estado=chain.ledger_state(),
+                wallets_del_panel=chain.wallets.list(),
+            )
 
     @app.route("/wallets", methods=["GET", "POST"])
     def wallets():
         """CU-01: registra una wallet y muestra su clave pública (REQ-24).
 
-        La lista de wallets no la pasa esta ruta: vive en el panel lateral y por eso el
-        CU-05 queda alcanzable desde cualquier página sin teclear una llave de 66
-        caracteres. Esa lista va dentro de una ruta que ya existe, para no agregar una
-        sexta al eje.
+        La rama `GET` abre la cadena solo para el panel lateral, que es la lista de
+        wallets: con ella el CU-05 queda alcanzable desde cualquier página sin teclear
+        una llave de 66 caracteres, dentro de una ruta que ya existe. El `POST` la pasa
+        además con la wallet recién registrada a la vista.
         """
         if request.method == "GET":
-            return render_template("wallet.html", wallet=None)
+            with abrir_cadena() as chain:
+                return render_template(
+                    "wallet.html", wallet=None, wallets_del_panel=chain.wallets.list()
+                )
         with abrir_cadena() as chain:
             wallet = chain.register_wallet()
-            return render_template("wallet.html", wallet=wallet)
+            return render_template(
+                "wallet.html", wallet=wallet, wallets_del_panel=chain.wallets.list()
+            )
 
     @app.route("/transacciones", methods=["GET", "POST"])
     def transacciones():
         """CU-02: propone una transacción e informa si entró al pool o por qué no (REQ-25).
 
         El motivo se muestra aunque no haya fila guardada: el rechazo sin escritura
-        también es un resultado del caso de uso, y quien propuso necesita saberlo.
+        también es un resultado del caso de uso, y quien propuso necesita saberlo. El
+        selector de wallets y el panel lateral son la misma lista de la fachada, así que
+        se consulta una vez por página.
         """
         if request.method == "GET":
             with abrir_cadena() as chain:
                 return render_template(
                     "transaccion.html",
                     resultado=None,
-                    wallets=chain.wallets.list(),
+                    wallets_del_panel=chain.wallets.list(),
                     error_formulario=None,
                 )
         with abrir_cadena() as chain:
@@ -99,7 +103,7 @@ def create_app(chain_factory: Callable[[], AbstractContextManager[Blockchain]]) 
                 return render_template(
                     "transaccion.html",
                     resultado=None,
-                    wallets=chain.wallets.list(),
+                    wallets_del_panel=chain.wallets.list(),
                     error_formulario="El emisor y el receptor deben ser wallets registradas.",
                 )
             resultado = chain.create_transaction(
@@ -110,25 +114,44 @@ def create_app(chain_factory: Callable[[], AbstractContextManager[Blockchain]]) 
             return render_template(
                 "transaccion.html",
                 resultado=resultado,
-                wallets=chain.wallets.list(),
+                wallets_del_panel=chain.wallets.list(),
                 error_formulario=None,
             )
 
     @app.route("/bloques", methods=["GET", "POST"])
     def bloques():
-        """CU-03: agrupa el pool en un bloque nuevo y muestra el eslabón creado (REQ-26)."""
+        """CU-03: agrupa el pool en un bloque nuevo y muestra el eslabón creado (REQ-26).
+
+        La rama `GET` abre la cadena solo para el panel lateral; el `POST` además lee el
+        pool y lo agrupa.
+        """
         if request.method == "GET":
-            return render_template("bloque.html", bloque=None, habia_pool=False)
+            with abrir_cadena() as chain:
+                return render_template(
+                    "bloque.html",
+                    bloque=None,
+                    habia_pool=False,
+                    wallets_del_panel=chain.wallets.list(),
+                )
         with abrir_cadena() as chain:
             habia_pool = bool(chain.transactions.pending())
             bloque = chain.group_pending()
-            return render_template("bloque.html", bloque=bloque, habia_pool=habia_pool)
+            return render_template(
+                "bloque.html",
+                bloque=bloque,
+                habia_pool=habia_pool,
+                wallets_del_panel=chain.wallets.list(),
+            )
 
     @app.get("/verificar")
     def verificar():
         """CU-04: recalcula la cadena y muestra el dictamen (REQ-27)."""
         with abrir_cadena() as chain:
-            return render_template("verificar.html", dictamen=chain.verify_chain())
+            return render_template(
+                "verificar.html",
+                dictamen=chain.verify_chain(),
+                wallets_del_panel=chain.wallets.list(),
+            )
 
     @app.get("/historial/<wallet>")
     def historial(wallet: str):
@@ -136,7 +159,8 @@ def create_app(chain_factory: Callable[[], AbstractContextManager[Blockchain]]) 
 
         El identificador se valida antes de consultar nada y la wallet se busca en la
         fachada: si no existe, la respuesta es la página de error con 404 y no un
-        error del motor en pantalla (RF-5).
+        error del motor en pantalla (RF-5). El panel lateral se pasa al final, cuando ya
+        se sabe que la wallet existe.
         """
         try:
             wallet_id = UUID(wallet)
@@ -149,6 +173,7 @@ def create_app(chain_factory: Callable[[], AbstractContextManager[Blockchain]]) 
                 "historial.html",
                 wallet_id=wallet_id,
                 transacciones=chain.wallet_history(wallet_id),
+                wallets_del_panel=chain.wallets.list(),
             )
 
     @app.errorhandler(404)
@@ -157,7 +182,8 @@ def create_app(chain_factory: Callable[[], AbstractContextManager[Blockchain]]) 
 
         Las rutas de este módulo pasan su descripción en español. Cuando la ruta no
         existe, la descripción la pone Werkzeug en inglés, así que se reemplaza por
-        una propia en vez de mostrarla dentro de una página en español.
+        una propia en vez de mostrarla dentro de una página en español. No se pasa el
+        panel lateral: esta página no abre el ledger.
         """
         detalle = error.description
         if not detalle or detalle == NotFound.description:

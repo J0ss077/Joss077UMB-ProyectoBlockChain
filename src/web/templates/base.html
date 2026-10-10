@@ -130,6 +130,7 @@
             </nav>
         </div>
         <div class="columnas">
+            {# El panel solo se pinta si la ruta pasó la lista: la página de error no la pasa, porque no puede depender del ledger para dibujarse. #} {% if wallets_del_panel is defined %}
             <aside class="panel">
                 <h2>Wallets</h2>
                 {% if wallets_del_panel %}
@@ -145,6 +146,7 @@
                 <p>Todavía no hay wallets.</p>
                 {% endif %}
             </aside>
+            {% endif %}
             <main>
                 <h1>{% block encabezado %}{% endblock %}</h1>
                 {% block contenido %}{% endblock %}
