@@ -1,0 +1,13 @@
+# Secretos y entorno local (REQ-21)
+.env
+.venv/
+
+# Material de referencia: no es parte del entregable
+.legacy-project/
+.reference/
+
+# Andamiaje de ejecución y cachés
+.superpowers/
+__pycache__/
+*.py[codz]
+.pytest_cache/
