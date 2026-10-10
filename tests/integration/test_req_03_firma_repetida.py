@@ -1,11 +1,13 @@
 """REQ-03: rechazar la repetición de una firma ya registrada.
 
 El respaldo es el índice único de la decisión 4: dos filas con la misma firma
-son la misma transacción presentada dos veces, así que la base admite la
-primera y rechaza la segunda. El dominio consulta `signature_exists` antes para
-poder dar el motivo del rechazo, y esa consulta también se prueba aquí.
+son la misma transacción presentada dos veces, así que la base admite la primera
+y rechaza la segunda por ese índice. El dominio consulta `signature_exists`
+antes para poder dar el motivo del rechazo, y esa consulta también se prueba
+aquí.
 """
 import dataclasses
+from uuid import uuid4
 
 import psycopg
 import pytest
@@ -25,12 +27,16 @@ def test_req_03_firma_repetida_levanta_unique_violation(transacciones, base_limp
     """Una firma se registra una vez; la segunda presentación levanta el error del motor."""
     presentada = transaccion()
     primera = transacciones.add(presentada)
-    # La misma transacción presentada otra vez: mismo payload y misma firma.
-    repetida = dataclasses.replace(presentada, signature=primera.signature)
+    # La misma firma con otro identificador: así lo único que puede colisionar es
+    # el índice único sobre `signature` y no la clave primaria.
+    repetida = dataclasses.replace(presentada, id=uuid4(), signature=primera.signature)
 
-    with pytest.raises(psycopg.errors.UniqueViolation):
+    with pytest.raises(psycopg.errors.UniqueViolation) as error:
         transacciones.add(repetida)
 
+    # El nombre de la restricción es lo que ata la prueba al respaldo del motor:
+    # cualquier otra unicidad haría pasar la prueba sin comprobar la decisión 4.
+    assert error.value.diag.constraint_name == "uq_transactions_signature"
     assert transacciones.count() == 1
 
 
