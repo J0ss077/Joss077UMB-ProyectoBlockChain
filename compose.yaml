@@ -1,0 +1,24 @@
+# PostgreSQL 16 del piso declarado (REQ-20, REQ-23), igual para `docker compose`
+# y para `podman compose` (decisión 10 del diseño).
+services:
+  postgres:
+    image: postgres:16-alpine
+    # Credenciales y puerto desde `.env`, que no se versiona (REQ-21).
+    env_file: .env
+    ports:
+      - "5432:5432"
+    volumes:
+      # El esquema se aplica solo al crear el volumen; para volver a aplicarlo
+      # hay que borrar el volumen (el reinicio limpio está en el README).
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/01_init.sql:ro
+    healthcheck:
+      # `$$` deja que la variable la expanda el shell dentro del contenedor.
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+volumes:
+  postgres_data:
