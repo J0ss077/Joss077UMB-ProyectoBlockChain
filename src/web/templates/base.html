@@ -59,8 +59,14 @@
                 font-size: 1.5rem;
                 margin-top: 0;
             }
+            /* Los controles que muestran claves, códigos o montos usan la misma pila:
+               si no, el `select` y el `input` del formulario quedarían en la
+               proporcional, que es justo lo que la monoespaciada viene a evitar. */
             code,
-            .mono {
+            .mono,
+            select,
+            option,
+            input {
                 font-family: var(--mono);
             }
             code {

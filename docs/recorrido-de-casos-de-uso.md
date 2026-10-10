@@ -29,10 +29,11 @@ sola vez por página: no hay procesador de contexto, porque abrir el ledger al p
 página de error convertiría un 404 sin base en un 500 y podría escribir el génesis.
 `base.html` envuelve el panel en `{% if wallets_del_panel is defined %}` y la página de
 error no lo pasa, así que se pinta sin tocar la fachada. Los identificadores, hashes,
-montos, fechas y conteos van en `code` o en la clase `.mono`; las claves, los
-identificadores y los hashes se ven en forma corta, y el valor completo sigue en el
-atributo `title` y en `data-copiar`, que es lo que copian los botones con el guion de
-`base.html`.
+montos, fechas y conteos van en `code` o en la clase `.mono`, y los controles del
+formulario —`select`, `option` e `input`— usan la misma pila monoespaciada; las claves,
+los identificadores y los hashes se ven en forma corta, y el valor completo sigue en el
+atributo `title` —también el de cada `option`— y en `data-copiar`, que es lo que copian
+los botones con el guion de `base.html`.
 
 ## CU-01: registrar una wallet
 

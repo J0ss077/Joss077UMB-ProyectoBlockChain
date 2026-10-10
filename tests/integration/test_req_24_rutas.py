@@ -26,6 +26,12 @@ from src.web.app import create_app
 
 MONTO = "10.00000000"
 
+# La pila monoespaciada tiene que cubrir también los controles que muestran códigos y
+# números (`select`, `option` e `input`), no solo `code` y `.mono`.
+_MONO_EN_LOS_CONTROLES = re.compile(
+    r"code,\s*\.mono,\s*select,\s*option,\s*input\s*\{\s*font-family:\s*var\(--mono\)"
+)
+
 
 def _texto_visible(cuerpo: str) -> str:
     """Lo que un lector ve: el HTML sin etiquetas, que es donde viven los atributos."""
@@ -303,6 +309,20 @@ def test_req_29_el_panel_lateral_aparece_en_todas_las_paginas(cliente, wallet_de
         assert f">{corta}<" in cuerpo                # la forma corta es la que se ve
         assert f'title="{clave}"' in cuerpo          # el valor completo sigue disponible
         assert clave not in _texto_visible(cuerpo)   # pero nunca como texto visible
+
+
+def test_req_29_los_controles_del_formulario_van_en_monoespaciada(cliente, wallet_de_prueba):
+    """REQ-29: los controles con códigos y números van en monoespaciada.
+
+    El selector de wallets muestra la clave corta dentro de un `option` y el monto se
+    escribe en un `input`: los dos tienen que usar la pila monoespaciada, y el `option`
+    tiene que guardar el valor completo en su `title` para que siga siendo alcanzable.
+    """
+    cuerpo = cliente.get("/transacciones").get_data(as_text=True)
+    clave = wallet_de_prueba.public_key
+
+    assert f'<option value="{wallet_de_prueba.id}" title="{clave}">' in cuerpo
+    assert _MONO_EN_LOS_CONTROLES.search(cuerpo)
 
 
 def test_req_29_los_datos_numericos_van_en_monoespaciada(cliente, wallet_de_prueba, partes):
