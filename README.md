@@ -137,7 +137,9 @@ génesis y el estado del ledger.
 ```
 
 Abra `http://127.0.0.1:5000`. La portada muestra los conteos de las tres tablas y los
-enlaces a los cinco casos de uso.
+enlaces a los cinco casos de uso. La aplicación arranca sin el depurador interactivo ni
+el recargador de código; se activan con `FLASK_DEBUG=1` en el entorno, solo para
+desarrollo local.
 
 ## Las cinco rutas
 
@@ -178,11 +180,14 @@ del eje no tiene emisión: no hay una operación que cree moneda, y toda transac
 nace con un emisor que ya tiene saldo. Eso deja dos opciones: que el ledger arranque
 sin valor, o que una wallet haga la primera entrega sin haber recibido nada. La
 segunda es la del eje, y el constituyente es esa wallet: la puerta de entrada del
-capital. Por eso `_entrega_de_capital` escribe su fila **directo por el repositorio**
-(`transactions.add`) y no por `create_transaction`: esa puerta valida el saldo del
-emisor (REQ-05) y la emisión fundacional no podría pasar esa validación. La dispensa
-vale solo para esa fila; todo lo demás de la demostración se mueve por el camino
-normal.
+capital. Por eso `_entrega_de_capital` escribe **las cuatro filas de capital directo
+por el repositorio** (`transactions.add`) y no por `create_transaction`: la emisión
+fundacional del constituyente al fondo no podría pasar esa puerta —valida el saldo del
+emisor (REQ-05) y el constituyente nace sin saldo—, y los tres capitales de asociación
+del fondo a los asociados van por el mismo camino porque son la misma clase de fila:
+capital colocado, no una operación del ciclo. Todo lo demás de la demostración —los
+aportes y los retiros, los que se confirman y los tres que quedan pendientes en el
+pool— se mueve por el camino normal.
 
 **Por qué su saldo queda negativo.** Porque entrega 3000 y no recibe nada. El saldo
 disponible es lo confirmado a favor menos lo confirmado en contra menos lo
@@ -309,17 +314,17 @@ demostración, borre el volumen y vuelva a sembrar: `docker compose down -v`,
 
 - **El esquema en PostgreSQL 16**, la versión del piso: `db/init.sql` se aplicó como
   guion de inicialización de un contenedor `postgres:16-alpine` (PostgreSQL 16.15) y
-  quedaron las tres tablas, `uuid-ossp`, los once índices y todos los `CHECK` del eje,
-  incluido `chk_transactions_sender_ne_receiver`: un intento de transacción de una
-  wallet a sí misma lo rechazó el motor.
+  quedaron las tres tablas, `uuid-ossp`, los once índices y todos los `CHECK` del eje;
+  una transacción de una wallet a sí misma la rechazó el motor.
 - **Las reglas sin base de datos (REQ-17)**: `pytest tests/unit` pasa con
   `DATABASE_URL` sin definir y sin contenedor, porque el dominio no importa el driver.
 - **La suite completa** contra el clúster PostgreSQL del equipo de desarrollo: las
   reglas, la integración y la coherencia de la explicación. La cobertura de los 29
   requerimientos no se cuenta a mano: la exige `tests/test_explicacion.py`.
-- El piso de Python lo declara `pyproject.toml` (`requires-python = ">=3.11"`); la
-  corrida de la suite dentro del contenedor del piso forma parte de la aceptación y no
-  se afirma aquí.
+- **La suite completa dentro del contenedor del piso de Python** (`python:3.11-slim`):
+  con el repositorio montado en solo lectura, `requirements.txt` instalado y `pytest`
+  corriendo contra el contenedor PostgreSQL 16, el veredicto fue el código de salida 0.
+  El piso lo declara `pyproject.toml` (`requires-python = ">=3.11"`).
 
 ## Por dónde empezar a leer el código
 
