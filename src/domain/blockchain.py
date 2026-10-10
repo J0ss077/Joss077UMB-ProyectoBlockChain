@@ -144,10 +144,11 @@ class Blockchain:
         """Valida, firma y decide qué fila queda (CU-02, REQ-02, REQ-04, REQ-05, REQ-11).
 
         Se firma antes de validar porque comprobar la firma es parte de la
-        validación. El resultado lleva el motivo en todos los rechazos, pero la
-        fila `rejected` solo se escribe cuando el esquema la admite; cuando no,
-        `stored` queda nulo y no se escribe nada, y quien responde por la
-        restricción es el motor (REQ-19).
+        validación. El resultado lleva el motivo en todos los rechazos, pero la fila
+        `rejected` solo se escribe cuando el esquema la admite; cuando no, `stored`
+        queda nulo y no se escribe nada. La firma repetida nunca se escribe, aunque
+        la validación haya dado antes otro motivo, porque el índice único ya la
+        tiene (REQ-03 y REQ-19).
         """
         sender = self.wallets.get(sender_id)
         receiver = self.wallets.get(receiver_id)
@@ -170,14 +171,23 @@ class Blockchain:
                 self._master_key,
             )
 
+        # La consulta se guarda porque decide dos cosas: el motivo que devuelve la
+        # validación y si la fila se puede escribir.
+        signature_exists = self.transactions.signature_exists(transaction.signature)
         validation = transaction.validate(
             sender_public_key=None if sender is None else sender.public_key,
             receiver_public_key=None if receiver is None else receiver.public_key,
             available=available_balance(self.transactions.balance_terms(sender_id)),
-            signature_exists=self.transactions.signature_exists(transaction.signature),
+            signature_exists=signature_exists,
         )
         if validation.accepted:
             return TransactionResult(True, None, self.transactions.add(transaction))
+        if signature_exists:
+            # La repetición se informa aunque la validación haya dado antes otro
+            # motivo —el saldo se revisa antes que la firma—: escribir la fila
+            # `rejected` haría subir la violación del índice único en vez del motivo
+            # que el CU-02 pide mostrar.
+            return TransactionResult(False, RejectionReason.DUPLICATE_SIGNATURE, None)
         if validation.reason in REASONS_STORING_REJECTED:
             transaction.status = TransactionStatus.REJECTED
             return TransactionResult(

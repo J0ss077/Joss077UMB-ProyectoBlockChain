@@ -195,3 +195,47 @@ def test_req_11_la_firma_repetida_se_informa_sin_fila(
     # El ingreso confirmado de la emisora y la primera transacción: la repetición
     # no agrega fila.
     assert ledger.transactions.count() == 2
+
+
+def test_req_11_la_firma_repetida_con_saldo_insuficiente_no_llega_al_motor(
+    ledger, emisora_fondeada, receptora, transaccion, monkeypatch
+):
+    """Firma repetida y saldo insuficiente: se informa el motivo y no la violación del índice.
+
+    El orden de las reglas lo fija el diseño y mira el saldo antes que la firma
+    repetida, así que este caso llega a la validación como INSUFFICIENT_FUNDS; con
+    esa respuesta el ledger escribiría una fila `rejected` que el índice único
+    rechazaría. Se fija el valor que devuelve el firmante porque la ECDSA no
+    reproduce su propia firma.
+    """
+    presentada = ledger.create_transaction(
+        sender_id=emisora_fondeada.id,
+        receiver_id=receptora.id,
+        amount=Decimal("1.00000000"),
+        transaction_id=FIXED_ID,
+        created_at=CREATED_AT,
+    )
+    assert presentada.accepted is True
+    assert presentada.stored is not None
+    # Una pendiente que agota el disponible: el saldo se revisa antes que la firma.
+    ledger.transactions.add(
+        transaccion(sender=emisora_fondeada, amount=Decimal("100.00000000"))
+    )
+
+    monkeypatch.setattr(
+        blockchain, "sign_payload", lambda wallet, payload, key: presentada.stored.signature
+    )
+    repetida = ledger.create_transaction(
+        sender_id=emisora_fondeada.id,
+        receiver_id=receptora.id,
+        amount=Decimal("1.00000000"),
+        transaction_id=FIXED_ID,
+        created_at=CREATED_AT,
+    )
+
+    assert repetida.accepted is False
+    assert repetida.reason is RejectionReason.DUPLICATE_SIGNATURE
+    assert repetida.stored is None
+    # El ingreso confirmado, la primera transacción y la pendiente que agotó el
+    # saldo: la repetición no agrega fila.
+    assert ledger.transactions.count() == 3
