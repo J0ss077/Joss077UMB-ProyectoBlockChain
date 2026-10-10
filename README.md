@@ -136,10 +136,10 @@ génesis y el estado del ledger.
 <venv> -m src.web
 ```
 
-Abra `http://127.0.0.1:5000`. La portada muestra los conteos de las tres tablas y los
-enlaces a los cinco casos de uso. La aplicación arranca sin el depurador interactivo ni
-el recargador de código; se activan con `FLASK_DEBUG=1` en el entorno, solo para
-desarrollo local.
+Abra `http://127.0.0.1:5000`. La portada muestra los conteos de las tres tablas; la
+barra superior con los enlaces y el panel lateral con las wallets están a la vista en
+todas las páginas. La aplicación arranca sin el depurador interactivo ni el recargador
+de código; se activan con `FLASK_DEBUG=1` en el entorno, solo para desarrollo local.
 
 ## Las cinco rutas
 
@@ -155,9 +155,11 @@ desarrollo local.
 no existe, responde la página de error con `404` y nunca un error del motor en
 pantalla (RF-5).
 
-`GET /wallets` es la misma ruta del CU-01 y además lista las wallets registradas con su
-llave pública **completa** dentro de `<code>` y el enlace «Ver su historial». El CU-05 se
-alcanza desde esa lista: no hay que teclear el identificador a mano.
+`GET /wallets` es la misma ruta del CU-01, y el panel lateral de todas las páginas lista
+las wallets registradas: la clave pública en forma corta y monoespaciada, con el valor
+completo en el atributo `title` y un botón que lo copia, además del enlace a su
+historial. El CU-05 se alcanza desde ese panel: no hay que teclear el identificador a
+mano.
 
 ## Los datos de demostración
 
