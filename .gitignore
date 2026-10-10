@@ -11,3 +11,7 @@
 __pycache__/
 *.py[codz]
 .pytest_cache/
+# `ruff` deja su caché con un `.gitignore` propio dentro que ignora su contenido;
+# sin esta línea la carpeta no queda ignorada para el repositorio y los editores
+# la muestran como si fuera parte del proyecto.
+.ruff_cache/
