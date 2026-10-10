@@ -22,7 +22,7 @@ from cryptography.hazmat.primitives.asymmetric import ec
 from src.domain.block import Block
 from src.domain.blockchain import Blockchain, ensure_genesis
 from src.domain.transaction import Transaction, TransactionStatus
-from src.domain.wallet import CURVE, Wallet, encrypt_private_key, public_key_hex
+from src.domain.wallet import CURVE, Wallet, encrypt_private_key, public_key_hex, sign_payload
 from src.persistence.factory import ledger
 
 # Semilla del par de llaves del fondo: fijarla hace que su clave pública sea la
@@ -146,29 +146,36 @@ def run(chain: Blockchain) -> Block | None:
 def _entrega_de_capital(
     chain: Blockchain, emisor_id: UUID, receptor_id: UUID, monto: Decimal
 ) -> Transaction:
-    """Arma una entrega de capital, del emisor a su receptor.
+    """Arma una entrega de capital ya firmada por su emisor.
 
-    Se escribe por el repositorio y no por `create_transaction` porque esa puerta
-    valida el saldo del emisor (REQ-05) y el constituyente nace sin saldo: es esta
-    fila la que lo dota, ya que el modelo del eje no tiene emisión. Por eso el
-    constituyente queda con saldo disponible negativo —es la única wallet de la
-    demostración a la que se le permite, porque es la puerta por la que el capital
-    entra al ledger— y las demás filas se mueven por el camino normal.
+    Se escribe por el repositorio y no por `create_transaction` por una sola razón:
+    esa puerta valida el saldo del emisor (REQ-05), y la emisión fundacional no puede
+    pasar esa validación porque el modelo del eje no tiene emisión y el constituyente
+    nace sin saldo. Esa dispensa vale **solo para esa fila**; todas las demás de la
+    demostración se mueven por el camino normal. Como consecuencia, el constituyente
+    queda con saldo disponible negativo: es la única wallet de la demostración a la
+    que se le permite, porque es la puerta por la que el capital entra al ledger.
 
-    La firma lleva el identificador de la fila porque el esquema tiene un índice
-    único sobre `signature` (decisión 4) y hay varias entregas por corrida.
+    La firma sí es la real: se calcula con `sign_payload` sobre la misma forma
+    canónica que usa el camino normal (`signing_payload`), de modo que toda fila de
+    la base queda verificable contra la pública de su emisor (REQ-02). Firmar no es
+    validar, así que saltarse la regla de saldo no exime de la firma.
     """
-    transaction_id = uuid4()
-    return Transaction(
-        id=transaction_id,
+    emisor = chain.wallets.get(emisor_id)
+    receptor = chain.wallets.get(receptor_id)
+    transaction = Transaction(
+        id=uuid4(),
         sender_id=emisor_id,
         receiver_id=receptor_id,
         amount=monto,
         status=TransactionStatus.PENDING,
-        signature=f"aporte-de-constitucion:{transaction_id}",
+        signature="",
         block_id=None,
         created_at=chain._clock(),
     )
+    payload = transaction.signing_payload(emisor.public_key, receptor.public_key)
+    transaction.signature = sign_payload(emisor, payload, chain._master_key)
+    return transaction
 
 
 def main() -> None:
