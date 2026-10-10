@@ -6,7 +6,7 @@ tocar PostgreSQL, y el dominio solo conoce los protocolos de
 `build_chain` arma una `Blockchain` que los usa.
 """
 from collections.abc import Sequence
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from uuid import UUID, uuid4
 
@@ -19,7 +19,7 @@ from src.domain.wallet import Wallet
 
 # Reloj fijo de la cadena de prueba: la marca de tiempo entra en el hash del
 # bloque, así que fijarla hace que la cadena sea la misma en cada corrida.
-BLOCK_AT = datetime(2026, 10, 10, 13, 0, tzinfo=timezone.utc)
+BLOCK_AT = datetime(2026, 10, 10, 13, 0, tzinfo=UTC)
 
 
 class InMemoryWalletRepository:

@@ -16,7 +16,7 @@ import pytest
 
 from src.bootstrap import FONDO
 from src.domain.blockchain import ensure_genesis
-from src.persistence.factory import master_key, open_ledger
+from src.persistence.factory import open_ledger
 from src.web.app import create_app
 
 MONTO = "10.00000000"
@@ -159,7 +159,12 @@ def test_req_28_get_historial_devuelve_las_transacciones_con_su_estado(cliente, 
     assert "pending" in texto
 
 
-def test_req_28_rf5_historial_con_uuid_invalido_o_inexistente_responde_una_pagina_clara(cliente):
-    """REQ-28 (RF-5): un identificador inválido o inexistente responde 404 y no un error del motor."""
+def test_req_28_rf5_historial_con_uuid_invalido_o_inexistente_responde_una_pagina_clara(
+    cliente,
+):
+    """REQ-28 (RF-5): un identificador inválido o inexistente responde 404.
+
+    La página de error es la respuesta, nunca el error del motor en pantalla.
+    """
     assert cliente.get("/historial/no-es-un-uuid").status_code == 404
     assert cliente.get(f"/historial/{uuid4()}").status_code == 404

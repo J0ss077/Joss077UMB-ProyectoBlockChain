@@ -7,7 +7,9 @@ from src.domain.transaction import RejectionReason
 
 def test_req_04_monto_no_positivo_se_rechaza(transaccion):
     """Criterio: un monto menor o igual a cero se rechaza antes de entrar al pool."""
-    resultado = transaccion(amount=Decimal("0")).validate(available=Decimal("100"), signature_exists=False)
+    resultado = transaccion(amount=Decimal("0")).validate(
+        available=Decimal("100"), signature_exists=False
+    )
     assert resultado.accepted is False
     assert resultado.reason is RejectionReason.AMOUNT_NOT_POSITIVE
 
@@ -15,17 +17,23 @@ def test_req_04_monto_no_positivo_se_rechaza(transaccion):
 def test_req_04_emisor_igual_al_receptor_se_rechaza(transaccion):
     """Criterio: el emisor y el receptor deben ser wallets distintas."""
     mismo = uuid4()
-    resultado = transaccion(sender_id=mismo, receiver_id=mismo).validate(available=Decimal("100"), signature_exists=False)
+    resultado = transaccion(sender_id=mismo, receiver_id=mismo).validate(
+        available=Decimal("100"), signature_exists=False
+    )
     assert resultado.reason is RejectionReason.SAME_SENDER_AND_RECEIVER
 
 
 def test_req_04_rf1_monto_con_mas_de_ocho_decimales_se_rechaza(transaccion):
     """Criterio: un monto con más de ocho decimales no cabe en NUMERIC(18,8) y se rechaza."""
-    resultado = transaccion(amount=Decimal("0.000000001")).validate(available=Decimal("100"), signature_exists=False)
+    resultado = transaccion(amount=Decimal("0.000000001")).validate(
+        available=Decimal("100"), signature_exists=False
+    )
     assert resultado.reason is RejectionReason.AMOUNT_PRECISION
 
 
 def test_req_04_rf2_monto_fuera_del_rango_de_numeric_18_8_se_rechaza(transaccion):
     """Criterio: un monto de diez mil millones o más queda fuera del rango de NUMERIC(18,8)."""
-    resultado = transaccion(amount=Decimal("10000000000")).validate(available=Decimal("100"), signature_exists=False)
+    resultado = transaccion(amount=Decimal("10000000000")).validate(
+        available=Decimal("100"), signature_exists=False
+    )
     assert resultado.reason is RejectionReason.AMOUNT_OUT_OF_RANGE

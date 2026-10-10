@@ -11,7 +11,7 @@ from __future__ import annotations
 import os
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import psycopg
@@ -72,7 +72,7 @@ def master_key() -> bytes:
 
 def _utc_now() -> datetime:
     """Reloj por defecto del ledger, en UTC como la base y las marcas canónicas."""
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def open_ledger(

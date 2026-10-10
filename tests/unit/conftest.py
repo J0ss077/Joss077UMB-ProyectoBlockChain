@@ -8,7 +8,7 @@ el saldo, no la firma. `Transaction.validate` conserva sus parámetros
 `sender_public_key` y `receiver_public_key` para las pruebas de firma ajena (REQ-02).
 """
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from uuid import UUID, uuid4
 
@@ -20,7 +20,7 @@ from src.domain.wallet import Wallet, create_wallet, sign_payload
 
 # Marca de tiempo fija: el payload firmado la incluye, y fijarla hace
 # reproducibles las transacciones que arman las pruebas.
-CREATED_AT = datetime(2026, 10, 10, 12, 0, tzinfo=timezone.utc)
+CREATED_AT = datetime(2026, 10, 10, 12, 0, tzinfo=UTC)
 DEFAULT_AMOUNT = Decimal("10.00000000")
 
 

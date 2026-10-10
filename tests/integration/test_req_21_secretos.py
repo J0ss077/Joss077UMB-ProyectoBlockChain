@@ -9,4 +9,7 @@ import subprocess
 def test_req_21_env_esta_ignorado_y_no_versionado():
     """`git check-ignore` reconoce `.env` y `git ls-files` no lo tiene registrado."""
     assert subprocess.run(["git", "check-ignore", "-q", ".env"]).returncode == 0
-    assert subprocess.run(["git", "ls-files", "--error-unmatch", ".env"], capture_output=True).returncode != 0
+    registrado = subprocess.run(
+        ["git", "ls-files", "--error-unmatch", ".env"], capture_output=True
+    )
+    assert registrado.returncode != 0

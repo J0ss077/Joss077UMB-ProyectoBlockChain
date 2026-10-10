@@ -1,5 +1,5 @@
 """REQ-02: la validación exige que la firma corresponda a la llave pública del emisor."""
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from uuid import UUID
 
@@ -10,12 +10,14 @@ from src.domain.transaction import RejectionReason, Transaction, TransactionStat
 # para que el literal de la prueba sea reproducible.
 CLAVE_EMISOR = "02" + "aa" * 32
 CLAVE_RECEPTOR = "03" + "bb" * 32
-TIMESTAMP = datetime(2026, 10, 10, 12, 0, tzinfo=timezone.utc)
+TIMESTAMP = datetime(2026, 10, 10, 12, 0, tzinfo=UTC)
 
 
 def test_req_02_firma_de_otra_wallet_se_rechaza(transaccion_de_otra_wallet):
     """Criterio: la misma transacción firmada por otra wallet se rechaza, y el motivo lo dice."""
-    resultado = transaccion_de_otra_wallet.validate(available=Decimal("100"), signature_exists=False)
+    resultado = transaccion_de_otra_wallet.validate(
+        available=Decimal("100"), signature_exists=False
+    )
     assert resultado.accepted is False
     assert resultado.reason is RejectionReason.BAD_SIGNATURE
 
@@ -45,7 +47,7 @@ def test_req_02_el_payload_de_firma_es_la_cadena_canonica():
         "00000000-0000-0000-0000-00000000000f"
         f"|{CLAVE_EMISOR}|{CLAVE_RECEPTOR}"
         "|12.34000000|2026-10-10T12:00:00+00:00"
-    ).encode("utf-8")
+    ).encode()
     assert transaccion.signing_payload(CLAVE_EMISOR, CLAVE_RECEPTOR) == esperado
 
 

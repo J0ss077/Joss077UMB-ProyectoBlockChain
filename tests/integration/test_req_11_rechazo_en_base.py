@@ -8,7 +8,7 @@ esquema ya impide —monto no positivo, emisor igual al receptor, wallet
 inexistente y firma repetida— se informan sin escribir, como manda la sección
 "Conducta observable ante una transacción inválida" del diseño.
 """
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from uuid import UUID, uuid4
 
@@ -21,7 +21,7 @@ from src.persistence.postgres import PostgresTransactionRepository
 
 # Identificador y marca de tiempo fijos: la firma canónica los incluye, así que
 # repetirlos es la forma de repetir la firma sin tocar la criptografía.
-CREATED_AT = datetime(2026, 10, 10, 12, 0, tzinfo=timezone.utc)
+CREATED_AT = datetime(2026, 10, 10, 12, 0, tzinfo=UTC)
 FIXED_ID = UUID("00000000-0000-4000-8000-000000000011")
 
 

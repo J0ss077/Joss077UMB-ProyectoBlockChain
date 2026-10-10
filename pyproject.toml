@@ -15,3 +15,8 @@ pythonpath = ["."]
 # El mismo piso gobierna el lint: ninguna regla puede exigir sintaxis posterior a 3.11.
 target-version = "py311"
 line-length = 100
+
+[tool.ruff.lint]
+# `E` incluye la longitud de línea, que es la razón de que el envoltorio de las
+# líneas largas sea parte del trabajo y no una preferencia.
+select = ["E", "F", "I", "UP", "B"]

@@ -74,7 +74,7 @@ class Transaction:
         return (
             f"{self.id}|{sender_public_key}|{receiver_public_key}"
             f"|{self.amount:.8f}|{self.created_at.isoformat()}"
-        ).encode("utf-8")
+        ).encode()
 
     def hash_payload(self) -> str:
         """Forma canónica que el bloque incluye en su hash.

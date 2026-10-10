@@ -5,7 +5,7 @@ Aquí vive también la firma del origen de una transacción y su verificación
 que llega por el entorno (REQ-21), así que firmar implica descifrarla.
 """
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 from cryptography.exceptions import InvalidSignature
@@ -78,7 +78,7 @@ def create_wallet(
         id=wallet_id if wallet_id is not None else uuid4(),
         public_key=public_key_hex(private_key),
         private_key_encrypted=encrypt_private_key(private_key, master_key),
-        created_at=created_at if created_at is not None else datetime.now(timezone.utc),
+        created_at=created_at if created_at is not None else datetime.now(UTC),
     )
 
 

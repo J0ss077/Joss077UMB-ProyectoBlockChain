@@ -13,8 +13,14 @@ from psycopg.rows import dict_row
 
 def test_req_15_no_hay_ddl_en_el_codigo():
     """Ninguna ruta del código contiene sentencias de definición de datos."""
-    patron = re.compile(r"\b(CREATE|ALTER|DROP)\s+(TABLE|INDEX|EXTENSION|SCHEMA)\b", re.IGNORECASE)
-    ofensores = [str(p) for p in pathlib.Path("src").rglob("*.py") if patron.search(p.read_text(encoding="utf-8"))]
+    patron = re.compile(
+        r"\b(CREATE|ALTER|DROP)\s+(TABLE|INDEX|EXTENSION|SCHEMA)\b", re.IGNORECASE
+    )
+    ofensores = [
+        str(ruta)
+        for ruta in pathlib.Path("src").rglob("*.py")
+        if patron.search(ruta.read_text(encoding="utf-8"))
+    ]
     assert ofensores == []
 
 

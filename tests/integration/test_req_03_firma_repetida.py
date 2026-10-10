@@ -40,7 +40,9 @@ def test_req_03_firma_repetida_levanta_unique_violation(transacciones, base_limp
     assert transacciones.count() == 1
 
 
-def test_req_03_la_firma_guardada_se_encuentra_por_su_valor(transacciones, base_limpia, transaccion):
+def test_req_03_la_firma_guardada_se_encuentra_por_su_valor(
+    transacciones, base_limpia, transaccion
+):
     """`signature_exists` distingue la firma registrada de una que no lo está."""
     firmada = transaccion()
     transacciones.add(firmada)
@@ -49,7 +51,9 @@ def test_req_03_la_firma_guardada_se_encuentra_por_su_valor(transacciones, base_
     assert transacciones.signature_exists("firma-que-nadie-presento") is False
 
 
-def test_req_03_la_fila_guardada_conserva_su_estado(transacciones, conexion, base_limpia, transaccion):
+def test_req_03_la_fila_guardada_conserva_su_estado(
+    transacciones, conexion, base_limpia, transaccion
+):
     """La firma admitida queda pendiente y es la única de su valor en la tabla."""
     primera = transacciones.add(transaccion())
 

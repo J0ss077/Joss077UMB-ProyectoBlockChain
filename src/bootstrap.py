@@ -12,7 +12,7 @@ Uso: `python -m src.bootstrap`.
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from hashlib import sha256
 from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
@@ -83,7 +83,7 @@ def _wallet(wallet_id: UUID, semilla: bytes, master_key: bytes) -> Wallet:
         id=wallet_id,
         public_key=public_key_hex(privada),
         private_key_encrypted=encrypt_private_key(privada, master_key),
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
 
 

@@ -22,7 +22,9 @@ def transacciones(conexion):
 
 
 @pytest.fixture
-def historial(transacciones, base_limpia, emisora, receptora, bloque, transaccion, wallets, master_key):
+def historial(
+    transacciones, base_limpia, emisora, receptora, bloque, transaccion, wallets, master_key
+):
     """Un escenario con cada suma del saldo distinguible de las otras.
 
     Montos a propósito distintos entre sí: si `balance_terms` contara el estado
@@ -111,7 +113,10 @@ def test_req_13_el_listado_se_filtra_por_wallet(transacciones, historial):
     assert len(transacciones.list(wallet_id=historial["receptora"].id)) == 5
     # La tercera solo recibe: dos entrantes, y ninguna confirmada.
     assert len(transacciones.list(wallet_id=historial["tercera"].id)) == 2
-    assert len(transacciones.list(wallet_id=historial["tercera"].id, status=TransactionStatus.PENDING)) == 2
+    pendientes_de_la_tercera = transacciones.list(
+        wallet_id=historial["tercera"].id, status=TransactionStatus.PENDING
+    )
+    assert len(pendientes_de_la_tercera) == 2
 
 
 def test_req_13_el_listado_de_un_bloque_son_sus_transacciones(
@@ -155,7 +160,9 @@ def test_req_13_las_sumas_del_saldo_se_resuelven_en_una_consulta(transacciones, 
     )
 
 
-def test_req_13_una_wallet_sin_transacciones_suma_cero(transacciones, historial, wallets, master_key):
+def test_req_13_una_wallet_sin_transacciones_suma_cero(
+    transacciones, historial, wallets, master_key
+):
     """El agregado devuelve ceros, y no `NULL`, cuando la wallet no tiene movimientos."""
     intocada = wallets.add(create_wallet(master_key=master_key))
 

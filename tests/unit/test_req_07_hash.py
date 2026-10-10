@@ -1,6 +1,6 @@
 """REQ-07: el hash cubre el contenido agrupado; cambiar un dato agrupado lo cambia."""
 from dataclasses import replace
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from hashlib import sha256
 from uuid import UUID, uuid4
@@ -12,7 +12,7 @@ from src.domain.transaction import Transaction, TransactionStatus
 
 # Marca de tiempo fija: el bloque la incluye en su hash, y fijarla hace
 # reproducible el valor que las pruebas comparan.
-TIMESTAMP = datetime(2026, 10, 10, 12, 0, tzinfo=timezone.utc)
+TIMESTAMP = datetime(2026, 10, 10, 12, 0, tzinfo=UTC)
 
 
 @pytest.fixture
@@ -53,7 +53,8 @@ def test_req_07_cambiar_un_monto_agrupado_cambia_el_hash(bloque, transacciones):
 
 def test_req_07_el_orden_de_las_transacciones_no_cambia_el_hash(bloque, transacciones):
     """Criterio: el hash no depende del orden en que se leyeron las transacciones."""
-    assert bloque.calculate_hash(list(reversed(transacciones))) == bloque.calculate_hash(transacciones)
+    al_reves = bloque.calculate_hash(list(reversed(transacciones)))
+    assert al_reves == bloque.calculate_hash(transacciones)
 
 
 def test_req_07_el_mensaje_hasheado_es_la_cadena_canonica():

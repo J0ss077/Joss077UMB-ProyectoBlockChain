@@ -10,22 +10,33 @@ from uuid import uuid4
 import psycopg
 import pytest
 
+# La sentencia que el camino de la aplicación nunca llega a enviar —valida antes
+# (REQ-04)— y que aquí provoca la violación que REQ-19 exige que suba cruda.
+INSERT = (
+    "INSERT INTO transactions (sender_id, receiver_id, amount, signature) "
+    "VALUES (%s, %s, %s, %s)"
+)
 
-def test_req_19_monto_no_positivo_levanta_check_violation(conexion, base_limpia, emisora, receptora):
+
+def test_req_19_monto_no_positivo_levanta_check_violation(
+    conexion, base_limpia, emisora, receptora
+):
     """Un monto menor o igual a cero viola el CHECK y llega como `CheckViolation`."""
     with pytest.raises(psycopg.errors.CheckViolation):
         conexion.execute(
-            "INSERT INTO transactions (sender_id, receiver_id, amount, signature) VALUES (%s, %s, %s, %s)",
+            INSERT,
             (emisora.id, receptora.id, Decimal("-1"), "firma-x"),
         )
     conexion.rollback()
 
 
-def test_req_19_wallet_inexistente_levanta_foreign_key_violation(conexion, base_limpia, emisora, receptora):
+def test_req_19_wallet_inexistente_levanta_foreign_key_violation(
+    conexion, base_limpia, emisora, receptora
+):
     """Una wallet que no existe viola la clave foránea, sin traducción de por medio."""
     with pytest.raises(psycopg.errors.ForeignKeyViolation):
         conexion.execute(
-            "INSERT INTO transactions (sender_id, receiver_id, amount, signature) VALUES (%s, %s, %s, %s)",
+            INSERT,
             (emisora.id, uuid4(), Decimal("1"), "firma-sin-wallet"),
         )
     conexion.rollback()
@@ -35,7 +46,7 @@ def test_req_19_la_violacion_no_deja_fila_a_medias(conexion, base_limpia, emisor
     """El error del motor deja la tabla como estaba: ninguna fila a medias."""
     with pytest.raises(psycopg.errors.CheckViolation):
         conexion.execute(
-            "INSERT INTO transactions (sender_id, receiver_id, amount, signature) VALUES (%s, %s, %s, %s)",
+            INSERT,
             (emisora.id, receptora.id, Decimal("0"), "firma-cero"),
         )
     conexion.rollback()

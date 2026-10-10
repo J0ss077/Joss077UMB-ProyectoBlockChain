@@ -9,13 +9,14 @@ leer cosas distintas de `.env`.
 """
 import subprocess
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from hashlib import sha256
 from uuid import UUID, uuid4
 
 import psycopg
 import pytest
+
 from src.domain.block import Block
 from src.domain.blockchain import Blockchain, ensure_genesis
 from src.domain.transaction import Transaction, TransactionStatus
@@ -27,11 +28,11 @@ from src.persistence.postgres import PostgresBlockRepository, PostgresWalletRepo
 
 # Marca de tiempo fija: el payload firmado la incluye, y fijarla hace
 # reproducibles las transacciones que arman las pruebas.
-CREATED_AT = datetime(2026, 10, 10, 12, 0, tzinfo=timezone.utc)
+CREATED_AT = datetime(2026, 10, 10, 12, 0, tzinfo=UTC)
 # Reloj fijo de la fachada: las marcas de tiempo de los bloques que producen las
 # pruebas quedan fuera del reloj de pared y el hash del bloque no cambia entre
 # corridas.
-BLOCK_AT = datetime(2026, 10, 10, 13, 0, tzinfo=timezone.utc)
+BLOCK_AT = datetime(2026, 10, 10, 13, 0, tzinfo=UTC)
 DEFAULT_AMOUNT = Decimal("10.00000000")
 
 
@@ -186,12 +187,12 @@ def bloque(bloques):
     """
 
     def build(block_index: int = 0, previous_hash: str = "0" * 64) -> Block:
-        hash_propio = sha256(f"{block_index}|{previous_hash}".encode("utf-8")).hexdigest()
+        hash_propio = sha256(f"{block_index}|{previous_hash}".encode()).hexdigest()
         return bloques.add(
             Block(
                 id=uuid4(),
                 block_index=block_index,
-                timestamp=datetime(2026, 10, 10, 12, 0, tzinfo=timezone.utc),
+                timestamp=datetime(2026, 10, 10, 12, 0, tzinfo=UTC),
                 previous_hash=previous_hash,
                 hash=hash_propio,
             )

@@ -9,7 +9,6 @@ firma del REQ-02, aunque sí lo sea a la regla de saldo.
 """
 import subprocess
 import sys
-from decimal import Decimal
 
 from src.bootstrap import FONDO, wallet_del_constituyente
 from src.domain.wallet import verify

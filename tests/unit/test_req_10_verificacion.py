@@ -46,7 +46,10 @@ def cadena_de_tres_bloques():
     genesis = build_block(0, transactions=[transacciones[0]])
     segundo = build_block(1, genesis, transactions=[transacciones[1]])
     tercero = build_block(2, segundo, transactions=[transacciones[2]])
-    for block, transaction in zip((genesis, segundo, tercero), transacciones):
+    # `strict=True` porque las dos listas tienen que medir lo mismo: si una
+    # creciera sin la otra, el escenario dejaría de estar bien armado y la prueba
+    # lo dice en vez de truncar en silencio.
+    for block, transaction in zip((genesis, segundo, tercero), transacciones, strict=True):
         transaction.block_id = block.id
     chain = build_chain(blocks=[genesis, segundo, tercero], transactions=transacciones)
     return {
