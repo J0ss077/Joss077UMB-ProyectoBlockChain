@@ -1,4 +1,4 @@
-{% from "_macros.html" import dato, copiar -%}
+{% from "_macros.html" import corto, dato, copiar -%}
 <!doctype html>
 <html lang="es">
     <head>
@@ -77,6 +77,9 @@
             .mono[data-copiar] {
                 cursor: copy;
             }
+            .aviso-copia {
+                color: #060;
+            }
             table {
                 border-collapse: collapse;
                 width: 100%;
@@ -143,7 +146,7 @@
                 <ul>
                     {% for registrada in wallets_del_panel %}
                     <li>
-                        {{ dato(registrada.public_key) }} {{ copiar(registrada.public_key, "la clave pública") }}
+                        {{ dato(registrada.public_key) }} {{ copiar(registrada.public_key, "la clave pública " ~ corto(registrada.public_key)) }}
                         <a href="/historial/{{ registrada.id }}">Historial</a>
                     </li>
                     {% endfor %}
@@ -160,11 +163,20 @@
         </div>
         <script>
             // Un solo guion para los datos copiables de todas las páginas: cada
-            // `[data-copiar]` lleva su valor completo, así que copia lo que se ve.
+            // `[data-copiar]` lleva su valor completo, así que copia lo que se ve. La
+            // guarda evita reventar donde no hay portapapeles y el aviso confirma que
+            // el clic copió algo, que si no el botón no diría nada.
             document.addEventListener("click", (evento) => {
-                const boton = evento.target.closest("[data-copiar]");
-                if (!boton) return;
-                navigator.clipboard.writeText(boton.dataset.copiar);
+                const origen = evento.target.closest("[data-copiar]");
+                if (!origen || !navigator.clipboard) return;
+                navigator.clipboard.writeText(origen.dataset.copiar).then(() => {
+                    const aviso = document.createElement("span");
+                    aviso.className = "aviso-copia";
+                    aviso.setAttribute("role", "status");
+                    aviso.textContent = " copiado";
+                    origen.after(aviso);
+                    setTimeout(() => aviso.remove(), 1200);
+                });
             });
         </script>
     </body>
