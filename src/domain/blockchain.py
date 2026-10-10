@@ -5,7 +5,9 @@ que la presentación no decida nada: `create_transaction` valida y firma con el
 saldo disponible del emisor (REQ-04, REQ-05, REQ-06) y `group_pending` encadena un
 bloque nuevo con el último (REQ-08), confirma las transacciones del pool (REQ-09)
 y hace las dos escrituras dentro de una sola transacción de base de datos
-(REQ-18). `ensure_genesis` registra el eslabón cero de forma idempotente (REQ-14).
+(REQ-18). `ensure_genesis` registra el eslabón cero de forma idempotente (REQ-14)
+y `verify_chain` recalcula la cadena y localiza la alteración sin escribir nada
+(REQ-10, REQ-22).
 
 El dominio no conoce el motor: habla con los protocolos de
 `src/persistence/ports.py` (REQ-16), y por eso la agrupación recibe una fábrica de
@@ -82,12 +84,24 @@ class TransactionResult:
     stored: Transaction | None
 
 
+@dataclass(frozen=True, slots=True)
+class VerificationReport:
+    """Dictamen de integridad: si la cadena es válida y, si no, dónde empieza la alteración.
+
+    `altered_block_index` es nulo cuando la cadena es válida y el índice del primer
+    bloque que no encaja cuando no lo es (REQ-10).
+    """
+
+    valid: bool
+    altered_block_index: int | None
+
+
 class Blockchain:
-    """Fachada del ledger: las reglas del CU-02 y del CU-03 en un solo punto de entrada.
+    """Fachada del ledger: las reglas de los casos de uso CU-02 a CU-04 en un punto de entrada.
 
     Invariante: las lecturas usan los repositorios que recibe; las dos escrituras
     de la agrupación pasan por la unidad de trabajo, que es lo que las hace
-    atómicas (REQ-18).
+    atómicas (REQ-18); la verificación no escribe nada (REQ-22).
     """
 
     def __init__(
@@ -197,6 +211,38 @@ class Blockchain:
             )
             work.commit()
         return block
+
+    def verify_chain(self) -> VerificationReport:
+        """Recalcula la cadena y localiza el primer bloque que no encaja (CU-04, REQ-10).
+
+        Para cada bloque recalcula su hash propio con las transacciones que tiene
+        ligadas y lo compara con el guardado, y encadena cada eslabón con el hash
+        del anterior comparando también el índice: un hueco en los índices no
+        cambia ningún hash, así que sin esa comparación una cadena 0, 1, 3 se vería
+        válida (RF-3). Recalcula además el hash del génesis: el CU-04 habla de
+        "para cada bloque desde el índice 1" porque describe el encadenamiento,
+        pero sin recalcular el eslabón cero alterar su marca de tiempo dejando el
+        hash guardado intacto pasaría inadvertido (decisión 13).
+
+        Solo lee: no escribe ni confirma nada (REQ-22). Ante la primera
+        discrepancia detiene el recorrido y devuelve su índice; seguir no cambia el
+        dictamen.
+        """
+        anterior: Block | None = None
+        for block in self.blocks.list():
+            if block.calculate_hash(self.transactions.of_block(block.id)) != block.hash:
+                return VerificationReport(valid=False, altered_block_index=block.block_index)
+            if anterior is not None:
+                if block.previous_hash != anterior.hash:
+                    return VerificationReport(
+                        valid=False, altered_block_index=block.block_index
+                    )
+                if block.block_index != anterior.block_index + 1:
+                    return VerificationReport(
+                        valid=False, altered_block_index=block.block_index
+                    )
+            anterior = block
+        return VerificationReport(valid=True, altered_block_index=None)
 
     def wallet_history(self, wallet_id: UUID) -> Sequence[Transaction]:
         """Los envíos y las recepciones de una wallet, en cualquier estado (CU-05, REQ-13)."""
