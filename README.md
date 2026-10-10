@@ -113,6 +113,13 @@ Para comprobar que el contenedor está sano:
 docker compose ps
 ```
 
+Si el contenedor no llega a estar sano, revise que `db/init.sql` sea legible por el
+usuario `postgres` del contenedor: el punto de entrada lee el guion con ese usuario y,
+si el archivo quedó con permisos `600` (un `git checkout` bajo un `umask` restrictivo
+los reproduce), falla con `psql: error: /docker-entrypoint-initdb.d/01_init.sql:
+Permission denied` y la base nunca arranca. En Linux o Podman se corrige con
+`chmod 644 db/init.sql`.
+
 ### 4. Crear el génesis y cargar los datos de demostración
 
 ```text
@@ -297,6 +304,21 @@ el guardado (REQ-10), y no escribe nada (REQ-22).
 La alteración deja la base modificada a propósito. Para volver a los datos de
 demostración, borre el volumen y vuelva a sembrar: `docker compose down -v`,
 `docker compose up -d` (o con Podman) y `<venv> -m src.bootstrap`.
+
+## Qué está verificado
+
+- **El esquema en PostgreSQL 16**, la versión del piso: `db/init.sql` se aplicó como
+  guion de inicialización de un contenedor `postgres:16-alpine` (PostgreSQL 16.15) y
+  quedaron las tres tablas, `uuid-ossp`, los once índices y todos los `CHECK` del eje,
+  incluido `chk_transactions_sender_ne_receiver`: un intento de transacción de una
+  wallet a sí misma lo rechazó el motor.
+- **Las reglas sin base de datos (REQ-17)**: `pytest tests/unit` pasa con
+  `DATABASE_URL` sin definir y sin contenedor, porque el dominio no importa el driver.
+- **La suite completa contra el clúster PostgreSQL del equipo de desarrollo**: 84
+  pruebas (28 de reglas, 51 de integración y 5 de coherencia de la explicación).
+- El piso de Python lo declara `pyproject.toml` (`requires-python = ">=3.11"`); la
+  corrida de la suite dentro del contenedor del piso forma parte de la aceptación y no
+  se afirma aquí.
 
 ## Por dónde empezar a leer el código
 
