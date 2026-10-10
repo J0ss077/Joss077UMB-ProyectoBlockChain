@@ -120,5 +120,9 @@ def ledger() -> Iterator[Blockchain]:
     """
     dsn = database_url()
     with psycopg.connect(dsn, autocommit=True) as connection:
+        # La zona de la sesión decide cómo se leen las columnas `TIMESTAMPTZ`, y el
+        # hash del bloque cubre `datetime.isoformat()`: sin UTC, la misma fila se
+        # leería con otro desplazamiento y una cadena válida se verificaría como
+        # alterada. Toda conexión del ledger queda en UTC por esta razón.
         connection.execute("SET TIME ZONE 'UTC'")
         yield open_ledger(connection, encryption_key=master_key(), database_dsn=dsn)

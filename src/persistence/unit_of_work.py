@@ -37,8 +37,16 @@ class PostgresUnitOfWork:
         único, que es exactamente lo que REQ-18 exige. Si la conexión fuera de
         autocommit, cada escritura se confirmaría sola y el fallo de la segunda
         dejaría la primera aplicada.
+
+        La sesión queda en UTC igual que las demás conexiones del ledger: la zona
+        decide cómo se leen las columnas `TIMESTAMPTZ`, y `hash_payload` y
+        `calculate_hash` hashean `datetime.isoformat()`, así que dos sesiones en zonas
+        distintas calcularían hashes distintos para la misma fila y una cadena válida
+        se verificaría como alterada.
         """
-        return cls(psycopg.connect(database_url))
+        connection = psycopg.connect(database_url)
+        connection.execute("SET TIME ZONE 'UTC'")
+        return cls(connection)
 
     def __enter__(self) -> PostgresUnitOfWork:
         return self
