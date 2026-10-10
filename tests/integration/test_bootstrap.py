@@ -1,15 +1,18 @@
-"""Arranque del ledger con datos de demostración (REQ-14, REQ-05).
+"""Arranque del ledger con datos de demostración (REQ-14, REQ-05, REQ-02).
 
 Los datos de demostración representan el caso del eje: una wallet de fondo que
-recibe aportes de los asociados y les gira retiros. La regla del REQ-05 es lo que
-estas pruebas comprueban sobre los datos reales: ningún asociado puede quedar con
-saldo disponible negativo, que es el defecto que arrastraban los datos del
-repositorio anterior.
+recibe aportes de los asociados y les gira retiros. Estas pruebas comprueban sobre
+los datos reales que la regla del REQ-05 se cumple —ningún asociado ni el fondo
+quedan con saldo disponible negativo, que es el defecto que arrastraban los datos
+del repositorio anterior— y que la emisión fundacional no es una excepción a la
+firma del REQ-02, aunque sí lo sea a la regla de saldo.
 """
 import subprocess
 import sys
+from decimal import Decimal
 
 from src.bootstrap import FONDO, wallet_del_constituyente
+from src.domain.wallet import verify
 from src.persistence.factory import master_key
 
 
@@ -43,3 +46,35 @@ def test_el_bootstrap_es_idempotente(base_vacia_ejecutando_bootstrap):
     subprocess.run([sys.executable, "-m", "src.bootstrap"], check=True)
 
     assert chain.ledger_state() == antes
+
+
+def test_req_02_la_emision_fundacional_esta_firmada_por_el_constituyente(
+    base_vacia_ejecutando_bootstrap,
+):
+    """REQ-02: la emisión fundacional se verifica contra la pública del constituyente.
+
+    La emisión se escribe por el repositorio porque la regla de saldo (REQ-05) la
+    rechazaría, ya que el modelo del eje no tiene emisión; la dispensa es solo para
+    esa fila. La firma, en cambio, no se dispensa: se comprueba aquí contra la
+    pública de su emisor, como la de cualquier otra transacción.
+    """
+    chain = base_vacia_ejecutando_bootstrap
+    fondo = chain.wallets.get_by_public_key(FONDO)
+    constituyente = wallet_del_constituyente(master_key())
+
+    emision = next(
+        t
+        for t in chain.wallet_history(fondo.id)
+        if t.sender_id == constituyente.id and t.receiver_id == fondo.id
+    )
+
+    assert emision.signature, "la emisión tiene que llevar firma, no una marca"
+    assert verify(
+        constituyente.public_key,
+        emision.signature,
+        emision.signing_payload(constituyente.public_key, fondo.public_key),
+    )
+
+    assert chain.verify_chain().valid is True
+    assert chain.available_balance(constituyente.id) < 0
+    assert chain.available_balance(fondo.id) >= 0
