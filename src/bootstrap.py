@@ -148,13 +148,18 @@ def _entrega_de_capital(
 ) -> Transaction:
     """Arma una entrega de capital ya firmada por su emisor.
 
-    Se escribe por el repositorio y no por `create_transaction` por una sola razón:
-    esa puerta valida el saldo del emisor (REQ-05), y la emisión fundacional no puede
-    pasar esa validación porque el modelo del eje no tiene emisión y el constituyente
-    nace sin saldo. Esa dispensa vale **solo para esa fila**; todas las demás de la
-    demostración se mueven por el camino normal. Como consecuencia, el constituyente
-    queda con saldo disponible negativo: es la única wallet de la demostración a la
-    que se le permite, porque es la puerta por la que el capital entra al ledger.
+    Este camino escribe por el repositorio y no por `create_transaction` porque el
+    capital se coloca y no se gira contra un saldo. Son dos filas de esa clase: la
+    entrega del constituyente al fondo —la emisión fundacional— no podría pasar esa
+    puerta, porque valida el saldo del emisor (REQ-05) y el modelo del eje no tiene
+    emisión, así que el constituyente nace sin saldo; y la entrega del fondo a cada
+    asociado usa el mismo camino por ser la misma clase de fila, capital de asociación
+    colocado, aunque quepa en el saldo ya confirmado del fondo. Todas las demás filas
+    de la demostración —los aportes y los retiros, los que se confirman y los tres que
+    quedan pendientes en el pool— se mueven por el camino normal. Como consecuencia,
+    el constituyente queda con saldo disponible negativo: es la única wallet de la
+    demostración a la que se le permite, porque es la puerta por la que el capital
+    entra al ledger.
 
     La firma sí es la real: se calcula con `sign_payload` sobre la misma forma
     canónica que usa el camino normal (`signing_payload`), de modo que toda fila de

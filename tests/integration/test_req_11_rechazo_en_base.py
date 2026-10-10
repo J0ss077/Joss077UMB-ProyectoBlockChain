@@ -8,6 +8,7 @@ esquema ya impide —monto no positivo, emisor igual al receptor, wallet
 inexistente y firma repetida— se informan sin escribir, como manda la sección
 "Conducta observable ante una transacción inválida" del diseño.
 """
+import dataclasses
 from datetime import UTC, datetime
 from decimal import Decimal
 from uuid import UUID, uuid4
@@ -161,12 +162,14 @@ def test_req_11_la_wallet_inexistente_se_informa_sin_fila(ledger, emisora):
 def test_req_11_la_firma_repetida_se_informa_sin_fila(
     ledger, emisora_fondeada, receptora, monkeypatch
 ):
-    """El índice único la impide: el motivo sale del dominio y la repetición no deja fila.
+    """El motivo sale del dominio y la repetición no deja fila.
 
     La firma ECDSA no es determinista, así que el mismo envío produce firmas
-    distintas y esta rama no se alcanzaría sola. Se fija el valor que devuelve el
-    firmante para representar "la misma transacción presentada dos veces", que es
-    justo lo que el índice único de la decisión 4 rechazaría.
+    distintas y esta rama no se alcanzaría sola: se fija el valor que devuelve el
+    firmante. La repetición reusa el identificador y la firma, así que su forma
+    canónica es la misma y la firma verifica; el saldo alcanza, de modo que la regla
+    que decide es la de la firma repetida, y como ese motivo no cabe en una fila
+    `rejected`, el rechazo se informa sin escribir.
     """
     presentada = ledger.create_transaction(
         sender_id=emisora_fondeada.id,
@@ -204,38 +207,45 @@ def test_req_11_la_firma_repetida_con_saldo_insuficiente_no_llega_al_motor(
 
     El orden de las reglas lo fija el diseño y mira el saldo antes que la firma
     repetida, así que este caso llega a la validación como INSUFFICIENT_FUNDS; con
-    esa respuesta el ledger escribiría una fila `rejected` que el índice único
-    rechazaría. Se fija el valor que devuelve el firmante porque la ECDSA no
+    esa respuesta el ledger escribiría una fila `rejected`, y el escape de la firma
+    repetida evita que choque con el índice único. La repetición lleva un
+    identificador nuevo a propósito: lo único que puede colisionar es esa firma, y no
+    la clave primaria. Se fija el valor que devuelve el firmante porque la ECDSA no
     reproduce su propia firma.
     """
-    presentada = ledger.create_transaction(
-        sender_id=emisora_fondeada.id,
-        receiver_id=receptora.id,
+    # La firma que la repetición va a presentar ya tiene que estar en la tabla, y se
+    # firma con el identificador de la repetición para que verifique. La fila se
+    # escribe con otro identificador porque lo que la tabla aporta aquí es la firma ya
+    # vista, no una fila que el camino de la aplicación hubiera producido: ese camino
+    # nunca repite una firma.
+    identificador_repetido = uuid4()
+    presentada = transaccion(
+        sender=emisora_fondeada,
+        receiver=receptora,
         amount=Decimal("1.00000000"),
-        transaction_id=FIXED_ID,
         created_at=CREATED_AT,
+        transaction_id=identificador_repetido,
     )
-    assert presentada.accepted is True
-    assert presentada.stored is not None
+    ledger.transactions.add(dataclasses.replace(presentada, id=FIXED_ID))
     # Una pendiente que agota el disponible: el saldo se revisa antes que la firma.
     ledger.transactions.add(
         transaccion(sender=emisora_fondeada, amount=Decimal("100.00000000"))
     )
 
     monkeypatch.setattr(
-        blockchain, "sign_payload", lambda wallet, payload, key: presentada.stored.signature
+        blockchain, "sign_payload", lambda wallet, payload, key: presentada.signature
     )
     repetida = ledger.create_transaction(
         sender_id=emisora_fondeada.id,
         receiver_id=receptora.id,
         amount=Decimal("1.00000000"),
-        transaction_id=FIXED_ID,
+        transaction_id=identificador_repetido,
         created_at=CREATED_AT,
     )
 
     assert repetida.accepted is False
     assert repetida.reason is RejectionReason.DUPLICATE_SIGNATURE
     assert repetida.stored is None
-    # El ingreso confirmado, la primera transacción y la pendiente que agotó el
-    # saldo: la repetición no agrega fila.
+    # El ingreso confirmado, la fila presentada y la pendiente que agotó el saldo: la
+    # repetición no agrega fila.
     assert ledger.transactions.count() == 3

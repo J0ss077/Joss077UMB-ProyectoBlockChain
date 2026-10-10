@@ -14,7 +14,7 @@ from uuid import uuid4
 
 import pytest
 
-from src.bootstrap import FONDO
+from src.bootstrap import CONSTITUYENTE_ID, FONDO
 from src.domain.blockchain import ensure_genesis
 from src.persistence.factory import open_ledger
 from src.web.app import create_app
@@ -47,11 +47,22 @@ def cadena(base_vacia_ejecutando_bootstrap):
 
 @pytest.fixture
 def partes(cadena):
-    """El fondo y un asociado con saldo, que son los actores del caso del eje."""
+    """El fondo y un asociado con saldo, que son los actores del caso del eje.
+
+    El constituyente se excluye a propósito y no por su saldo: es la wallet por la
+    que el capital entra al ledger y la única que queda en negativo, así que no es un
+    asociado del ciclo de aportes y retiros.
+    """
     fondo = cadena.wallets.get_by_public_key(FONDO)
-    asociados = [w for w in cadena.wallets.list() if w.id != fondo.id]
-    asociado = next(w for w in asociados if cadena.available_balance(w.id) > 0)
-    return {"fondo": fondo, "asociado": asociado, "tercero": asociados[-1]}
+    asociados = [
+        wallet
+        for wallet in cadena.wallets.list()
+        if wallet.id not in {fondo.id, CONSTITUYENTE_ID}
+    ]
+    asociado = next(
+        wallet for wallet in asociados if cadena.available_balance(wallet.id) > 0
+    )
+    return {"fondo": fondo, "asociado": asociado}
 
 
 @pytest.fixture
