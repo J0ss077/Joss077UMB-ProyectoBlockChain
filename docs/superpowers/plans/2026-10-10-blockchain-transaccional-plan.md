@@ -992,3 +992,76 @@ Agregar una sección que cubra: detener la aplicación (Ctrl+C); `docker compose
 git add src/web README.md tests/integration/test_req_28_historial_desde_la_lista.py
 git commit -m "feat: el historial de cada wallet se alcanza desde la lista, y el README explica como apagar y limpiar"
 ```
+
+---
+
+### Task 13: Redistribución de la interfaz (opción B)
+
+Aprobado por el humano sobre una maqueta. Tres cambios: la lista de wallets pasa a un panel lateral visible en todas las páginas; los identificadores y los valores numéricos se muestran en monoespaciada y en forma corta, con botón de copiar y el valor completo a un clic; y la interfaz deja de explicar el proyecto —nada de «CU-0X» ni de párrafos sobre el eje—. Prioridad a lo funcional sobre lo bonito.
+
+**Files:**
+- Modify: `src/web/app.py`, `src/web/templates/base.html`, `src/web/templates/index.html`, `src/web/templates/wallet.html`, `src/web/templates/transaccion.html`, `src/web/templates/bloque.html`, `src/web/templates/verificar.html`, `src/web/templates/historial.html`, `tests/integration/test_req_24_rutas.py`, `tests/integration/test_req_28_historial_desde_la_lista.py`, `docs/recorrido-de-casos-de-uso.md`
+- Create: `src/web/templates/_macros.html`
+
+**Interfaces:**
+- `create_app` gana un procesador de contexto que expone `wallets_del_panel` —la lista de wallets de la fachada— a todas las plantillas, para que el panel lateral no dependa de que cada ruta lo pase.
+- `_macros.html` expone `dato(valor)` (forma corta de ocho y cuatro caracteres separados por puntos suspensivos) y `copiar(valor)` (el botón con `data-copiar`), reutilizables por las siete plantillas.
+- `base.html` define la pila monoespaciada (`ui-monospace, "Cascadia Code", Consolas, monospace`) para `code` y para la clase `.mono`, y el guion de ocho líneas que conecta los botones `[data-copiar]` con `navigator.clipboard`.
+- Ninguna ruta nueva: siguen siendo las cinco del eje (REQ-24 a REQ-29).
+
+- [ ] **Step 1: Escribir las pruebas que fallan**
+
+```python
+"""REQ-29: la interfaz no explica el proyecto. Sin «CU-0X» ni prosa sobre el eje."""
+def test_req_29_la_interfaz_no_explica_el_proyecto(cliente):
+    for ruta in ("/", "/wallets", "/transacciones", "/bloques", "/verificar"):
+        cuerpo = cliente.get(ruta).get_data(as_text=True)
+        assert "CU-0" not in cuerpo
+
+
+"""REQ-29: el panel lateral lista las wallets en todas las páginas."""
+def test_req_29_el_panel_lateral_aparece_en_todas_las_paginas(cliente, wallet_de_prueba):
+    for ruta in ("/", "/transacciones", "/verificar", f"/historial/{wallet_de_prueba.id}"):
+        cuerpo = cliente.get(ruta).get_data(as_text=True)
+        assert f"/historial/{wallet_de_prueba.id}" in cuerpo
+        assert wallet_de_prueba.public_key in cuerpo          # el valor completo sigue disponible
+        assert wallet_de_prueba.public_key[:8] in cuerpo      # y la forma corta es la que se ve
+
+
+"""REQ-29: los identificadores y los montos van en monoespaciada."""
+def test_req_29_los_datos_numericos_van_en_monoespaciada(cliente, wallet_de_prueba):
+    cuerpo = cliente.get(f"/historial/{wallet_de_prueba.id}").get_data(as_text=True)
+    assert 'class="mono"' in cuerpo
+```
+
+- [ ] **Step 2: Correr las pruebas y ver que fallan**
+
+Run: `.venv/bin/pytest tests/integration -k "explica or panel or monoespaciada" -v`
+Expected: FAIL las tres
+
+- [ ] **Step 3: Implementar el armazón y las plantillas**
+
+`base.html`: barra superior con el nombre de la aplicación y cuatro enlaces —Registrar wallet, Nueva transacción, Cerrar bloque, Verificar cadena—; debajo, dos columnas: el panel lateral con «Wallets» y una fila por wallet (forma corta en monoespaciada, botón de copiar, enlace a su historial; «Todavía no hay wallets» si la lista está vacía) y el área de contenido. Nada de párrafos explicativos ni de números de caso de uso en los títulos: «Registrar wallet», «Nueva transacción», «Cerrar bloque», «Verificar cadena», «Historial». La portada muestra solo los tres conteos del ledger. Sin perseguir estética: legible y predecible.
+
+`_macros.html` con `dato(valor)` y `copiar(valor)`; toda aparición de un identificador, hash, monto, fecha o conteo usa `code`/`.mono` y, si es un identificador, la forma corta con el valor completo en el atributo `title` y en `data-copiar`.
+
+`app.py`: procesador de contexto para `wallets_del_panel`; las rutas siguen llamando solo a la fachada (REQ-29).
+
+- [ ] **Step 4: Correr la suite completa**
+
+Run: `.venv/bin/pytest tests -q`
+Expected: verde. Si alguna prueba de las tareas 10 o 12 afirmaba el texto «CU-0» o el identificador completo *visible*, actualizala a la nueva presentación sin perder la afirmación: el valor completo sigue en el marcado y la forma corta es la que se ve.
+
+- [ ] **Step 5: Poner al día el recorrido**
+
+`docs/recorrido-de-casos-de-uso.md` describe la interfaz para la sustentación: donde diga cómo se titula o se ve una página, tiene que coincidir con lo que la interfaz muestra ahora. Los nombres de caso de uso siguen en el documento —es el documento, no la interfaz—, pero no puede describir textos que ya no existen.
+
+- [ ] **Step 6: Verificación y commit**
+
+Run: `.venv/bin/ruff check .` y `.venv/bin/pytest tests -q`
+Run: `.venv/bin/env -u DATABASE_URL .venv/bin/pytest tests/unit -q`
+
+```bash
+git add src/web tests docs/recorrido-de-casos-de-uso.md
+git commit -m "feat: panel lateral con las wallets y datos en monoespaciada, sin textos explicativos en la interfaz"
+```
