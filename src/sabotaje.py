@@ -48,6 +48,11 @@ VERIFICACION = "http://127.0.0.1:5000/verificar"
 # guardarla, y es el desenlace esperado de los casos `motor-rechaza`.
 VIOLACION_DE_RESTRICCION = "23"
 
+# Veredicto de un error del motor que **no** es una violación de restricción. No está
+# en el catálogo a propósito: un caso no puede declarar que espera una herramienta
+# rota. La comparación lo trata como desacuerdo y la corrida termina en rojo.
+ERROR_INESPERADO = "error-inesperado"
+
 # Las marcas de la narración son texto plano (`ok`, `coincide`, `no coincide`), sin
 # emojis ni símbolos decorativos: la consola de Windows no los dibuja.
 
@@ -107,6 +112,7 @@ class Caso:
     destructivo: bool
     aplicar: Callable[[Herramienta, EstadoCaso], str]
     restaurar: Callable[[Herramienta, EstadoCaso], str]
+    comprobar: Callable[[Herramienta, EstadoCaso], None] | None = None
 
 
 @dataclass(slots=True)
@@ -116,6 +122,11 @@ class EstadoCaso:
     Los casos que borran filas no pueden reponerlas desde la base —ya no están—, así
     que guardan aquí lo que sacaron. El estado es de cada caso y se descarta al
     terminar: la restauración repone el contenido original, no una reconstrucción.
+
+    Los valores capturados son también con qué se **comprueba** la restauración: que la
+    cadena vuelva a verificar es necesario pero no suficiente —un cambio que ningún
+    hash cubre, como la pública de una wallet, pasaría inadvertido—, así que cada caso
+    declara además cómo se verifica que su fila volvió a su contenido.
     """
 
     valores: dict[str, Any]
@@ -136,12 +147,31 @@ class ResultadoCaso:
 
 @dataclass(frozen=True, slots=True)
 class Recorrido:
-    """El resultado de una corrida, para que las pruebas lo lean sin parsear la salida."""
+    """El resultado de una corrida, para que las pruebas lo lean sin parsear la salida.
+
+    `detectados` y `no_detectados` se cuentan sobre lo **observado**, no sobre lo
+    declarado: una corrida donde un caso no coincidió no puede informar el mismo
+    veredicto que el catálogo promete. `desacuerdos` los cuenta aparte y gobierna el
+    código de salida.
+    """
 
     detenido_por_la_comprobacion_previa: bool
     resultados: tuple[ResultadoCaso, ...]
     detectados: int
     no_detectados: int
+    desacuerdos: int
+
+
+def codigo_de_salida(recorrido: Recorrido) -> int:
+    """Código de salida del recorrido: cero solo si todo salió como estaba declarado.
+
+    Un desacuerdo significa que la herramienta, el catálogo o el sistema no se
+    comportaron como está escrito, así que la corrida tiene que fallar como falla una
+    prueba: de lo contrario un caso roto termina en verde.
+    """
+    if recorrido.detenido_por_la_comprobacion_previa:
+        return 1
+    return 1 if recorrido.desacuerdos else 0
 
 
 class Herramienta:
@@ -205,9 +235,23 @@ def abrir() -> Iterator[Sabotaje]:
         yield Sabotaje(Herramienta(connection))
 
 
-def _firma_inventada() -> str:
-    """Una firma con la forma de una real pero imposible: no la produjo ninguna privada."""
-    return "0" * 128
+def _firma_inventada(caso: str) -> str:
+    """Una firma con la forma de una real pero imposible, distinta para cada caso.
+
+    No la produjo ninguna privada y lleva el nombre del caso en el prefijo, que es
+    texto hexadecimal válido: dos casos que insertan una firma inventada no comparten
+    firma, así que la restauración de uno no puede borrar la fila del otro.
+    """
+    marca = f"{caso[:8]:0<8}".lower()
+    return marca + "0" * (128 - len(marca))
+
+
+def _leer_transaccion(herramienta: Herramienta, transaction_id: UUID) -> tuple:
+    """Vuelve a leer una transacción por su identificador, con todas sus columnas."""
+    return herramienta.uno(
+        SQL_TRANSACCION.format(columnas=", ".join(COLUMNAS_TRANSACCION)) + " WHERE id = %s",
+        (transaction_id,),
+    )
 
 
 def _insertar_transaccion(herramienta: Herramienta, valores: Sequence) -> None:
@@ -276,6 +320,7 @@ def _aplicar_alterar_monto(herramienta: Herramienta, estado: EstadoCaso) -> str:
     """Suma uno al monto de una transacción confirmada."""
     objetivo = _una_confirmada(herramienta)
     estado.valores["id"] = objetivo[0]
+    estado.valores["amount"] = objetivo[3]
     herramienta.ejecutar(
         "UPDATE transactions SET amount = amount + 1 WHERE id = %s", (objetivo[0],)
     )
@@ -283,15 +328,22 @@ def _aplicar_alterar_monto(herramienta: Herramienta, estado: EstadoCaso) -> str:
 
 
 def _restaurar_alterar_monto(herramienta: Herramienta, estado: EstadoCaso) -> str:
-    """Repone el monto, que es el único valor que la alteración tocó.
+    """Repone el monto capturado, con su valor absoluto.
 
-    La resta se aplica a la fila capturada y no a una relectura: la transacción sigue
-    teniendo estado `confirmed`, así que nada la confunde con otra.
+    Escribe el valor guardado y no `amount - 1`: con una pausa entre aplicar y
+    restaurar, una resta sobre lo que haya en la fila deja de ser el inverso seguro
+    de la suma —alcanza con que algo más la haya tocado— y reponer el valor original
+    es lo único que garantiza el estado de antes.
     """
+    if "amount" not in estado.valores:
+        # La aplicación del caso no llegó a capturar nada: no hay monto que reponer y
+        # tampoco hay nada que haya quedado alterado.
+        return "no se había alterado ningún monto"
     herramienta.ejecutar(
-        "UPDATE transactions SET amount = amount - 1 WHERE id = %s", (estado.valores["id"],)
+        "UPDATE transactions SET amount = %s WHERE id = %s",
+        (estado.valores["amount"], estado.valores["id"]),
     )
-    return f"la transacción {estado.valores['id']} volvió a su monto original"
+    return f"la transacción {estado.valores['id']} volvió a {estado.valores['amount']}"
 
 
 
@@ -349,13 +401,15 @@ def _aplicar_insertar_confirmada_falsa(herramienta: Herramienta, estado: EstadoC
     """Confirma una transacción con firma inventada dentro de un bloque."""
     bloque = herramienta.todos(SQL_BLOQUES)[-1]
     emisor, receptor = herramienta.todos(SQL_DOS_WALLETS)
+    estado.valores["id"] = uuid.uuid4()
+    estado.valores["amount"] = Decimal("1.50000000")
     fila = (
-        uuid.uuid4(),
+        estado.valores["id"],
         emisor[0],
         receptor[0],
-        Decimal("1.50000000"),
+        estado.valores["amount"],
         "confirmed",
-        _firma_inventada(),
+        _firma_inventada("confirmada"),
         bloque[0],
         datetime.now(UTC),
     )
@@ -364,8 +418,12 @@ def _aplicar_insertar_confirmada_falsa(herramienta: Herramienta, estado: EstadoC
 
 
 def _restaurar_insertar_confirmada_falsa(herramienta: Herramienta, estado: EstadoCaso) -> str:
-    """Borra la fila inventada, que se reconoce por su firma: ninguna otra la tiene."""
-    herramienta.ejecutar("DELETE FROM transactions WHERE signature = %s", (_firma_inventada(),))
+    """Borra la fila inventada por su identificador, que es lo que la identifica.
+
+    La firma también es única, pero borrar por identificador no depende de que la
+    firma se haya escrito como se pensaba: el `INSERT` pudo fallar y la fila no existir.
+    """
+    herramienta.ejecutar("DELETE FROM transactions WHERE id = %s", (estado.valores["id"],))
     return "se borró la transacción de firma inventada"
 
 
@@ -407,7 +465,7 @@ def _aplicar_violar_regla(herramienta: Herramienta, estado: EstadoCaso) -> str:
             wallet[0],
             Decimal("3.00000000"),
             "pending",
-            _firma_inventada(),
+            _firma_inventada("violar"),
             None,
             datetime.now(UTC),
         ),
@@ -443,15 +501,16 @@ def _restaurar_cambiar_llave_wallet(herramienta: Herramienta, estado: EstadoCaso
 def _aplicar_pendiente_firma_invalida(herramienta: Herramienta, estado: EstadoCaso) -> str:
     """Inserta en el pool una pendiente con firma inventada."""
     emisor, receptor = herramienta.todos(SQL_DOS_WALLETS)
+    estado.valores["id"] = uuid.uuid4()
     _insertar_transaccion(
         herramienta,
         (
-            uuid.uuid4(),
+            estado.valores["id"],
             emisor[0],
             receptor[0],
             Decimal("4.00000000"),
             "pending",
-            _firma_inventada(),
+            _firma_inventada("pendiente"),
             None,
             datetime.now(UTC),
         ),
@@ -460,23 +519,33 @@ def _aplicar_pendiente_firma_invalida(herramienta: Herramienta, estado: EstadoCa
 
 
 def _restaurar_pendiente_firma_invalida(herramienta: Herramienta, estado: EstadoCaso) -> str:
-    """Borra la fila del pool, que se reconoce por su firma inventada."""
-    herramienta.ejecutar("DELETE FROM transactions WHERE signature = %s", (_firma_inventada(),))
+    """Borra la fila del pool por su identificador, que es lo que la identifica."""
+    herramienta.ejecutar("DELETE FROM transactions WHERE id = %s", (estado.valores["id"],))
     return "se borró la pendiente de firma inventada"
 
 
 def _aplicar_borrar_genesis(herramienta: Herramienta, estado: EstadoCaso) -> str:
-    """Borra el bloque índice 0."""
+    """Borra el bloque índice 0, con las transacciones que agrupara.
+
+    La clave foránea de `transactions.block_id` es `ON DELETE RESTRICT`: si el génesis
+    tuviera transacciones propias y se intentara borrarlo solo a él, el motor rechazaría
+    el `DELETE` y el caso terminaría informando un `motor-rechaza` falso. Se capturan y
+    se borran primero, como en el truncado de la cola.
+    """
     genesis = herramienta.todos(SQL_BLOQUES)[0]
     estado.valores["bloque"] = genesis
+    estado.valores["filas"] = _transacciones_de(herramienta, genesis[0])
+    herramienta.ejecutar("DELETE FROM transactions WHERE block_id = %s", (genesis[0],))
     herramienta.ejecutar("DELETE FROM blocks WHERE id = %s", (genesis[0],))
     return "se borró el bloque génesis, la cabeza de la cadena"
 
 
 def _restaurar_borrar_genesis(herramienta: Herramienta, estado: EstadoCaso) -> str:
-    """Reinserta el génesis con su índice, su hash previo y su hash propios."""
+    """Reinserta el génesis con sus valores y las transacciones que agrupaba."""
     _insertar_bloque(herramienta, estado.valores["bloque"])
-    return "se reinsertó el bloque génesis"
+    for fila in estado.valores["filas"]:
+        _insertar_transaccion(herramienta, fila)
+    return "se reinsertó el bloque génesis y sus transacciones"
 
 
 def _aplicar_truncar_cola(herramienta: Herramienta, estado: EstadoCaso) -> str:
@@ -497,6 +566,96 @@ def _restaurar_truncar_cola(herramienta: Herramienta, estado: EstadoCaso) -> str
     return "se reinsertaron el bloque y sus transacciones"
 
 
+# ---------------------------------------------------------------------------
+# La comprobación de cada restauración: no alcanza con que la cadena verifique
+# ---------------------------------------------------------------------------
+
+
+def _comprobar_alterar_monto(herramienta: Herramienta, estado: EstadoCaso) -> None:
+    """El monto volvió al valor absoluto que se capturó."""
+    fila = _leer_transaccion(herramienta, estado.valores["id"])
+    if fila[3] != estado.valores["amount"]:
+        raise LookupError(f"el monto quedó en {fila[3]} y era {estado.valores['amount']}")
+
+
+def _comprobar_alterar_hash(herramienta: Herramienta, estado: EstadoCaso) -> None:
+    """El hash del bloque volvió al que estaba guardado."""
+    bloque = estado.valores["bloque"]
+    fila = herramienta.uno("SELECT hash FROM blocks WHERE id = %s", (bloque[0],))
+    if fila[0] != bloque[4]:
+        raise LookupError(f"el hash quedó en {fila[0]} y era {bloque[4]}")
+
+
+def _comprobar_mover_transaccion(herramienta: Herramienta, estado: EstadoCaso) -> None:
+    """La transacción volvió a su bloque original."""
+    fila = _leer_transaccion(herramienta, estado.valores["id"])
+    if fila[6] != estado.valores["block_id"]:
+        raise LookupError(f"la transacción quedó en el bloque {fila[6]}")
+
+
+def _comprobar_borrar_transaccion(herramienta: Herramienta, estado: EstadoCaso) -> None:
+    """La fila borrada volvió con su contenido, no solo con su identificador."""
+    fila = _leer_transaccion(herramienta, estado.valores["fila"][0])
+    if fila != estado.valores["fila"]:
+        raise LookupError("la fila reinsertada no es la que se había borrado")
+
+
+def _comprobar_insertar_confirmada_falsa(herramienta: Herramienta, estado: EstadoCaso) -> None:
+    """La fila inventada ya no está."""
+    existe = herramienta.uno(
+        "SELECT count(*) FROM transactions WHERE id = %s", (estado.valores["id"],)
+    )[0]
+    if existe:
+        raise LookupError("la transacción de firma inventada sigue en la base")
+
+
+def _comprobar_cambiar_llave_wallet(herramienta: Herramienta, estado: EstadoCaso) -> None:
+    """La pública volvió a ser la de antes.
+
+    Es el caso donde mirar la cadena no alcanza: ningún hash cubre el registro de
+    wallets, así que una restauración rota de esta fila pasaría con la cadena válida.
+    """
+    fila = herramienta.uno(
+        "SELECT public_key FROM wallets WHERE id = %s", (estado.valores["id"],)
+    )
+    if fila[0] != estado.valores["public_key"]:
+        raise LookupError("la pública de la wallet no volvió a su valor")
+
+
+def _comprobar_pendiente_firma_invalida(herramienta: Herramienta, estado: EstadoCaso) -> None:
+    """La fila del pool ya no está."""
+    existe = herramienta.uno(
+        "SELECT count(*) FROM transactions WHERE id = %s", (estado.valores["id"],)
+    )[0]
+    if existe:
+        raise LookupError("la pendiente de firma inventada sigue en el pool")
+
+
+def _comprobar_borrar_genesis(herramienta: Herramienta, estado: EstadoCaso) -> None:
+    """El génesis volvió con su contenido, incluida su marca de tiempo."""
+    bloque = estado.valores["bloque"]
+    fila = herramienta.uno(
+        "SELECT id, block_index, timestamp, previous_hash, hash FROM blocks WHERE id = %s",
+        (bloque[0],),
+    )
+    if fila != bloque:
+        raise LookupError("el bloque génesis reinsertado no es el que se había borrado")
+
+
+def _comprobar_truncar_cola(herramienta: Herramienta, estado: EstadoCaso) -> None:
+    """El bloque y sus transacciones volvieron con su contenido."""
+    bloque = estado.valores["bloque"]
+    fila = herramienta.uno(
+        "SELECT id, block_index, timestamp, previous_hash, hash FROM blocks WHERE id = %s",
+        (bloque[0],),
+    )
+    if fila != bloque:
+        raise LookupError("el bloque reinsertado no es el que se había borrado")
+    repuestas = _transacciones_de(herramienta, bloque[0])
+    if sorted(repuestas) != sorted(estado.valores["filas"]):
+        raise LookupError("las transacciones reinsertadas no son las que se habían borrado")
+
+
 CASOS: tuple[Caso, ...] = (
     Caso(
         clave="alterar-monto",
@@ -509,6 +668,7 @@ CASOS: tuple[Caso, ...] = (
         destructivo=False,
         aplicar=_aplicar_alterar_monto,
         restaurar=_restaurar_alterar_monto,
+        comprobar=_comprobar_alterar_monto,
     ),
     Caso(
         clave="alterar-hash",
@@ -521,6 +681,7 @@ CASOS: tuple[Caso, ...] = (
         destructivo=False,
         aplicar=_aplicar_alterar_hash,
         restaurar=_restaurar_alterar_hash,
+        comprobar=_comprobar_alterar_hash,
     ),
     Caso(
         clave="mover-transaccion",
@@ -533,6 +694,7 @@ CASOS: tuple[Caso, ...] = (
         destructivo=False,
         aplicar=_aplicar_mover_transaccion,
         restaurar=_restaurar_mover_transaccion,
+        comprobar=_comprobar_mover_transaccion,
     ),
     Caso(
         clave="borrar-transaccion",
@@ -545,6 +707,7 @@ CASOS: tuple[Caso, ...] = (
         destructivo=True,
         aplicar=_aplicar_borrar_transaccion,
         restaurar=_restaurar_borrar_transaccion,
+        comprobar=_comprobar_borrar_transaccion,
     ),
     Caso(
         clave="insertar-confirmada-falsa",
@@ -557,6 +720,7 @@ CASOS: tuple[Caso, ...] = (
         destructivo=False,
         aplicar=_aplicar_insertar_confirmada_falsa,
         restaurar=_restaurar_insertar_confirmada_falsa,
+        comprobar=_comprobar_insertar_confirmada_falsa,
     ),
     Caso(
         clave="reutilizar-firma",
@@ -597,6 +761,7 @@ CASOS: tuple[Caso, ...] = (
         destructivo=False,
         aplicar=_aplicar_cambiar_llave_wallet,
         restaurar=_restaurar_cambiar_llave_wallet,
+        comprobar=_comprobar_cambiar_llave_wallet,
     ),
     Caso(
         clave="pendiente-firma-invalida",
@@ -606,12 +771,14 @@ CASOS: tuple[Caso, ...] = (
         esperado=CADENA_VALIDA,
         bloque_esperado=None,
         limite=(
-            "la verificación mira los bloques, no el pool: lo que no está agrupado no "
-            "está en ningún hash que recalcular"
+            "la verificación mira los bloques, no el pool, y la agrupación confirma las "
+            "filas del pool sin volver a validar las firmas: una pendiente falsificada "
+            "puede terminar agrupada en un bloque cuyo hash recalcula sin error"
         ),
         destructivo=False,
         aplicar=_aplicar_pendiente_firma_invalida,
         restaurar=_restaurar_pendiente_firma_invalida,
+        comprobar=_comprobar_pendiente_firma_invalida,
     ),
     Caso(
         clave="borrar-genesis",
@@ -624,6 +791,7 @@ CASOS: tuple[Caso, ...] = (
         destructivo=True,
         aplicar=_aplicar_borrar_genesis,
         restaurar=_restaurar_borrar_genesis,
+        comprobar=_comprobar_borrar_genesis,
     ),
     Caso(
         clave="truncar-cola",
@@ -640,6 +808,7 @@ CASOS: tuple[Caso, ...] = (
         destructivo=True,
         aplicar=_aplicar_truncar_cola,
         restaurar=_restaurar_truncar_cola,
+        comprobar=_comprobar_truncar_cola,
     ),
 )
 
@@ -660,6 +829,27 @@ def caso_de(clave: str) -> Caso:
 def esperado_de(clave: str) -> str:
     """El veredicto declarado de un caso, por su clave."""
     return caso_de(clave).esperado
+
+
+def _exigir_forma_de_la_demostracion(herramienta: Herramienta) -> None:
+    """Falla temprano si el ledger no tiene la forma que los casos esperan.
+
+    Los casos eligen sus objetivos por posición: el primer bloque con contenido, la
+    punta de la cadena, una transacción confirmada. Sobre un ledger de otra forma
+    —vacío, o con un solo bloque— el recorrido caería con un `IndexError` a mitad de
+    camino, posiblemente con un caso ya aplicado y sin restaurar. Es preferible decirlo
+    antes del primer caso y no tocar nada.
+    """
+    bloques = herramienta.todos(SQL_BLOQUES)
+    if len(bloques) < 2:
+        raise LookupError(
+            f"hay {len(bloques)} bloques y hacen falta por lo menos dos para tener qué agrupar"
+        )
+    confirmadas = herramienta.uno(
+        "SELECT count(*) FROM transactions WHERE status = 'confirmed'"
+    )[0]
+    if not confirmadas:
+        raise LookupError("no hay ninguna transacción confirmada que sabotear")
 
 
 # ---------------------------------------------------------------------------
@@ -719,10 +909,8 @@ def _texto_del_esperado(caso: Caso) -> str:
     return "la cadena sigue válida: este caso no se detecta"
 
 
-def _mostrar_caso(
-    caso: Caso, indice: int, total: int, pausa: bool, entrada, salida: Salida
-) -> None:
-    """Narra un caso: qué hace, qué mirar, qué se espera y, si corresponde, la pausa."""
+def _mostrar_caso(caso: Caso, indice: int, total: int, salida: Salida) -> None:
+    """Narra el encabezado de un caso: qué hace, qué mirar y qué se espera."""
     salida.linea(f"[{indice}/{total}] {caso.titulo} ({caso.clave})")
     salida.linea(f"{'que hace':<{ANCHO_ETIQUETA}}: {caso.que_hace}")
     # La dirección de la verificación solo se agrega cuando el caso pide mirarla: los
@@ -733,28 +921,57 @@ def _mostrar_caso(
     salida.linea(f"{'se espera':<{ANCHO_ETIQUETA}}: {_texto_del_esperado(caso)}")
     if caso.limite is not None:
         salida.linea(f"{'limite':<{ANCHO_ETIQUETA}}: {caso.limite}")
-    if pausa:
-        _esperar_enter(entrada, salida)
 
 
-def _esperar_enter(entrada, salida: Salida) -> None:
+def _esperar_enter(pausa: bool, mensaje: str, entrada, salida: Salida) -> None:
     """Espera un Enter para que la persona mire el navegador antes de seguir.
 
     Solo espera si la entrada es un terminal. En una corrida con guion o desde la
     suite no hay nadie que pueda pulsar Enter, y esperar de todos modos colgaría el
     proceso para siempre; en ese caso se dice y se sigue sin pausas.
     """
+    if not pausa:
+        return
     flujo = sys.stdin if entrada is None else entrada
     if not flujo.isatty():
         salida.linea("pausa: no hay terminal donde esperar un Enter; sigo sin pausas")
         return
-    salida.linea("pausa: pulse Enter cuando haya mirado el navegador")
+    salida.linea(f"pausa: {mensaje}")
     try:
         flujo.readline()
     except EOFError:
         # La entrada se cerró entre la comprobación y la lectura: es el mismo caso sin
         # nadie enfrente, así que se sigue en vez de caer.
         salida.linea("pausa: la entrada se cerró; sigo sin pausas")
+
+
+def descripcion_del_error(sqlstate: str | None) -> str:
+    """Traduce el SQLSTATE de un error del motor al veredicto del catálogo.
+
+    Solo las violaciones de restricción son «el motor rechazó»: son las que el motor
+    levanta al rechazar una fila antes de guardarla, que es lo que los dos casos
+    declaran. Cualquier otro error —una consulta mal escrita de esta herramienta, un
+    tipo equivocado, una columna que no existe— es un error inesperado de la
+    herramienta, no algo que el sistema haga, y daría por buena una fila que nunca se
+    intentó escribir.
+    """
+    if sqlstate is not None and sqlstate.startswith(VIOLACION_DE_RESTRICCION):
+        return MOTOR_RECHAZA
+    return ERROR_INESPERADO
+
+
+def _texto_de_la_primera_pausa(observado: str, escrito: bool) -> str:
+    """Qué se le pide mirar a la persona antes de observar la cadena.
+
+    No es el mismo daño en los tres desenlaces: una fila alterada se mira en
+    `/verificar`, un rechazo del motor se mira en esta consola —el error acaba de
+    salir— y un fallo de la herramienta no se demuestra, solo se informa.
+    """
+    if observado == MOTOR_RECHAZA:
+        return "pulse Enter cuando haya visto el rechazo del motor"
+    if not escrito:
+        return "pulse Enter para seguir"
+    return "pulse Enter cuando haya mirado el daño"
 
 
 def _detectar_veredicto(herramienta: Herramienta) -> tuple[str, int | None]:
@@ -765,12 +982,16 @@ def _detectar_veredicto(herramienta: Herramienta) -> tuple[str, int | None]:
     return CADENA_INVALIDA, reporte.altered_block_index
 
 
-def _comparar(caso: Caso, observado: str, indice: int | None) -> tuple[bool, str]:
+def _comparar(
+    caso: Caso, observado: str, indice: int | None, error_del_motor: str = ""
+) -> tuple[bool, str]:
     """Compara lo observado con lo que el caso declara; devuelve si coincide y el detalle."""
     if observado == MOTOR_RECHAZA:
         if caso.esperado == MOTOR_RECHAZA:
-            return True, "el motor rechazó la fila, como estaba declarado"
-        return False, "el motor rechazó una fila que tenía que entrar"
+            return True, f"el motor rechazó la fila ({error_del_motor}), como estaba declarado"
+        return False, f"el motor rechazó una fila que tenía que entrar ({error_del_motor})"
+    if observado == ERROR_INESPERADO:
+        return False, f"error inesperado de la herramienta: {error_del_motor}"
     if observado != caso.esperado:
         return False, f"se observó {observado} y se esperaba {caso.esperado}"
     if caso.bloque_esperado is not None and indice != caso.bloque_esperado:
@@ -779,32 +1000,54 @@ def _comparar(caso: Caso, observado: str, indice: int | None) -> tuple[bool, str
 
 
 def _siguiente(
-    herramienta: Herramienta, estado: EstadoCaso, caso: Caso, salida: Salida
+    herramienta: Herramienta,
+    estado: EstadoCaso,
+    caso: Caso,
+    pausa: bool,
+    entrada,
+    salida: Salida,
 ) -> ResultadoCaso:
-    """Aplica, observa, compara y restaura un caso; devuelve lo que pasó.
+    """Aplica, deja mirar, observa, dictamina, restaura y deja mirar la vuelta.
 
-    El error del motor no se traduce: para los casos `motor-rechaza` es el desenlace
-    esperado y el mensaje de PostgreSQL es la demostración (REQ-19). La restauración
-    con los valores capturados y la comprobación posterior de que la cadena vuelve a
-    ser válida se hacen en los dos desenlaces, para que la herramienta no deje el
-    ledger roto aunque un caso no haya salido como estaba declarado.
+    El orden es el de la demostración y no el del código más corto: el daño tiene que
+    estar en la base **mientras** la persona mira `/verificar`, y la restauración tiene
+    que estar hecha antes de la segunda pausa, que es la que muestra que la herramienta
+    deja el ledger como estaba. Aplicar y restaurar entre dos pausas, sin pausa en el
+    medio, dejaría el estado alterado milisegundos y no habría nada que ver.
+
+    El error del motor no se traduce: el mensaje de PostgreSQL es la demostración
+    (REQ-19). La restauración con los valores capturados y la comprobación posterior se
+    hacen en los dos desenlaces, para que la herramienta no deje el ledger roto aunque
+    un caso no haya salido como estaba declarado.
     """
     observado = CADENA_VALIDA
     bloque: int | None = None
+    detalle_del_error = ""
+    escrito = False
     try:
         hecho = caso.aplicar(herramienta, estado)
+        escrito = True
         salida.linea(f"{'se aplico':<{ANCHO_ETIQUETA}}: {hecho}")
     except psycopg.errors.Error as error:
-        observado = MOTOR_RECHAZA
-        salida.linea(f"{'se aplico':<{ANCHO_ETIQUETA}}: el motor rechazó la fila")
-        salida.linea(
-            f"{'el motor':<{ANCHO_ETIQUETA}}: {error.diag.sqlstate} {error.diag.message_primary}"
-        )
-    else:
+        detalle_del_error = f"{error.diag.sqlstate} {error.diag.message_primary}"
+        observado = descripcion_del_error(error.diag.sqlstate)
+        salida.linea(f"{'se aplico':<{ANCHO_ETIQUETA}}: el motor levantó un error")
+        salida.linea(f"{'el motor':<{ANCHO_ETIQUETA}}: {detalle_del_error}")
+    except Exception as error:  # noqa: BLE001 - la herramienta no puede caer por un caso
+        # Un fallo de la herramienta no es un desenlace del sistema: se informa, se
+        # cuenta como desacuerdo y se sigue, para que la corrida no se detenga a mitad
+        # de camino dejando una alteración sin restaurar.
+        salida.linea(f"{'se aplico':<{ANCHO_ETIQUETA}}: falló la herramienta: {error!r}")
+
+    # La pausa va con el efecto ya escrito en la base. Su texto depende del desenlace:
+    # lo que hay para mirar no es lo mismo cuando la fila quedó alterada, cuando el
+    # motor la rechazó —queda el error en la consola— o cuando falló la herramienta.
+    _esperar_enter(pausa, _texto_de_la_primera_pausa(observado, escrito), entrada, salida)
+    if escrito:
         observado, bloque = _detectar_veredicto(herramienta)
         salida.linea(f"{'observado':<{ANCHO_ETIQUETA}}: {observado}")
 
-    coincide, detalle = _comparar(caso, observado, bloque)
+    coincide, detalle = _comparar(caso, observado, bloque, detalle_del_error)
     marca = "coincide" if coincide else "no coincide"
     salida.linea(f"{'veredicto':<{ANCHO_ETIQUETA}}: {marca} ({detalle})")
 
@@ -812,13 +1055,24 @@ def _siguiente(
     try:
         repuesto = caso.restaurar(herramienta, estado)
         salida.linea(f"{'restaurado':<{ANCHO_ETIQUETA}}: {repuesto}")
-        restaurado = herramienta.cadena_valida()
-        salida.linea(
-            f"{'cadena':<{ANCHO_ETIQUETA}}: "
-            + ("ok, vuelve a ser válida" if restaurado else "no volvió a ser válida")
-        )
     except psycopg.errors.Error as error:
         salida.linea(f"{'restaurado':<{ANCHO_ETIQUETA}}: falló: {error}")
+        return ResultadoCaso(
+            clave=caso.clave,
+            esperado=caso.esperado,
+            observado=observado,
+            bloque_observado=bloque,
+            coincide=coincide,
+            restaurado=False,
+            detalle=detalle,
+        )
+
+    # La segunda pausa va con la restauración hecha: es la mitad de la demostración que
+    # muestra que el ledger vuelve a su estado, no solo que la cadena verifica.
+    _esperar_enter(
+        pausa, "pulse Enter cuando haya visto que volvió a la normalidad", entrada, salida
+    )
+    restaurado = _comprobar_restauracion(herramienta, estado, caso, salida)
     return ResultadoCaso(
         clave=caso.clave,
         esperado=caso.esperado,
@@ -830,15 +1084,48 @@ def _siguiente(
     )
 
 
+def _comprobar_restauracion(
+    herramienta: Herramienta, estado: EstadoCaso, caso: Caso, salida: Salida
+) -> bool:
+    """Comprueba que el ledger volvió a su estado: la fila del caso y la cadena.
+
+    La cadena por sí sola no alcanza: hay alteraciones que ningún hash cubre —la
+    pública de una wallet es el caso— y una restauración rota pasaría con la cadena
+    válida. Por eso cada caso declara con qué se comprueba, además.
+    """
+    if caso.comprobar is not None:
+        try:
+            caso.comprobar(herramienta, estado)
+        except LookupError as error:
+            salida.linea(f"{'restauracion':<{ANCHO_ETIQUETA}}: no volvió: {error}")
+            return False
+    valida = herramienta.cadena_valida()
+    salida.linea(
+        f"{'cadena':<{ANCHO_ETIQUETA}}: "
+        + ("ok, vuelve a ser válida" if valida else "no volvió a ser válida")
+    )
+    return valida
+
+
 def _resumen(recorrido: Recorrido, salida: Salida) -> None:
-    """El cierre: cuántos se detectaron, cuáles no y por qué."""
+    """El cierre: cuántos se detectaron, cuáles no, y qué no coincidió con lo declarado.
+
+    Los desacuerdos se listan aparte y con su detalle: son los casos donde el sistema o
+    la herramienta no hicieron lo que el catálogo dice, y son la razón de que la corrida
+    termine con código distinto de cero.
+    """
     salida.linea("")
     salida.linea("resumen")
     salida.linea(f"casos corridos: {len(recorrido.resultados)}")
     salida.linea(f"detectados: {recorrido.detectados}")
     salida.linea(f"no detectados: {recorrido.no_detectados}")
+    salida.linea(f"desacuerdos: {recorrido.desacuerdos}")
     for resultado in recorrido.resultados:
-        if resultado.esperado != CADENA_VALIDA:
+        if resultado.coincide:
+            continue
+        salida.linea(f"- {resultado.clave}: no coincide. {resultado.detalle}")
+    for resultado in recorrido.resultados:
+        if not resultado.coincide or resultado.esperado != CADENA_VALIDA:
             continue
         caso = caso_de(resultado.clave)
         salida.linea(f"- {caso.clave}: no se detecta. {caso.limite}")
@@ -885,6 +1172,14 @@ class Sabotaje:
         """Si la cadena verifica como válida ahora mismo."""
         return self._herramienta.cadena_valida()
 
+    def publica_de_una_wallet(self) -> str:
+        """La pública de la wallet que el caso de la llave usa como objetivo.
+
+        Se lee con la misma consulta que el caso para que la prueba compare la misma
+        fila que la herramienta cambia, y no una elegida aparte.
+        """
+        return self._herramienta.uno(SQL_UNA_WALLET)[1]
+
     def recorrido(
         self,
         *,
@@ -905,7 +1200,11 @@ class Sabotaje:
         """
         destino = Salida(salida)
         if not self._comprobar(destino, web):
-            return Recorrido(True, (), 0, 0)
+            # Las instrucciones de recuperación van en el camino de fallo, que es donde
+            # hacen falta: decir que están «al final» y volver antes de imprimirlas
+            # manda a buscar algo que no está.
+            _instrucciones_de_resembrado(destino)
+            return Recorrido(True, (), 0, 0, 0)
 
         elegidos = [
             caso
@@ -921,21 +1220,47 @@ class Sabotaje:
         if pausas and entrada is None and not sys.stdin.isatty():
             destino.linea("pausa: no hay terminal donde esperar un Enter; sigo sin pausas")
 
+        # La forma de la demostración se comprueba antes del primer caso: los casos
+        # eligen sus objetivos por posición —el primer bloque con contenido, la punta—
+        # y un ledger con otra forma haría que el recorrido cayera a mitad de camino,
+        # posiblemente con una alteración sin restaurar.
+        try:
+            _exigir_forma_de_la_demostracion(self._herramienta)
+        except LookupError as error:
+            destino.linea(f"la demostración no tiene la forma esperada: {error}")
+            destino.linea(
+                "siembre la demostración con `python -m src.bootstrap` sobre una base "
+                "vacía y vuelva a correr esto."
+            )
+            _instrucciones_de_resembrado(destino)
+            return Recorrido(True, (), 0, 0, 0)
+
         resultados = []
         total = len(elegidos)
         for indice, caso in enumerate(elegidos, start=1):
             permiso_de_pausa = pausas and (entrada is not None or sys.stdin.isatty())
-            _mostrar_caso(caso, indice, total, permiso_de_pausa, entrada, destino)
+            _mostrar_caso(caso, indice, total, destino)
             estado = self._estados.setdefault(caso.clave, EstadoCaso(valores={}))
-            resultados.append(_siguiente(self._herramienta, estado, caso, destino))
+            resultados.append(
+                _siguiente(self._herramienta, estado, caso, permiso_de_pausa, entrada, destino)
+            )
             destino.linea("")
 
-        detectados = sum(1 for resultado in resultados if resultado.esperado != CADENA_VALIDA)
+        # Los conteos salen de lo **observado**. Un caso que no coincidió con lo que
+        # declara no puede sumar como detectado ni como límite: es un desacuerdo.
+        detectados = sum(1 for resultado in resultados if resultado.observado != CADENA_VALIDA)
+        limites = sum(
+            1
+            for resultado in resultados
+            if resultado.coincide and resultado.esperado == CADENA_VALIDA
+        )
+        desacuerdos = sum(1 for resultado in resultados if not resultado.coincide)
         recorrido = Recorrido(
             detenido_por_la_comprobacion_previa=False,
             resultados=tuple(resultados),
             detectados=detectados,
-            no_detectados=len(resultados) - detectados,
+            no_detectados=limites,
+            desacuerdos=desacuerdos,
         )
         _resumen(recorrido, destino)
         _instrucciones_de_resembrado(destino)
@@ -949,10 +1274,23 @@ class Sabotaje:
         mezclaría la alteración ajena con la propia; sin aplicación, no hay nada que
         mirar en el navegador y la pausa no tendría sentido.
         """
-        reporte = self._herramienta.reporte()
         salida.linea("comprobación previa")
-        salida.linea(f"{'capturas':<{ANCHO_ETIQUETA}}: {self._herramienta.capturas()}")
-        salida.linea(f"{'transacciones':<{ANCHO_ETIQUETA}}: {self._herramienta.transacciones()}")
+        try:
+            reporte = self._herramienta.reporte()
+            capturas = self._herramienta.capturas()
+            transacciones = self._herramienta.transacciones()
+        except psycopg.Error as error:
+            # El rastro del driver no dice qué hacer: se informa el desenlace y se
+            # corta antes del primer caso, que es lo que evita dejar una alteración
+            # aplicada a medias.
+            salida.linea(f"la base de datos no responde: {error}")
+            salida.linea(
+                "levante PostgreSQL (`docker compose up -d` o `podman compose up -d`) y "
+                "vuelva a correr esto."
+            )
+            return False
+        salida.linea(f"{'capturas':<{ANCHO_ETIQUETA}}: {capturas}")
+        salida.linea(f"{'transacciones':<{ANCHO_ETIQUETA}}: {transacciones}")
         if not reporte.valid:
             salida.linea(
                 "la cadena ya viene alterada: el bloque señalado es el "
@@ -1003,11 +1341,22 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     opciones = parser.parse_args(argv)
 
-    with abrir() as sabotaje:
-        recorrido = sabotaje.recorrido(
-            con_destructivos=opciones.destructivos, pausas=not opciones.sin_pausas
+    try:
+        with abrir() as sabotaje:
+            recorrido = sabotaje.recorrido(
+                con_destructivos=opciones.destructivos, pausas=not opciones.sin_pausas
+            )
+    except psycopg.Error as error:
+        # La conexión de la herramienta no se pudo abrir: sin motor no hay nada que
+        # sabotear ni que verificar, y el rastro de la librería no dice qué hacer.
+        print(f"la base de datos no responde: {error}", file=sys.stderr)
+        print(
+            "levante PostgreSQL (`docker compose up -d` o `podman compose up -d`), "
+            "revise DATABASE_URL y vuelva a correr esto.",
+            file=sys.stderr,
         )
-    return 1 if recorrido.detenido_por_la_comprobacion_previa else 0
+        return 2
+    return codigo_de_salida(recorrido)
 
 
 if __name__ == "__main__":
