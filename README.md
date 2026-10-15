@@ -342,6 +342,83 @@ La alteración deja la base modificada a propósito. Para volver a los datos de
 demostración, borre el volumen y vuelva a sembrar: `docker compose down -v`,
 `docker compose up -d` (o con Podman) y `<venv> -m src.bootstrap`.
 
+## Sabotaje guiado
+
+`python -m src.sabotaje` es una herramienta de verificación y demostración: altera el
+ledger a propósito, por SQL directo, y narra cada caso para que se vea en el navegador
+qué detecta la cadena y qué no. No es parte del camino de la aplicación —ninguna ruta
+la usa ni la importa (REQ-29)— y no cambia el comportamiento del sistema: existe para
+mostrar en una sola corrida lo que las pruebas afirman por separado, incluidos los
+límites.
+
+**Antes de empezar**, la aplicación tiene que estar corriendo en otra terminal
+(`<venv> -m src.web`) y la cadena tiene que estar válida. La herramienta lo comprueba
+primero: si la cadena ya viene alterada, o si `/verificar` no responde, lo dice y no
+corre ningún caso, porque el veredicto de cada caso dejaría de significar algo.
+
+**Los dos modos.**
+
+```text
+<venv> -m src.sabotaje
+```
+
+Es el modo interactivo, el que se usa para una demostración en vivo: imprime el caso,
+lo aplica, dice qué mirar en `http://127.0.0.1:5000/verificar` y **espera un Enter**
+antes de seguir. Si la entrada no es un terminal —una corrida con guion, o la suite— no
+espera y lo avisa, así que nunca se queda colgado esperando a alguien que no está.
+
+```text
+<venv> -m src.sabotaje --sin-pausas
+```
+
+Es el mismo recorrido sin esperar a nadie, para la suite o para un guion cerrado.
+
+**Los once casos, y los tres destructivos.** El recorrido normal corre ocho casos: los
+que alteran una fila, los que el motor rechaza y los tres límites. Los otros tres
+borran datos y **no se tocan sin pedirlo**; se agregan con la bandera `--destructivos`:
+
+```text
+<venv> -m src.sabotaje --destructivos
+```
+
+| Caso                        | Qué hace                                                           | Qué se espera                                                             |
+| --------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------- |
+| `alterar-monto`             | suma uno al monto de una transacción confirmada                    | cadena inválida, bloque 1                                                 |
+| `alterar-hash`              | escribe sesenta y cuatro ceros como hash de un bloque              | cadena inválida, bloque 1                                                 |
+| `mover-transaccion`         | mueve una confirmada al bloque génesis                             | cadena inválida                                                           |
+| `insertar-confirmada-falsa` | confirma, dentro de un bloque, una transacción con firma inventada | cadena inválida                                                           |
+| `reutilizar-firma`          | inserta con una firma ya registrada                                | el motor rechaza: índice único de la firma                                |
+| `violar-regla`              | inserta con el mismo emisor y receptor                             | el motor rechaza: CHECK del esquema                                       |
+| `cambiar-llave-wallet`      | cambia la pública de una wallet                                    | **no se detecta**: el hash cubre transacciones, no el registro de wallets |
+| `pendiente-firma-invalida`  | inserta una pendiente con firma inventada                          | **no se detecta**: la verificación mira bloques, no el pool               |
+| `borrar-transaccion`        | borra una confirmada (destructivo)                                 | cadena inválida                                                           |
+| `borrar-genesis`            | borra el bloque índice 0 (destructivo)                             | cadena inválida                                                           |
+| `truncar-cola`              | borra el último bloque y sus transacciones (destructivo)           | **no se detecta**: sin ancla externa no hay con qué comparar              |
+
+Cada caso declara su veredicto como un dato, y el recorrido restaura lo que tocó antes
+de pasar al siguiente: al final de la corrida, `/verificar` tiene que volver a decir
+"La cadena es válida". El cierre del recorrido imprime el resumen —cuántos se
+detectaron, cuántos no y por qué— y las instrucciones de resembrado, por si alguna
+corrida quedó a medias.
+
+**Recuperación.** La herramienta restaura cada caso, pero si una corrida se interrumpe
+a la mitad la base queda alterada y la aplicación no tiene una operación que lo
+deshaga. El camino de vuelta es el reinicio limpio, en este orden:
+
+```text
+docker compose down -v
+docker compose up -d
+<venv> -m src.bootstrap
+<venv> -m src.web
+```
+
+Con Podman, `podman compose down -v` y `podman compose up -d` con el mismo resto. La
+primera línea baja los contenedores **borrando el volumen** (sin `-v` los datos
+siguen ahí), la segunda los vuelve a levantar —`db/init.sql` se aplica solo al crear
+el volumen de nuevo—, la tercera siembra los datos de demostración y la cuarta levanta
+la aplicación. Al final, `http://127.0.0.1:5000/verificar` tiene que decir "La cadena
+es válida".
+
 ## Apagar y limpiar
 
 **Detener la aplicación.** En la terminal donde corre `<venv> -m src.web`, `Ctrl+C`. No

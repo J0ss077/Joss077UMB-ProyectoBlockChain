@@ -1139,3 +1139,57 @@ Run: `.venv/bin/pytest tests -q` y `.venv/bin/ruff check .` y `env -u DATABASE_U
 git add src/persistence/factory.py tests/unit .env.example README.md
 git commit -m "fix: la conexion falla rapido cuando el puerto no responde, y el ejemplo usa 127.0.0.1"
 ```
+
+---
+
+### Task 15: Sabotaje guiado del ledger
+
+Herramienta de verificación y demostración, aprobada por el humano: `python -m src.sabotaje` sabotea el ledger a propósito, narra cada paso, espera a que el humano mire el navegador, y dice en cada caso qué se esperaba y qué pasó. No es parte del camino de la aplicación; entra a la lista cerrada de artefactos con esa justificación.
+
+**Files:**
+
+- Create: `src/sabotaje.py`, `tests/integration/test_sabotaje.py`
+- Modify: `README.md`, `docs/superpowers/specs/2026-10-10-blockchain-transaccional-design.md`, este plan
+
+**Interfaces:**
+
+- `python -m src.sabotaje` — modo interactivo por defecto: imprime cada caso, lo aplica, dice qué mirar en el navegador y **espera un Enter**.
+- `--sin-pausas` — lo mismo sin esperar a nadie, para la suite o un guion cerrado.
+- `--destructivos` — agrega los tres casos que borran datos; sin esta bandera no se tocan.
+- Cada caso se declara como un dato (`clave`, `titulo`, `que_hace`, `que_mirar`, `esperado`, `bloque_esperado`, `limite`, `destructivo`, `aplicar`, `restaurar`), separado de la narración, para que se pueda correr sin humano y para que una prueba pueda exigir que todo caso declare su veredicto.
+- `esperado` es uno de tres valores: `cadena-valida`, `cadena-invalida`, `motor-rechaza`. Los casos que el sistema **no** detecta se declaran `cadena-valida` y traen `limite` con el porqué.
+- Verificación de la cadena con `factory.ledger()`; sabotaje con SQL directo sobre una conexión propia que sale de `factory.database_url()`.
+- Marcas de texto planas (`ok`, `coincide`, `no coincide`), sin emojis ni símbolos decorativos: las consolas de Windows no los renderizan.
+
+**Los once casos**
+
+| #   | Clave                       | Qué hace                                                         | Esperado                                                                             | Restaura                         |
+| --- | --------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------ | -------------------------------- |
+| 1   | `alterar-monto`             | `amount + 1` a una transacción confirmada                        | `cadena-invalida`, bloque 1                                                          | repone el monto                  |
+| 2   | `alterar-hash`              | el hash de un bloque a sesenta y cuatro ceros                    | `cadena-invalida`, bloque 1                                                          | repone el hash                   |
+| 3   | `mover-transaccion`         | una confirmada a otro bloque                                     | `cadena-invalida`                                                                    | repone `block_id`                |
+| 4   | `borrar-transaccion`        | borra una confirmada                                             | `cadena-invalida`                                                                    | reinserta la fila                |
+| 5   | `insertar-confirmada-falsa` | confirma una transacción con firma inventada dentro de un bloque | `cadena-invalida`                                                                    | borra la fila                    |
+| 6   | `reutilizar-firma`          | inserta con una firma ya registrada                              | `motor-rechaza`                                                                      | no escribe nada                  |
+| 7   | `violar-regla`              | inserta con emisor igual al receptor                             | `motor-rechaza`                                                                      | no escribe nada                  |
+| 8   | `cambiar-llave-wallet`      | cambia la pública de una wallet                                  | `cadena-valida` — **límite**: el hash cubre transacciones, no el registro de wallets | repone la pública                |
+| 9   | `pendiente-firma-invalida`  | inserta una pendiente con firma inventada                        | `cadena-valida` — **límite**: la verificación mira bloques, no el pool               | borra la fila                    |
+| 10  | `borrar-genesis`            | borra el bloque índice 0 (destructivo)                           | `cadena-invalida`                                                                    | reinserta el bloque              |
+| 11  | `truncar-cola`              | borra el último bloque y sus transacciones (destructivo)         | `cadena-valida` — **límite**: sin ancla externa no hay con qué comparar              | reinserta bloque y transacciones |
+
+**Salida esperada** (por caso, con `[1/11]` y las líneas alineadas): qué hace, qué mirar en el navegador (`http://127.0.0.1:5000/verificar`), qué se espera, la espera del Enter, el resultado, y si restauró. Al final: un resumen con cuántos se detectaron y cuántos no, la lista de los no detectados con su porqué, y **las instrucciones de resembrado**, explícitas y en orden —bajar los contenedores borrando el volumen, volver a levantarlos, sembrar de nuevo con el arranque del proyecto— y qué tiene que decir la pantalla después: `http://127.0.0.1:5000/verificar` → «La cadena es válida».
+
+**Comprobación previa antes del primer caso**: que la cadena esté válida (si ya viene alterada, se detiene y pide resembrar o restaurar) y que la aplicación responda con HTTP 200 en `/verificar`; si no responde, imprime el comando para levantarla y no sigue.
+
+- [ ] **Step 1: Pruebas que fallan** — el catálogo declara veredicto, `que_hace`, `que_mirar` y, si no se detecta, el porqué; los destructivos están marcados. Y un recorrido headless que, para cada caso no destructivo: aplica, verifica contra lo declarado, restaura y comprueba que la cadena vuelve a ser válida.
+- [ ] **Step 2: Ver el rojo.**
+- [ ] **Step 3: Implementar `src/sabotaje.py`.**
+- [ ] **Step 4: Suite completa en verde.**
+- [ ] **Step 5: README** — una sección «Sabotaje guiado» con qué hace, los dos modos, los tres destructivos y las instrucciones de recuperación.
+- [ ] **Step 6: Enmendar el diseño** — agregar `src/sabotaje.py` a la lista cerrada de artefactos de la decisión 11 con su justificación, y una línea en «Cómo se verifica»: es la capa que muestra en una corrida lo que las pruebas afirman por separado, incluidos los límites.
+- [ ] **Step 7: Commit**
+
+```bash
+git add src/sabotaje.py tests/integration/test_sabotaje.py README.md docs
+git commit -m "feat: sabotaje guiado del ledger, con los limites declarados y la recuperacion explicita"
+```
