@@ -15,6 +15,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import psycopg
+from psycopg.conninfo import conninfo_to_dict, make_conninfo
 
 from src.domain.blockchain import Blockchain
 from src.persistence.postgres import (
@@ -48,14 +49,32 @@ def _env_value(name: str) -> str | None:
 
 
 def database_url() -> str:
-    """Cadena de conexión del entorno o de `.env`.
+    """Cadena de conexión del entorno o de `.env`, normalizada antes de devolverla.
 
     Si falta, falla con la instrucción en vez de adivinar un valor: una
     configuración a medias tiene que doler ahora y no en la primera consulta.
+
+    La cadena vuelve con `connect_timeout` puesto si no lo traía: sin tiempo de
+    espera, cuánto aguantar frente a un puerto que no contesta lo deciden la librería
+    y el sistema operativo —y detrás del retransmisor de WSL2 en Windows puede ser
+    mucho—, así que un puerto mal puesto se ve como un cuelgue en lugar de como un
+    error. Un `connect_timeout` explícito en la cadena se respeta tal cual.
+
+    Normalizar aquí y no en cada conexión cubre las dos que abre el ledger: la de
+    `ledger()` y la de la unidad de trabajo, que reciben esta misma cadena.
+
+    La cadena vuelve en la forma canónica de libpq (`host=... port=...
+    connect_timeout=5`), no en la forma de URL que se escribe en `.env`: para saber si
+    ya traía un tiempo de espera hay que interpretarla, y `conninfo` la vuelve a
+    escribir con todos sus parámetros más el que se agrega. `psycopg` acepta las dos
+    formas, y de esta función solo sale la cadena con la que se conecta, así que el
+    cambio de forma no llega a nadie más.
     """
     url = _env_value("DATABASE_URL")
     if url:
-        return url
+        params = conninfo_to_dict(url)
+        params.setdefault("connect_timeout", "5")
+        return make_conninfo(**params)
     raise RuntimeError(
         "Falta DATABASE_URL en el entorno y en `.env`: levante la base con "
         "`docker compose up -d` (o `podman compose up -d`) y copie `.env.example` a `.env`."

@@ -85,6 +85,17 @@ Revise que `POSTGRES_PORT` y el puerto de `DATABASE_URL` sean el mismo: el prime
 el puerto que se publica en el equipo y el segundo es el que usa la aplicación para
 conectarse. Los valores de la plantilla funcionan tal cual.
 
+El host de `DATABASE_URL` es `127.0.0.1` y no `localhost`, y no es un detalle: en
+Windows `localhost` puede resolverse primero a IPv6 (`::1`) mientras el contenedor
+publica en IPv4 (`compose.yaml` publica el puerto en `127.0.0.1`, no en todas las
+interfaces).
+
+Si después cambia `POSTGRES_PORT`, **hay que recrear el contenedor** para que publique
+el puerto nuevo: editar `.env` no lo recrea, el contenedor que ya está corriendo sigue
+con el puerto viejo. Vuelva a levantarlo con `docker compose up -d` (o `podman compose
+up -d`): Compose detecta que cambió la definición del servicio y lo recrea. El paso
+siguiente es el que levanta el contenedor por primera vez.
+
 ### 3. Levantar PostgreSQL 16
 
 ```text
@@ -141,6 +152,20 @@ barra superior con los enlaces y el panel lateral con las wallets están a la vi
 todas las páginas de trabajo. La aplicación arranca sin el depurador interactivo ni el
 recargador de código; se activan con `FLASK_DEBUG=1` en el entorno, solo para desarrollo
 local.
+
+## Problemas conocidos
+
+**La aplicación parece quedarse pensando.** El arranque imprime al final, así que una
+conexión que espera se ve igual que un cuelgue. Si el arranque se queda callado, revise
+el host de `DATABASE_URL`: use `127.0.0.1` en lugar de `localhost`. En Windows
+`localhost` puede resolverse primero a IPv6 (`::1`) mientras el contenedor publica en
+IPv4 (el `compose.yaml` publica el puerto en `127.0.0.1`), y la conexión se queda
+esperando una dirección donde nadie escucha.
+
+Desde esta versión, una conexión imposible falla en cinco segundos con el mensaje del
+motor en vez de esperar lo que decida el sistema operativo. El tiempo de espera lo pone
+`database_url()` cuando la cadena no lo trae; si usted pasa su propia cadena con otro
+`connect_timeout`, ese manda.
 
 ## Las cinco rutas
 
