@@ -362,10 +362,15 @@ corre ningún caso, porque el veredicto de cada caso dejaría de significar algo
 <venv> -m src.sabotaje
 ```
 
-Es el modo interactivo, el que se usa para una demostración en vivo: imprime el caso,
-lo aplica, dice qué mirar en `http://127.0.0.1:5000/verificar` y **espera un Enter**
-antes de seguir. Si la entrada no es un terminal —una corrida con guion, o la suite— no
-espera y lo avisa, así que nunca se queda colgado esperando a alguien que no está.
+Es el modo interactivo, el que se usa para una demostración en vivo. Por caso: imprime el
+encabezado, **aplica** la alteración, **espera un Enter** —ahí es donde la persona mira
+`http://127.0.0.1:5000/verificar` y ve la cadena en rojo—, informa el veredicto,
+**restaura**, **espera un segundo Enter** —ahí es donde mira que la cadena volvió a ser
+válida— y sigue con el caso siguiente. La alteración queda escrita en la base entre las
+dos pausas, que es lo que hace que haya algo para ver; sin la segunda pausa, la vuelta al
+estado original pasaría sin que nadie la mire. Si la entrada no es un terminal —una
+corrida con guion, o la suite— no espera y lo avisa, así que nunca se queda colgado
+esperando a alguien que no está.
 
 ```text
 <venv> -m src.sabotaje --sin-pausas
