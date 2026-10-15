@@ -1065,3 +1065,57 @@ Run: `.venv/bin/env -u DATABASE_URL .venv/bin/pytest tests/unit -q`
 git add src/web tests docs/recorrido-de-casos-de-uso.md
 git commit -m "feat: panel lateral con las wallets y datos en monoespaciada, sin textos explicativos en la interfaz"
 ```
+
+---
+
+### Task 14: La conexión falla rápido, y el ejemplo no usa `localhost`
+
+Surgió probando en Windows: el compañero movió el puerto de la base porque otro motor lo ocupaba, y el arranque «parecía congelado». Dos causas del código y de la plantilla, no del compañero: `psycopg.connect` no lleva tiempo de espera, así que un puerto que no contesta espera lo que tarde el sistema operativo; y `.env.example` usa `localhost`, que en Windows puede resolverse primero a IPv6 (`::1`) mientras el contenedor publica en IPv4. Además, el arranque no imprime nada hasta el final, así que una demora se ve igual que un cuelgue.
+
+**Files:**
+- Modify: `src/persistence/factory.py`, `.env.example`, `README.md`
+- Create: `tests/unit/test_req_21_cadena_de_conexion.py`
+
+**Interfaces:**
+- `factory.database_url()` sigue devolviendo la cadena de conexión, pero **normalizada**: si la cadena no trae `connect_timeout`, le pone `5`. Como la cadena se resuelve una sola vez y se comparte con la unidad de trabajo, las dos conexiones del ledger quedan cubiertas.
+- Nada más cambia de comportamiento: un `connect_timeout` explícito en la cadena se respeta.
+
+- [ ] **Step 1: Escribir la prueba que falla**
+
+```python
+"""REQ-21: la cadena de conexión vive en el entorno y no deja la aplicación esperando."""
+def test_req_21_la_cadena_sin_tiempo_de_espera_recibe_cinco_segundos(monkeypatch):
+    monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@127.0.0.1:55432/db")
+    assert conninfo_to_dict(database_url())["connect_timeout"] == "5"
+
+
+def test_req_21_un_tiempo_de_espera_explicito_se_respeta(monkeypatch):
+    monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@127.0.0.1:55432/db?connect_timeout=30")
+    assert conninfo_to_dict(database_url())["connect_timeout"] == "30"
+```
+
+- [ ] **Step 2: Correr la prueba y ver que falla**
+
+Run: `.venv/bin/pytest tests/unit/test_req_21_cadena_de_conexion.py -v`
+Expected: FAIL con `KeyError: 'connect_timeout'`
+
+- [ ] **Step 3: Implementar en `database_url()`**
+
+Normalizar con `psycopg.conninfo.conninfo_to_dict` y `make_conninfo`, aplicando `params.setdefault("connect_timeout", "5")`. El comentario explica el porqué: sin tiempo de espera, librería y sistema operativo deciden cuánto aguantar, y un puerto mal puesto parece un cuelgue en lugar de un error.
+
+- [ ] **Step 4: `.env.example`**
+
+`127.0.0.1` en lugar de `localhost`, y `?connect_timeout=5` al final de la cadena, con un comentario que diga por qué: en Windows `localhost` puede resolverse primero a IPv6 y el contenedor publica en IPv4.
+
+- [ ] **Step 5: README**
+
+En la puesta en marcha: que **cambiar el puerto obliga a recrear el contenedor** (`docker compose up -d`); editar `.env` no lo recrea. En los problemas conocidos: que si la aplicación parece quedarse pensando, se use `127.0.0.1` en lugar de `localhost`; y que ahora una conexión imposible falla en cinco segundos con el mensaje del motor.
+
+- [ ] **Step 6: Suite completa, y commit**
+
+Run: `.venv/bin/pytest tests -q` y `.venv/bin/ruff check .` y `env -u DATABASE_URL .venv/bin/pytest tests/unit -q`
+
+```bash
+git add src/persistence/factory.py tests/unit .env.example README.md
+git commit -m "fix: la conexion falla rapido cuando el puerto no responde, y el ejemplo usa 127.0.0.1"
+```
