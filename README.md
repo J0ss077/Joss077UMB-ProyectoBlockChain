@@ -268,8 +268,8 @@ La clave pública del fondo se imprime con:
 
 ## Cómo correr las pruebas
 
-**Reglas del dominio, sin base de datos (REQ-17).** Estas pruebas no abren conexión ni
-importan el driver, así que corren con el contenedor apagado y sin `DATABASE_URL`:
+**Reglas sin base de datos (REQ-17).** Estas pruebas no abren ninguna conexión, así que
+corren con el contenedor apagado y con `DATABASE_URL` sin definir en el entorno:
 
 ```text
 <venv> -m pytest tests/unit -v
