@@ -1011,9 +1011,12 @@ def _siguiente(
 
     El orden es el de la demostración y no el del código más corto: el daño tiene que
     estar en la base **mientras** la persona mira `/verificar`, y la restauración tiene
-    que estar hecha antes de la segunda pausa, que es la que muestra que la herramienta
-    deja el ledger como estaba. Aplicar y restaurar entre dos pausas, sin pausa en el
-    medio, dejaría el estado alterado milisegundos y no habría nada que ver.
+    que estar hecha **y comprobada** antes de la segunda pausa, que es la que muestra que
+    la herramienta deja el ledger como estaba. Aplicar y restaurar entre dos pausas, sin
+    pausa en el medio, dejaría el estado alterado milisegundos y no habría nada que ver.
+
+    Los casos que el motor rechaza piden un solo Enter: no hubo alteración, así que no
+    hay vuelta que mirar y pedir la segunda pausa sería decir algo que no pasó.
 
     El error del motor no se traduce: el mensaje de PostgreSQL es la demostración
     (REQ-19). La restauración con los valores capturados y la comprobación posterior se
@@ -1067,12 +1070,15 @@ def _siguiente(
             detalle=detalle,
         )
 
-    # La segunda pausa va con la restauración hecha: es la mitad de la demostración que
-    # muestra que el ledger vuelve a su estado, no solo que la cadena verifica.
-    _esperar_enter(
-        pausa, "pulse Enter cuando haya visto que volvió a la normalidad", entrada, salida
-    )
+    # La restauración se comprueba **antes** de la segunda pausa: a la persona se le
+    # pide mirar que volvió a la normalidad cuando la herramienta ya lo verificó, no
+    # antes. La pausa, además, solo tiene sentido si algo se había alterado: en los
+    # casos que el motor rechaza no hubo nada que restaurar, así que piden un solo Enter.
     restaurado = _comprobar_restauracion(herramienta, estado, caso, salida)
+    if escrito:
+        _esperar_enter(
+            pausa, "pulse Enter cuando haya visto que volvió a la normalidad", entrada, salida
+        )
     return ResultadoCaso(
         clave=caso.clave,
         esperado=caso.esperado,
@@ -1295,7 +1301,7 @@ class Sabotaje:
             salida.linea(
                 "la cadena ya viene alterada: el bloque señalado es el "
                 f"{reporte.altered_block_index}. Restaure o resiembre antes de sabotear; "
-                "las instrucciones de resembrado están al final."
+                "las instrucciones de resembrado están abajo."
             )
             return False
         salida.linea("la cadena verifica como válida")

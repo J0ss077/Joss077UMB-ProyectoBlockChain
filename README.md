@@ -365,12 +365,14 @@ corre ningún caso, porque el veredicto de cada caso dejaría de significar algo
 Es el modo interactivo, el que se usa para una demostración en vivo. Por caso: imprime el
 encabezado, **aplica** la alteración, **espera un Enter** —ahí es donde la persona mira
 `http://127.0.0.1:5000/verificar` y ve la cadena en rojo—, informa el veredicto,
-**restaura**, **espera un segundo Enter** —ahí es donde mira que la cadena volvió a ser
-válida— y sigue con el caso siguiente. La alteración queda escrita en la base entre las
-dos pausas, que es lo que hace que haya algo para ver; sin la segunda pausa, la vuelta al
-estado original pasaría sin que nadie la mire. Si la entrada no es un terminal —una
-corrida con guion, o la suite— no espera y lo avisa, así que nunca se queda colgado
-esperando a alguien que no está.
+**restaura**, **comprueba** que volvió y **espera un segundo Enter** —ahí es donde mira
+que la cadena volvió a ser válida— antes de seguir con el caso siguiente. La alteración
+queda escrita en la base entre las dos pausas, que es lo que hace que haya algo para ver;
+sin la segunda pausa, la vuelta al estado original pasaría sin que nadie la mire. Los dos
+casos que **rechaza el motor** piden un solo Enter: no queda nada escrito, así que no hay
+daño ni vuelta que mirar, y la pausa del rechazo es la que deja ver el error en la
+consola. Si la entrada no es un terminal —una corrida con guion, o la suite— no espera y
+lo avisa, así que nunca se queda colgado esperando a alguien que no está.
 
 ```text
 <venv> -m src.sabotaje --sin-pausas

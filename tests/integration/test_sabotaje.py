@@ -302,6 +302,105 @@ def test_la_primera_pausa_pide_mirar_lo_que_corresponde(con_sabotaje, web_simula
     assert any("rechazo del motor" in linea for linea in salida)
 
 
+def test_un_caso_que_el_motor_rechaza_pide_un_solo_enter(con_sabotaje, web_simulada):
+    """Sin alteración no hay vuelta que mirar: la segunda pausa no se pide.
+
+    Los dos casos que rechaza el motor no escriben nada, así que pedirles la pausa de
+    «volvió a la normalidad» afirmaría algo que no pasó: no hubo daño ni restauración.
+    El caso espera un solo Enter, el del rechazo.
+    """
+
+    class Registro:
+        """El diario de la línea impresa y de los Enteres que se piden."""
+
+        def __init__(self) -> None:
+            self.lineas: list[str] = []
+            self.enteres = 0
+
+        def escribir(self, linea: str) -> None:
+            self.lineas.append(linea)
+
+        def pausas(self) -> list[str]:
+            return [linea for linea in self.lineas if linea.startswith("pausa:")]
+
+    class Entrada:
+        """Un terminal simulado, que cuenta cada Enter que la herramienta le pide."""
+
+        def __init__(self, registro: Registro) -> None:
+            self._registro = registro
+
+        def isatty(self) -> bool:
+            return True
+
+        def readline(self) -> str:
+            self._registro.enteres += 1
+            return "\n"
+
+    registro = Registro()
+    with con_sabotaje as sabotaje:
+        recorrido = sabotaje.recorrido(
+            web=web_simulada,
+            claves=["reutilizar-firma"],
+            pausas=True,
+            entrada=Entrada(registro),
+            salida=registro.escribir,
+        )
+
+    assert [resultado.observado for resultado in recorrido.resultados] == [MOTOR_RECHAZA]
+    assert registro.enteres == 1
+    assert len(registro.pausas()) == 1
+    assert "rechazo del motor" in registro.pausas()[0]
+    # La pausa que no corresponde no se pide, y la restauración se informa igual.
+    assert not any("volvió a la normalidad" in linea for linea in registro.pausas())
+    assert any(linea.startswith("restaurado:") for linea in registro.lineas)
+
+
+def test_la_restauracion_se_comprueba_antes_de_la_segunda_pausa(con_sabotaje, web_simulada):
+    """El mensaje de la segunda pausa solo sale después de verificar que volvió.
+
+    Decir «volvió a la normalidad» antes de comprobarlo afirmaría algo que la
+    herramienta todavía no sabe: si la restauración falló, el «no volvió» tiene que
+    aparecer antes que la invitación a mirar.
+    """
+
+    class Registro:
+        """El diario de las líneas impresas."""
+
+        def __init__(self) -> None:
+            self.lineas: list[str] = []
+
+        def escribir(self, linea: str) -> None:
+            self.lineas.append(linea)
+
+        def posicion(self, texto: str) -> int:
+            return next(
+                i for i, linea in enumerate(self.lineas) if texto in linea
+            )
+
+    class Entrada:
+        """Un terminal simulado que responde los Enter sin demora."""
+
+        def isatty(self) -> bool:
+            return True
+
+        def readline(self) -> str:
+            return "\n"
+
+    registro = Registro()
+    with con_sabotaje as sabotaje:
+        sabotaje.recorrido(
+            web=web_simulada,
+            claves=["alterar-monto"],
+            pausas=True,
+            entrada=Entrada(),
+            salida=registro.escribir,
+        )
+
+    assert registro.posicion("cadena    : ok, vuelve a ser válida") < registro.posicion(
+        "volvió a la normalidad"
+    )
+
+
 def test_la_restauracion_tiene_comprobacion_propia_cuando_la_cadena_no_la_ve(
     con_sabotaje, web_simulada
 ):
