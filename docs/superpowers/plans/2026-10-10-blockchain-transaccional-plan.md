@@ -945,10 +945,12 @@ git commit -m "docs: recorrido de casos de uso, README y coherencia de la explic
 Surgió al probar la aplicación: el CU-05 funciona, pero para demostrarlo hay que teclear a mano una llave pública de 66 caracteres que no aparece en ningún listado, porque `GET /wallets` solo muestra el formulario y las wallets existentes únicamente se ven dentro del formulario de transacciones, donde no se pueden copiar.
 
 **Files:**
+
 - Modify: `src/web/app.py` (solo la rama `GET` de la ruta `wallets`), `src/web/templates/wallet.html`, `src/web/templates/index.html`, `src/web/templates/historial.html`, `README.md`
 - Create: `tests/integration/test_req_28_historial_desde_la_lista.py`
 
 **Interfaces:**
+
 - Consumes: `Blockchain.wallets.list()`, `Blockchain.wallet_history(wallet_id)`, `Blockchain.register_wallet()`.
 - Produces: la ruta `GET /wallets` renderiza además `wallets=<secuencia de Wallet>`. **No se agregan rutas**: las cinco del eje se mantienen, y la lista va dentro de una que ya existe.
 
@@ -1000,10 +1002,12 @@ git commit -m "feat: el historial de cada wallet se alcanza desde la lista, y el
 Aprobado por el humano sobre una maqueta. Tres cambios: la lista de wallets pasa a un panel lateral visible en todas las páginas; los identificadores y los valores numéricos se muestran en monoespaciada y en forma corta, con botón de copiar y el valor completo a un clic; y la interfaz deja de explicar el proyecto —nada de «CU-0X» ni de párrafos sobre el eje—. Prioridad a lo funcional sobre lo bonito.
 
 **Files:**
+
 - Modify: `src/web/app.py`, `src/web/templates/base.html`, `src/web/templates/index.html`, `src/web/templates/wallet.html`, `src/web/templates/transaccion.html`, `src/web/templates/bloque.html`, `src/web/templates/verificar.html`, `src/web/templates/historial.html`, `tests/integration/test_req_24_rutas.py`, `tests/integration/test_req_28_historial_desde_la_lista.py`, `docs/recorrido-de-casos-de-uso.md`
 - Create: `src/web/templates/_macros.html`
 
 **Interfaces:**
+
 - `create_app` gana un procesador de contexto que expone `wallets_del_panel` —la lista de wallets de la fachada— a todas las plantillas, para que el panel lateral no dependa de que cada ruta lo pase.
 - `_macros.html` expone `dato(valor)` (forma corta de ocho y cuatro caracteres separados por puntos suspensivos) y `copiar(valor)` (el botón con `data-copiar`), reutilizables por las siete plantillas.
 - `base.html` define la pila monoespaciada (`ui-monospace, "Cascadia Code", Consolas, monospace`) para `code` y para la clase `.mono`, y el guion de ocho líneas que conecta los botones `[data-copiar]` con `navigator.clipboard`.
@@ -1050,7 +1054,7 @@ Expected: FAIL las tres
 - [ ] **Step 4: Correr la suite completa**
 
 Run: `.venv/bin/pytest tests -q`
-Expected: verde. Si alguna prueba de las tareas 10 o 12 afirmaba el texto «CU-0» o el identificador completo *visible*, actualizala a la nueva presentación sin perder la afirmación: el valor completo sigue en el marcado y la forma corta es la que se ve.
+Expected: verde. Si alguna prueba de las tareas 10 o 12 afirmaba el texto «CU-0» o el identificador completo _visible_, actualizala a la nueva presentación sin perder la afirmación: el valor completo sigue en el marcado y la forma corta es la que se ve.
 
 - [ ] **Step 5: Poner al día el recorrido**
 
@@ -1073,31 +1077,47 @@ git commit -m "feat: panel lateral con las wallets y datos en monoespaciada, sin
 Surgió probando en Windows: el compañero movió el puerto de la base porque otro motor lo ocupaba, y el arranque «parecía congelado». Dos causas del código y de la plantilla, no del compañero: `psycopg.connect` no lleva tiempo de espera, así que un puerto que no contesta espera lo que tarde el sistema operativo; y `.env.example` usa `localhost`, que en Windows puede resolverse primero a IPv6 (`::1`) mientras el contenedor publica en IPv4. Además, el arranque no imprime nada hasta el final, así que una demora se ve igual que un cuelgue.
 
 **Files:**
+
 - Modify: `src/persistence/factory.py`, `.env.example`, `README.md`
 - Create: `tests/unit/test_req_21_cadena_de_conexion.py`
 
 **Interfaces:**
+
 - `factory.database_url()` sigue devolviendo la cadena de conexión, pero **normalizada**: si la cadena no trae `connect_timeout`, le pone `5`. Como la cadena se resuelve una sola vez y se comparte con la unidad de trabajo, las dos conexiones del ledger quedan cubiertas.
 - Nada más cambia de comportamiento: un `connect_timeout` explícito en la cadena se respeta.
 
 - [ ] **Step 1: Escribir la prueba que falla**
 
+El snippet original —`monkeypatch.setenv("DATABASE_URL", …)` y afirmar con `psycopg.conninfo.conninfo_to_dict`— **es inviable**: el guard de REQ-17 (`tests/test_explicacion.py::test_req_17_las_pruebas_unitarias_no_dependen_de_la_base`) prohíbe en `tests/unit/` tanto el import de `psycopg` como el substring `DATABASE_URL` en el contenido de cualquier archivo. La prueba se escribió sin importar el driver, alimentando la fábrica por su lector del entorno y afirmando los parámetros de la cadena devuelta:
+
 ```python
-"""REQ-21: la cadena de conexión vive en el entorno y no deja la aplicación esperando."""
+def _cadena_del_entorno(monkeypatch, cadena: str) -> None:
+    """Hace que la fábrica lea `cadena` como si viniera del entorno."""
+    monkeypatch.setattr(factory, "_env_value", lambda name: cadena)
+
+
 def test_req_21_la_cadena_sin_tiempo_de_espera_recibe_cinco_segundos(monkeypatch):
-    monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@127.0.0.1:55432/db")
-    assert conninfo_to_dict(database_url())["connect_timeout"] == "5"
+    """REQ-21: una cadena sin tiempo de espera no puede dejar la aplicación esperando."""
+    _cadena_del_entorno(monkeypatch, SIN_TIEMPO_DE_ESPERA)
+    parametros = _parametros(factory.database_url())
+    assert parametros["host"] == "127.0.0.1"
+    assert parametros["port"] == "55432"
+    assert parametros["connect_timeout"] == "5"
 
 
 def test_req_21_un_tiempo_de_espera_explicito_se_respeta(monkeypatch):
-    monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@127.0.0.1:55432/db?connect_timeout=30")
-    assert conninfo_to_dict(database_url())["connect_timeout"] == "30"
+    """REQ-21: un tiempo de espera explícito en la cadena manda sobre el valor por defecto."""
+    _cadena_del_entorno(monkeypatch, CON_TIEMPO_DE_ESPERA)
+    parametros = _parametros(factory.database_url())
+    assert parametros["connect_timeout"] == "30"
 ```
+
+`_parametros` separa la forma canónica de libpq (`clave=valor`) que devuelve `database_url()`, y lo hace sin `psycopg`. El archivo completo es `tests/unit/test_req_21_cadena_de_conexion.py`.
 
 - [ ] **Step 2: Correr la prueba y ver que falla**
 
 Run: `.venv/bin/pytest tests/unit/test_req_21_cadena_de_conexion.py -v`
-Expected: FAIL con `KeyError: 'connect_timeout'`
+Expected: FAIL con `KeyError: 'host'`: sin la normalización la cadena cruda es una URL, no la forma canónica de libpq, así que no hay parámetros que interpretar.
 
 - [ ] **Step 3: Implementar en `database_url()`**
 
