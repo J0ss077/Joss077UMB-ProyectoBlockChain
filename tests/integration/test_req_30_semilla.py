@@ -20,6 +20,7 @@ from src.accounts.credentials import verificar_contrasena
 from src.accounts.model import ADMINISTRADOR, APROBADO, USUARIO
 from src.bootstrap import (
     CONTRASENA_DE_DEMOSTRACION,
+    MENSAJE_DE_VOLUMEN_VIEJO,
     NOMBRES_DE_DEMOSTRACION,
     USERNAME_DEL_ADMINISTRADOR,
 )
@@ -110,6 +111,31 @@ def test_req_30_el_arranque_falla_si_el_nombre_admin_ya_es_otra_cuenta(
     assert "estado `pendiente`" in proceso.stderr
     assert "no es un administrador aprobado" in proceso.stderr
     assert "Recreá el volumen" in proceso.stderr
+    assert "Traceback" not in proceso.stderr
+
+
+def test_req_30_un_volumen_viejo_falla_con_el_mensaje(
+    base_vacia_ejecutando_bootstrap, conexion
+):
+    """Criterio: sin la tabla `users`, el arranque falla con el mensaje y el código 1.
+
+    El proyecto no tiene migraciones (diseño §6): un volumen anterior a las cuentas es
+    un caso que el arranque tiene que reconocer y explicar, no un volcado del motor.
+    Se renombra la tabla y se restaura en el `finally`; es la única prueba que toca el
+    esquema, y lo hace para que el motor levante el `UndefinedTable` real que el
+    arranque captura.
+    """
+    tabla_vieja = "users_de_un_volumen_anterior"
+    conexion.execute(f"ALTER TABLE users RENAME TO {tabla_vieja}")
+    try:
+        proceso = subprocess.run(
+            [sys.executable, "-m", "src.bootstrap"], capture_output=True, text=True
+        )
+    finally:
+        conexion.execute(f"ALTER TABLE {tabla_vieja} RENAME TO users")
+
+    assert proceso.returncode == 1, proceso.stdout
+    assert MENSAJE_DE_VOLUMEN_VIEJO in proceso.stderr
     assert "Traceback" not in proceso.stderr
 
 

@@ -2,10 +2,12 @@
 los datos que casi todas las pruebas de adaptadores necesitan.
 
 El esquema se aplica con `db/init.sql` sobre el contenedor o sobre el clúster
-nativo del equipo, así que estas pruebas no crean ni modifican tablas: solo
-borran filas. La configuración del entorno la lee `src/persistence/factory.py`,
-que es también quien arma la fachada: las pruebas y la aplicación no pueden
-leer cosas distintas de `.env`.
+nativo del equipo, así que estas pruebas no crean tablas: solo borran filas. La
+única excepción es la prueba del volumen viejo, que renombra `users` y la restaura
+dentro del mismo caso para que el arranque vea el `UndefinedTable` real. La
+configuración del entorno la lee `src/persistence/factory.py`, que es también
+quien arma la fachada: las pruebas y la aplicación no pueden leer cosas distintas
+de `.env`.
 """
 import subprocess
 import sys
