@@ -76,8 +76,10 @@ macOS y Linux:
 cp .env.example .env
 ```
 
-Genere una clave `MASTER_KEY` y reemplácela en `.env` (la de la plantilla es un
-ejemplo, no la use):
+Genere una clave `MASTER_KEY` y reemplácela en `.env`: la de la plantilla es de
+relleno (32 bytes en cero con la forma válida de Fernet) y el lector la rechaza,
+así que sin cambiarla la aplicación falla al arrancar en vez de cifrar las llaves
+privadas con una clave publicada en el repositorio.
 
 ```text
 <venv> -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
@@ -185,13 +187,13 @@ motor en vez de esperar lo que decida el sistema operativo. El tiempo de espera 
 
 ## Las cinco rutas
 
-| Ruta                      | Caso de uso | Qué hace                                                           | Rol que exige   |
-| ------------------------- | ----------- | ------------------------------------------------------------------ | --------------- |
-| `POST /wallets`           | CU-01       | Registra una wallet y muestra su clave pública (REQ-24)            | administrador   |
-| `POST /transacciones`     | CU-02       | Firma, admite o rechaza, y devuelve el estado o el motivo (REQ-25) | administrador   |
-| `POST /bloques`           | CU-03       | Agrupa el pool en un bloque y muestra el eslabón creado (REQ-26)   | administrador   |
-| `GET /verificar`          | CU-04       | Devuelve el dictamen y, si falla, el bloque alterado (REQ-27)      | administrador   |
-| `GET /historial/<wallet>` | CU-05       | Lista las transacciones de una wallet con su estado (REQ-28)       | administrador   |
+| Ruta                      | Caso de uso | Qué hace                                                           | Rol que exige |
+| ------------------------- | ----------- | ------------------------------------------------------------------ | ------------- |
+| `POST /wallets`           | CU-01       | Registra una wallet y muestra su clave pública (REQ-24)            | administrador |
+| `POST /transacciones`     | CU-02       | Firma, admite o rechaza, y devuelve el estado o el motivo (REQ-25) | administrador |
+| `POST /bloques`           | CU-03       | Agrupa el pool en un bloque y muestra el eslabón creado (REQ-26)   | administrador |
+| `GET /verificar`          | CU-04       | Devuelve el dictamen y, si falla, el bloque alterado (REQ-27)      | administrador |
+| `GET /historial/<wallet>` | CU-05       | Lista las transacciones de una wallet con su estado (REQ-28)       | administrador |
 
 Las cinco rutas exigen una sesión de administrador (REQ-38): sin sesión redirigen a
 `/ingresar`, y con una sesión de usuario común responden 403. La puerta vive en

@@ -40,16 +40,24 @@ ENV_FILE = Path(__file__).resolve().parents[2] / ".env"
 # prueba importa esta constante en vez de escribirlo.
 VARIABLE_DE_LA_CADENA_DE_CONEXION = "DATABASE_URL"
 
-# Las dos variables de la sesión y del administrador sembrado van en constantes por
-# la misma razón que la cadena de conexión: el lector y su prueba tienen que nombrar
-# la misma variable y el guard de REQ-17 prohíbe el literal en `tests/unit`.
+# Las tres variables de la configuración sensible van en constantes por la misma
+# razón que la cadena de conexión: el lector y su prueba tienen que nombrar la misma
+# variable y el guard de REQ-17 prohíbe el literal en `tests/unit`.
+VARIABLE_DE_LA_CLAVE_MAESTRA = "MASTER_KEY"
 VARIABLE_DEL_SECRETO_DE_SESION = "SESSION_SECRET"
 VARIABLE_DE_LA_CONTRASENA_DEL_ADMINISTRADOR = "ADMIN_PASSWORD"
 
 # Los valores de ejemplo de `.env.example`. Son públicos —viajan en el repositorio—,
 # así que aceptarlos deja la aplicación abierta: con la clave de ceros cualquiera
-# firma una cookie de sesión y con la contraseña de plantilla cualquiera entra como
-# administrador. Los lectores los rechazan nombrando la variable y qué hacer.
+# firma una cookie de sesión, con la contraseña de plantilla cualquiera entra como
+# administrador y con la clave maestra de relleno cualquiera descifra las llaves
+# privadas de la base. Los lectores los rechazan nombrando la variable y qué hacer.
+#
+# La clave maestra de relleno son 32 bytes en cero codificados como base64 urlsafe:
+# tiene la forma válida que exige Fernet (44 caracteres y el relleno final) y, sin
+# embargo, es un valor publicado. `A` es el carácter de base64 que representa seis
+# bits en cero, así que 43 `A` más el `=` son los 32 bytes en cero.
+CLAVE_MAESTRA_DE_LA_PLANTILLA = "A" * 43 + "="
 SECRETO_DE_SESION_DE_LA_PLANTILLA = "0" * 64
 CONTRASENA_DEL_ADMINISTRADOR_DE_LA_PLANTILLA = "cambie-esta-contrasena"
 
@@ -116,13 +124,28 @@ def database_url() -> str:
 
 
 def master_key() -> bytes:
-    """Clave Fernet con la que se cifra el material privado de las wallets (REQ-21)."""
-    value = _env_value("MASTER_KEY")
+    """Clave Fernet con la que se cifra el material privado de las wallets (REQ-21).
+
+    La clave de relleno de `.env.example` se rechaza igual que el secreto de sesión
+    y la contraseña del administrador: es pública, y cifrar con ella deja las llaves
+    privadas legibles para cualquiera que lea el repositorio.
+    """
+    value = _env_value(VARIABLE_DE_LA_CLAVE_MAESTRA)
     if value:
+        if value == CLAVE_MAESTRA_DE_LA_PLANTILLA:
+            raise RuntimeError(
+                f"{VARIABLE_DE_LA_CLAVE_MAESTRA} sigue siendo el valor de relleno de "
+                "la plantilla `.env.example`: genere una clave propia con "
+                '`python -c "from cryptography.fernet import Fernet; '
+                'print(Fernet.generate_key().decode())"` y reemplácela en su `.env`.'
+            )
         return value.encode("ascii")
     raise RuntimeError(
-        "Falta MASTER_KEY en el entorno y en `.env`: agregue MASTER_KEY a su `.env` y "
-        "genere una clave propia con el comando que explica `.env.example`."
+        f"Falta {VARIABLE_DE_LA_CLAVE_MAESTRA} en el entorno y en `.env`: agregue "
+        f"{VARIABLE_DE_LA_CLAVE_MAESTRA} a su `.env` y genere una clave propia con "
+        '`python -c "from cryptography.fernet import Fernet; '
+        'print(Fernet.generate_key().decode())"`; la plantilla `.env.example` la trae '
+        "de relleno y el lector la rechaza."
     )
 
 

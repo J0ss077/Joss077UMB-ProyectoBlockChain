@@ -129,6 +129,12 @@ def test_req_37_los_valores_que_se_rechazan_son_los_de_la_plantilla():
         valores[factory.VARIABLE_DE_LA_CONTRASENA_DEL_ADMINISTRADOR]
         == factory.CONTRASENA_DEL_ADMINISTRADOR_DE_LA_PLANTILLA
     )
+    # La clave maestra de relleno recibe el mismo tratamiento: si la plantilla
+    # cambiara y la constante no, el rechazo dejaría pasar el valor público.
+    assert (
+        valores[factory.VARIABLE_DE_LA_CLAVE_MAESTRA]
+        == factory.CLAVE_MAESTRA_DE_LA_PLANTILLA
+    )
 
 
 def test_req_37_los_dos_lectores_toman_los_valores_de_env(monkeypatch, tmp_path):

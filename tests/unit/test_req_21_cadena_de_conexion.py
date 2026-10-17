@@ -1,6 +1,9 @@
 """REQ-21: la cadena de conexión vive en el entorno y no deja la aplicación esperando."""
 import re
 
+import pytest
+from cryptography.fernet import Fernet
+
 from src.persistence import factory
 
 # Las dos cadenas del caso: una sin tiempo de espera y otra con uno explícito.
@@ -100,3 +103,31 @@ def test_req_21_el_argumento_explicito_de_open_ledger_tambien_se_normaliza(monke
     parametros = _parametros(capturadas[0])
     assert parametros["host"] == "127.0.0.1"
     assert parametros["connect_timeout"] == "5"
+
+
+def test_req_21_la_clave_maestra_de_relleno_se_rechaza(monkeypatch):
+    """REQ-21: la clave de ceros de `.env.example` no cifra el material privado.
+
+    Es pública: aceptarla dejaría las llaves privadas legibles para cualquiera que
+    lea el repositorio, que es el mismo riesgo que ya se corta con el secreto de
+    sesión y la contraseña del administrador.
+    """
+    monkeypatch.setenv(
+        factory.VARIABLE_DE_LA_CLAVE_MAESTRA,
+        factory.CLAVE_MAESTRA_DE_LA_PLANTILLA,
+    )
+    with pytest.raises(RuntimeError) as error:
+        factory.master_key()
+    mensaje = str(error.value)
+    assert factory.VARIABLE_DE_LA_CLAVE_MAESTRA in mensaje
+    assert "plantilla" in mensaje
+    assert "genere una clave propia" in mensaje
+    assert "Fernet.generate_key()" in mensaje
+
+
+def test_req_21_una_clave_maestra_generada_se_acepta(monkeypatch):
+    """REQ-21: la clave que produce Fernet se acepta tal cual, sin transformarla."""
+    clave = Fernet.generate_key()
+    monkeypatch.setenv(factory.VARIABLE_DE_LA_CLAVE_MAESTRA, clave.decode("ascii"))
+
+    assert factory.master_key() == clave
