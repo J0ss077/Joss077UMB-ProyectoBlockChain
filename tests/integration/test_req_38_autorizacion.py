@@ -13,7 +13,9 @@ común y la aprobación efectiva para el administrador.
 from uuid import uuid4
 
 from src.accounts.model import APROBADO
-from tests.integration.conftest import CONTRASENA_DE_PRUEBA
+from src.bootstrap import FONDO, USERNAME_DEL_ADMINISTRADOR
+from src.persistence.factory import admin_password
+from tests.integration.conftest import CONTRASENA_DE_PRUEBA, ingresar_como
 
 RUTAS_DEL_ADMINISTRADOR = ("/wallets", "/transacciones", "/bloques", "/verificar")
 
@@ -94,3 +96,23 @@ def test_req_38_el_administrador_conserva_las_rutas_de_hoy(cliente_admin, admini
     assert cliente_admin.get("/").status_code == 200
     assert administrador.wallet_id is not None
     assert cliente_admin.get(f"/historial/{administrador.wallet_id}").status_code == 200
+
+
+def test_req_38_la_portada_del_administrador_muestra_los_saldos(
+    base_vacia_ejecutando_bootstrap, cliente
+):
+    """Criterio: la matriz de permisos (§8) le da al administrador las wallets con sus
+    saldos; la portada muestra el saldo disponible de cada una, con el del fondo
+    sembrado —300, según los montos de la semilla— como valor conocido."""
+    chain = base_vacia_ejecutando_bootstrap
+    ingresar_como(cliente, USERNAME_DEL_ADMINISTRADOR, admin_password())
+
+    cuerpo = cliente.get("/").get_data(as_text=True)
+
+    # Una línea de saldo por cada wallet del panel, no un total suelto.
+    assert cuerpo.count("Saldo:") == chain.ledger_state()["wallets"]
+    # La clave pública completa del fondo viaja en el `title` de la macro del panel.
+    assert FONDO in cuerpo
+    assert "300.00000000" in cuerpo
+    # El constituyente es la única wallet de la demostración en negativo.
+    assert "-3000.00000000" in cuerpo

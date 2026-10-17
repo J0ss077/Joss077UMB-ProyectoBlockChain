@@ -220,10 +220,17 @@ def create_app(
         if g.user.role != ADMINISTRADOR:
             return redirect(url_for("usuario.mi_tablero"))
         with abrir_cadena() as chain:
+            wallets = chain.wallets.list()
+            # El saldo se pide a la fachada, la misma cuenta que usa el envío para
+            # decidir: la portada no lo recalcula ni consulta la base (REQ-29). Es
+            # la celda de la matriz de permisos (§8) que pide ver las wallets con
+            # sus saldos del lado del administrador.
+            saldos = {wallet.id: chain.available_balance(wallet.id) for wallet in wallets}
             return render_template(
                 "index.html",
                 estado=chain.ledger_state(),
-                wallets_del_panel=chain.wallets.list(),
+                wallets_del_panel=wallets,
+                saldos_de_las_wallets=saldos,
             )
 
     @app.route("/wallets", methods=["GET", "POST"])
