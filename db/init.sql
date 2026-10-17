@@ -129,9 +129,10 @@ CREATE TABLE users (
         ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT chk_users_motivo_rechazo_requerido
         CHECK (estado <> 'rechazado' OR motivo_rechazo IS NOT NULL),
-    -- La wallet acompaña a la aprobación: `aprobado` la exige y `pendiente` o
-    -- `rechazado` la dejan nula. La bicondicional contra `pendiente` obligaría al
-    -- rechazado a tener wallet, y el rechazo nunca la crea.
+    -- La bicondicional va contra `aprobado` y no contra `pendiente` a propósito:
+    -- `(estado = 'pendiente') = (wallet_id IS NULL)` obligaría por equivalencia a
+    -- que el rechazado tenga wallet, y el rechazo nunca la crea. Sólo el aprobado
+    -- tiene wallet; pendiente y rechazado la dejan nula (diseño §6).
     CONSTRAINT chk_users_wallet_coherente_con_el_estado
         CHECK ((estado = 'aprobado') = (wallet_id IS NOT NULL))
 );

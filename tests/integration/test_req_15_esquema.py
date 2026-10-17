@@ -112,3 +112,22 @@ def test_req_30_el_esquema_tiene_la_tabla_de_usuarios(conexion):
         "chk_users_motivo_rechazo_requerido",
         "chk_users_wallet_coherente_con_el_estado",
     }
+
+
+def test_req_31_un_rechazado_puede_quedarse_sin_wallet(conexion, base_limpia):
+    """REQ-31: el rechazo guarda el motivo y deja al usuario sin wallet.
+
+    Es la regresión del CHECK: si se lo vuelve a escribir contra `pendiente`, el
+    rechazado queda obligado a tener wallet y esta inserción falla.
+    """
+    try:
+        fila = conexion.execute(
+            """
+            INSERT INTO users (username, password_hash, role, estado, motivo_rechazo)
+            VALUES ('rechazado_sin_wallet', 'hash', 'usuario', 'rechazado', 'no corresponde')
+            RETURNING wallet_id
+            """
+        ).fetchone()
+        assert fila[0] is None
+    finally:
+        conexion.execute("DELETE FROM users WHERE username = 'rechazado_sin_wallet'")
