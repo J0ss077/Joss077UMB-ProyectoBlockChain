@@ -129,12 +129,16 @@ CREATE TABLE users (
         ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT chk_users_motivo_rechazo_requerido
         CHECK (estado <> 'rechazado' OR motivo_rechazo IS NOT NULL),
-    -- La bicondicional va contra `aprobado` y no contra `pendiente` a propósito:
-    -- `(estado = 'pendiente') = (wallet_id IS NULL)` obligaría por equivalencia a
-    -- que el rechazado tenga wallet, y el rechazo nunca la crea. Sólo el aprobado
-    -- tiene wallet; pendiente y rechazado la dejan nula (diseño §6).
+    -- El aprobado común tiene wallet y el administrador puede no tenerla: es la
+    -- única cuenta que el diseño admite sin wallet (decisión 4 y §6). Pendiente y
+    -- rechazado siguen sin wallet, porque la wallet nace recién con la aprobación.
+    -- La regla se expresa por rol y no como bicondicional contra `aprobado`: esa
+    -- forma obligaba a que el administrador sembrado tuviera una wallet que no usa.
     CONSTRAINT chk_users_wallet_coherente_con_el_estado
-        CHECK ((estado = 'aprobado') = (wallet_id IS NOT NULL))
+        CHECK (
+            (estado = 'aprobado' AND (role = 'administrador' OR wallet_id IS NOT NULL))
+            OR (estado <> 'aprobado' AND wallet_id IS NULL)
+        )
 );
 
 -- El `UNIQUE` de `username` distingue mayúsculas. La aplicación normaliza a

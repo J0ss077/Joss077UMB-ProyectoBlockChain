@@ -81,6 +81,11 @@ ejemplo, no la use):
 <venv> -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 ```
 
+Revise también las otras dos variables del entorno: `SESSION_SECRET` firma la cookie
+de sesión (REQ-37) y `ADMIN_PASSWORD` es la contraseña del administrador que siembra
+el arranque. La plantilla trae valores de ejemplo; reemplácelos. Sin cualquiera de
+las dos, la aplicación o el arranque fallan nombrando la variable que falta.
+
 Revise que `POSTGRES_PORT` y el puerto de `DATABASE_URL` sean el mismo: el primero es
 el puerto que se publica en el equipo y el segundo es el que usa la aplicación para
 conectarse. Los valores de la plantilla funcionan tal cual.
@@ -138,8 +143,15 @@ Permission denied` y la base nunca arranca. En Linux o Podman se corrige con
 ```
 
 El comando asegura el bloque génesis (es idempotente: correrlo dos veces no lo
-duplica) y, si la base no tiene wallets, siembra la demostración. Imprime el hash del
-génesis y el estado del ledger.
+duplica) y, si la base no tiene wallets, siembra la demostración. Después siembra
+las cuentas: el administrador y los cinco usuarios de demostración (sección «Las
+cuentas de demostración»). También es idempotente con ellas: una segunda corrida no
+duplica cuentas ni wallets. Imprime el hash del génesis, el estado del ledger y
+cuántas cuentas creó.
+
+Si el volumen es anterior a esta versión no tiene la tabla `users`, y el proyecto no
+tiene migraciones: el arranque falla con el mensaje que indica recrear el volumen y
+volver a sembrar.
 
 ### 5. Levantar la aplicación
 
@@ -189,11 +201,11 @@ mano.
 
 ## Los datos de demostración
 
-`python -m src.bootstrap` deja **5 wallets, 4 bloques y 10 transacciones** (7
-confirmadas y 3 pendientes, que son los retiros que `POST /bloques` agruparía a
-continuación). El ciclo es el del eje: el capital de constitución entra al ledger, el
-fondo reparte el capital de asociación, los asociados aportan y el fondo les gira
-retiros.
+`python -m src.bootstrap` deja **5 wallets, 4 bloques, 10 transacciones y 6 cuentas**
+(las de la sección siguiente). De las transacciones, 7 quedan confirmadas y 3
+pendientes, que son los retiros que `POST /bloques` agruparía a continuación. El
+ciclo es el del eje: el capital de constitución entra al ledger, el fondo reparte el
+capital de asociación, los asociados aportan y el fondo les gira retiros.
 
 | Actor          | Movimiento                                                                                               | Resultado                   |
 | -------------- | -------------------------------------------------------------------------------------------------------- | --------------------------- |
@@ -265,6 +277,76 @@ La clave pública del fondo se imprime con:
 ```text
 <venv> -c "from src.bootstrap import FONDO; print(FONDO)"
 ```
+
+## Las cuentas de demostración
+
+### Las cuentas sembradas
+
+`python -m src.bootstrap` crea, además de las wallets, seis cuentas aprobadas. El
+administrador no tiene wallet: es la única cuenta a la que el esquema se lo permite,
+y no la necesita para ver el sistema entero. Cada una de las otras cinco maneja una
+de las wallets de la semilla.
+
+| Usuario         | Rol             | Wallet que maneja    | Contraseña                          |
+| --------------- | --------------- | -------------------- | ----------------------------------- |
+| `admin`         | `administrador` | ninguna              | la de `ADMIN_PASSWORD` en su `.env` |
+| `constituyente` | `usuario`       | la del constituyente | `demostracion`                      |
+| `fondo`         | `usuario`       | la del fondo         | `demostracion`                      |
+| `asociado1`     | `usuario`       | un asociado          | `demostracion`                      |
+| `asociado2`     | `usuario`       | otro asociado        | `demostracion`                      |
+| `asociado3`     | `usuario`       | el tercer asociado   | `demostracion`                      |
+
+La contraseña de demostración es la misma para las cinco cuentas y está hasheada con
+`scrypt`, igual que cualquier otra (REQ-36). La del administrador no está en el
+repositorio: sale de `ADMIN_PASSWORD`. La semilla no reescribe una cuenta que ya
+existe, así que para cambiar la contraseña del administrador hay que recrear el
+volumen y volver a sembrar.
+
+La cuenta `constituyente` maneja la wallet de la puerta de entrada, así que su saldo
+disponible es negativo y no puede enviar: es la única wallet de la demostración a la
+que el diseño le permite el negativo (REQ-05). Las otras cuatro cuentas de
+demostración tienen saldo disponible positivo.
+
+### El recorrido de demostración
+
+Con la base sembrada y la aplicación corriendo en `http://127.0.0.1:5000`:
+
+1. **La persona se registra.** Abra «Registrarme», elija un usuario que no exista (por
+   ejemplo `persona-demo`) y una contraseña de al menos ocho caracteres. La pantalla
+   dice que la cuenta está esperando aprobación y no abre sesión (REQ-30).
+2. **El administrador la aprueba.** Abra «Ingresar», entre con el usuario `admin` y la
+   contraseña de `ADMIN_PASSWORD`, y vaya a «Pendientes». La cuenta registrada
+   aparece con su usuario y su fecha; pulse «Aprobar». La aprobación crea su wallet y
+   le acredita el saldo de bienvenida de 1000 en un bloque nuevo (REQ-33).
+3. **La persona ingresa** con el usuario y la contraseña del registro. Su tablero
+   muestra el saldo de bienvenida (`1000.00000000`) y el crédito confirmado.
+4. **Manda un envío.** En el formulario del tablero escriba como destinatario el
+   usuario de una cuenta de demostración, por ejemplo `fondo`, y un monto menor que su
+   saldo, por ejemplo `125.00000000`. El envío queda pendiente y el saldo disponible
+   baja a `875.00000000`.
+5. **La persona ve el envío en su historial.** «Mi historial» lista la transacción con
+   estado `pending` y sin bloque.
+6. **El administrador agrupa el bloque.** Cierre la sesión de la persona, ingrese como
+   `admin`, abra «Cerrar bloque» y agrupe el pool. El envío queda confirmado en un
+   eslabón nuevo, junto con las pendientes que ya tenía la semilla.
+7. **La persona vuelve a entrar** y en «Mi historial» ve la misma transacción con
+   estado `confirmed` y su bloque.
+8. **Verifica su historial.** «Mi verificación» dice «La cadena es válida: su historial
+   está respaldado» y lista sólo las transacciones confirmadas de su wallet (REQ-39).
+9. **Opcional: el administrador verifica la cadena completa** en «Verificar cadena».
+   El dictamen es el mismo, pero sobre todo el ledger.
+
+### Los límites que se declaran
+
+- **La autoría no es criptográfica.** Las llaves privadas viven en el servidor,
+  cifradas con la `MASTER_KEY`; el administrador puede firmar en nombre de cualquier
+  usuario. La integridad del registro no depende de eso —una transacción confirmada
+  que se altere se detecta, firme quien firme—, pero la autoría sí (diseño §12).
+- **No hay protección CSRF.** Los formularios no llevan token. La cookie de sesión
+  viaja con `SameSite=Lax`, que reduce el riesgo de un POST desde otro sitio, pero no
+  reemplaza una defensa CSRF de verdad (diseño §10).
+- **No hay límite de intentos de ingreso.** Se puede probar contraseñas sin tope; el
+  costo de `scrypt` encarece cada intento, pero no limita la cantidad (diseño §10).
 
 ## Cómo correr las pruebas
 

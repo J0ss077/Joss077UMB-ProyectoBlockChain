@@ -95,8 +95,9 @@ def _sembrar_cuenta(
     """Crea una cuenta aprobada directo en la base, sin pasar por el servicio.
 
     El servicio siempre registra el rol `usuario`, así que el administrador sólo
-    puede nacer por el repositorio. El esquema exige wallet en toda cuenta
-    aprobada, por eso la del administrador también se registra aunque no la use.
+    puede nacer por el repositorio. El camino del alta (`aprobar`) liga una wallet,
+    así que se le pasa una aunque el esquema ya no se la exija al administrador:
+    la corrección del CHECK distingue por rol, no obliga a que la tenga.
     """
     usuarios = PostgresAccountsRepository(conexion)
     pendiente = usuarios.add_pendiente(
@@ -326,15 +327,17 @@ def cliente(aplicacion) -> FlaskClient:
 
 @pytest.fixture
 def administrador(base_limpia, conexion, wallets, master_key) -> Usuario:
-    """Un administrador aprobado, con la wallet que el esquema le exige.
+    """Un administrador aprobado, con una wallet que el camino del alta exige.
 
-    No es la semilla del arranque: esa llega con la Task 9. Acá alcanza con una
-    cuenta `administrador` aprobada para abrir la sesión y cruzar las puertas.
+    No es el administrador de la semilla del arranque —ese es `admin` y no tiene
+    wallet—: el nombre `adminprueba` evita chocar con él en las pruebas que corren
+    el arranque de verdad, y una wallet propia deja el historial del administrador
+    alcanzable en las rutas del eje.
     """
     wallet = wallets.add(create_wallet(master_key=master_key))
     return _sembrar_cuenta(
         conexion,
-        username="admin",
+        username="adminprueba",
         role=ADMINISTRADOR,
         contrasena=CONTRASENA_DEL_ADMINISTRADOR,
         wallet_id=wallet.id,

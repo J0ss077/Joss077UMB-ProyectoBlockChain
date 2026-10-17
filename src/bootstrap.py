@@ -1,4 +1,4 @@
-"""Arranque explícito del ledger: génesis y datos de demostración (REQ-14, REQ-05).
+"""Arranque explícito del ledger: génesis, datos de demostración y cuentas (REQ-14, REQ-05).
 
 El génesis es un dato calculado, no DDL, así que no vive en `db/init.sql`: lo crea
 la aplicación con este punto de entrada y de forma idempotente, para que correrlo
@@ -7,6 +7,11 @@ demostración del caso del eje —una wallet de fondo que recibe aportes de los
 asociados y les gira retiros—, con montos elegidos para que ningún saldo quede
 negativo (REQ-05), que es el defecto que arrastraban los datos del repositorio
 anterior (decisión 9).
+
+Después siembra las cuentas (decisión 8): el administrador aprobado y sin wallet,
+y un usuario de demostración por cada wallet de la convención, todos aprobados. La
+semilla de las cuentas también es idempotente: correr el arranque dos veces no
+duplica ninguna.
 
 Uso: `python -m src.bootstrap`.
 """
@@ -17,14 +22,17 @@ from decimal import Decimal
 from hashlib import sha256
 from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
 
+import psycopg
 from cryptography.hazmat.primitives.asymmetric import ec
 
+from src.accounts.credentials import hashear_contrasena
+from src.accounts.model import ADMINISTRADOR, APROBADO, USUARIO, Usuario
 from src.domain.block import Block
 from src.domain.blockchain import Blockchain, ensure_genesis
 from src.domain.transaction import Transaction, TransactionStatus
 from src.domain.wallet import CURVE, Wallet, encrypt_private_key, public_key_hex, sign_payload
 from src.emision import CONSTITUYENTE_ID, CONSTITUYENTE_SEED
-from src.persistence.factory import ledger
+from src.persistence.factory import admin_password, ledger, transaction
 
 # Semilla del par de llaves del fondo: fijarla hace que su clave pública sea la
 # misma en cada corrida. Sin eso, el fondo quedaría con una pública distinta cada
@@ -48,6 +56,36 @@ APORTE = Decimal("700.00000000")
 RETIRO = Decimal("600.00000000")
 
 ASOCIADOS = 3
+
+# Cuentas de la semilla. El administrador es la cuenta fija `admin` y su
+# contraseña sale del entorno (decisión 4): no se escribe acá porque es un secreto
+# y vive en `.env`. Los cinco usuarios de demostración comparten la contraseña
+# documentada en el README; son cuentas para mostrar el producto, no de personas.
+USERNAME_DEL_ADMINISTRADOR = "admin"
+CONTRASENA_DE_DEMOSTRACION = "demostracion"
+
+# Un usuario de demostración por cada wallet sembrada, en el orden en que la
+# semilla las crea: el constituyente, el fondo y los tres asociados. El nombre es
+# el del actor de la convención, así la cuenta y la wallet que maneja se reconocen
+# sin una tabla de equivalencias.
+NOMBRES_DE_DEMOSTRACION = (
+    "constituyente",
+    "fondo",
+    "asociado1",
+    "asociado2",
+    "asociado3",
+)
+
+# Mensaje del arranque sobre un volumen anterior a las cuentas. El proyecto no
+# tiene migraciones (§6): la tabla `users` llega con `db/init.sql` al crear el
+# volumen, así que la única salida es recrearlo. El texto nombra los comandos
+# exactos porque el error del motor no le dice a la persona qué hacer.
+MENSAJE_DE_VOLUMEN_VIEJO = (
+    "La base no tiene la tabla `users`: el volumen es anterior a las cuentas y "
+    "este proyecto no tiene migraciones. Recreá el volumen y volvé a sembrar: "
+    "`docker compose down -v`, `docker compose up -d` y `python -m src.bootstrap` "
+    "(con Podman, los mismos comandos con `podman compose`)."
+)
 
 
 def _llave(semilla: bytes) -> ec.EllipticCurvePrivateKey:
@@ -178,11 +216,103 @@ def _entrega_de_capital(
     return transaction
 
 
+def _cuenta_aprobada(
+    username: str, contrasena: str, role: str, wallet_id: UUID | None
+) -> Usuario:
+    """Arma una fila ya aprobada: la semilla no pasa por el alta moderada.
+
+    La fecha de alta y la de aprobación son el mismo instante porque la cuenta
+    nace sembrada; el repositorio escribe la fila tal cual, sin inventar una
+    pendiente que nadie va a aprobar.
+    """
+    ahora = datetime.now(UTC)
+    return Usuario(
+        id=uuid4(),
+        username=username,
+        password_hash=hashear_contrasena(contrasena),
+        role=role,
+        estado=APROBADO,
+        motivo_rechazo=None,
+        wallet_id=wallet_id,
+        creado_en=ahora,
+        aprobado_en=ahora,
+    )
+
+
+def _wallets_de_la_demostracion(chain: Blockchain) -> list[UUID]:
+    """Las cinco wallets sembradas, en el orden de `NOMBRES_DE_DEMOSTRACION`.
+
+    El fondo y el constituyente se reconocen por sus constantes; los asociados son
+    los receptores de los capitales de asociación que el fondo les colocó. No se
+    usa `wallets.list()` porque incluiría cualquier wallet que se registre después:
+    la convención es una cuenta por cada wallet de la semilla, no por wallet viva.
+    """
+    fondo = chain.wallets.get_by_public_key(FONDO)
+    if fondo is None:
+        return []
+    asociados = [
+        fila.receiver_id
+        for fila in chain.wallet_history(fondo.id)
+        if fila.sender_id == fondo.id and fila.amount == CAPITAL_ASOCIACION
+    ]
+    return [CONSTITUYENTE_ID, fondo.id, *asociados]
+
+
+def sembrar_usuarios() -> int:
+    """Crea las cuentas que falten y devuelve cuántas escribió.
+
+    Idempotente por nombre: se puede correr en cada arranque sin duplicar cuentas.
+    El administrador y los de demostración se escriben ya aprobados por el
+    repositorio, que es el único camino para un administrador —el servicio siempre
+    registra rol `usuario`— y para el aprobado sin wallet que el CHECK admite solo
+    para ese rol. El commit es único para las cuentas: o quedan todas las que
+    faltaban o no queda ninguna.
+
+    Las cuentas se leen por la conexión de la transacción y no por la del ledger
+    porque el repositorio de usuarios necesita una conexión propia; las wallets
+    ya están confirmadas por el arranque, así que esa transacción las ve.
+    """
+    creadas = 0
+    with transaction() as actual:
+        if actual.usuarios.get_by_username(USERNAME_DEL_ADMINISTRADOR) is None:
+            actual.usuarios.sembrar(
+                _cuenta_aprobada(
+                    USERNAME_DEL_ADMINISTRADOR,
+                    admin_password(),
+                    ADMINISTRADOR,
+                    None,
+                )
+            )
+            creadas += 1
+
+        wallets = _wallets_de_la_demostracion(actual.ledger)
+        # Sin `strict`: si una wallet de la convención ya no está por una
+        # alteración, el arranque no puede fallar por una cuenta de demostración
+        # que ya existe; la prueba de la semilla es la que exige las cinco.
+        for nombre, wallet_id in zip(NOMBRES_DE_DEMOSTRACION, wallets, strict=False):
+            if actual.usuarios.get_by_username(nombre) is not None:
+                continue
+            actual.usuarios.sembrar(
+                _cuenta_aprobada(
+                    nombre, CONTRASENA_DE_DEMOSTRACION, USUARIO, wallet_id
+                )
+            )
+            creadas += 1
+        actual.commit()
+    return creadas
+
+
 def main() -> None:
     """Asegura el génesis, siembra la demostración si hace falta e informa el estado."""
     with ledger() as chain:
         genesis = ensure_genesis(chain)
         bloque = run(chain)
+        try:
+            cuentas = sembrar_usuarios()
+        except psycopg.errors.UndefinedTable as error:
+            # Un volumen anterior a las cuentas no tiene la tabla y no hay
+            # migraciones: se informa la salida en vez de mostrar el error del motor.
+            raise SystemExit(MENSAJE_DE_VOLUMEN_VIEJO) from error
         estado = chain.ledger_state()
         accion = "sembrada ahora" if bloque is not None else "sin cambios, ya estaba sembrada"
         print(f"génesis listo: índice {genesis.block_index}, hash {genesis.hash}")
@@ -190,6 +320,13 @@ def main() -> None:
             f"demostración {accion}: {estado['wallets']} wallets, "
             f"{estado['blocks']} bloques, {estado['transactions']} transacciones"
         )
+        if cuentas:
+            print(
+                f"cuentas: {cuentas} creadas ahora ({USERNAME_DEL_ADMINISTRADOR} y "
+                f"{len(NOMBRES_DE_DEMOSTRACION)} usuarios de demostración)"
+            )
+        else:
+            print("cuentas: sin cambios, ya estaban")
 
 
 if __name__ == "__main__":

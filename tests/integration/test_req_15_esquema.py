@@ -8,6 +8,8 @@ contiene sentencias de definición de datos, y que el esquema que sí se aplica
 import pathlib
 import re
 
+import psycopg
+import pytest
 from psycopg.rows import dict_row
 
 
@@ -132,3 +134,47 @@ def test_req_31_un_rechazado_puede_quedarse_sin_wallet(conexion, base_limpia):
         assert fila[0] is None
     finally:
         conexion.execute("DELETE FROM users WHERE username = 'rechazado_sin_wallet'")
+
+
+def test_req_30_un_administrador_aprobado_puede_quedarse_sin_wallet(
+    conexion, base_limpia
+):
+    """REQ-30: el administrador sembrado se admite aprobado y sin wallet.
+
+    Es la corrección del CHECK: la bicondicional contra `aprobado` obligaba a que
+    toda cuenta aprobada tuviera wallet, y el administrador del diseño no la tiene
+    (decisión 4 y §6). La fila se escribe por fuera del repositorio porque lo que
+    se mide es el esquema, no el camino del alta.
+    """
+    try:
+        fila = conexion.execute(
+            """
+            INSERT INTO users (username, password_hash, role, estado)
+            VALUES ('admin_sin_wallet', 'hash', 'administrador', 'aprobado')
+            RETURNING wallet_id, aprobado_en
+            """
+        ).fetchone()
+        assert fila[0] is None
+    finally:
+        conexion.execute("DELETE FROM users WHERE username = 'admin_sin_wallet'")
+
+
+def test_req_30_un_usuario_comun_aprobado_sin_wallet_sigue_prohibido(
+    conexion, base_limpia
+):
+    """REQ-30: un aprobado común sin wallet sigue violando el CHECK del esquema.
+
+    La corrección distingue por rol; no afloja la regla que REQ-33 necesita: la
+    aprobación de una persona común crea su wallet en la misma operación.
+    """
+    with pytest.raises(psycopg.errors.CheckViolation) as error:
+        conexion.execute(
+            """
+            INSERT INTO users (username, password_hash, role, estado)
+            VALUES ('comun_sin_wallet', 'hash', 'usuario', 'aprobado')
+            """
+        )
+    assert (
+        error.value.diag.constraint_name
+        == "chk_users_wallet_coherente_con_el_estado"
+    )

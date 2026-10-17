@@ -51,6 +51,26 @@ class PostgresAccountsRepository:
     def __init__(self, connection: psycopg.Connection):
         self._connection = connection
 
+    def _insertar(
+        self, sentencia: str, parametros: tuple[object, ...], username: str
+    ) -> Usuario:
+        """Ejecuta un `INSERT` de `users` y traduce la violación del nombre.
+
+        Las dos altas —la pendiente del registro y la ya aprobada de la
+        semilla— comparten la traducción a `UsuarioDuplicado`: el servicio no
+        tiene que conocer el driver para rechazar un nombre repetido (REQ-30).
+        Una violación de `users_wallet_id_key` no es un nombre repetido y sube
+        sin traducir.
+        """
+        cursor = self._connection.cursor(row_factory=dict_row)
+        try:
+            cursor.execute(sentencia, parametros)
+        except psycopg.errors.UniqueViolation as error:
+            if error.diag.constraint_name not in _UNICIDAD_DEL_NOMBRE:
+                raise
+            raise UsuarioDuplicado(username) from error
+        return _row_to_usuario(cursor.fetchone())
+
     def add_pendiente(self, usuario: Usuario) -> Usuario:
         """Registra la cuenta como pendiente y devuelve la fila escrita (REQ-30).
 
@@ -60,31 +80,60 @@ class PostgresAccountsRepository:
         moderada no contempla. El nombre se normaliza acá.
         """
         username = normalizar_usuario(usuario.username)
-        cursor = self._connection.cursor(row_factory=dict_row)
-        try:
-            cursor.execute(
-                """
-                INSERT INTO users (
-                    id, username, password_hash, role, estado,
-                    motivo_rechazo, wallet_id, creado_en, aprobado_en
-                )
-                VALUES (%s, %s, %s, %s, %s, NULL, NULL, %s, NULL)
-                RETURNING *
-                """,
-                (
-                    usuario.id,
-                    username,
-                    usuario.password_hash,
-                    usuario.role,
-                    PENDIENTE,
-                    usuario.creado_en,
-                ),
+        return self._insertar(
+            """
+            INSERT INTO users (
+                id, username, password_hash, role, estado,
+                motivo_rechazo, wallet_id, creado_en, aprobado_en
             )
-        except psycopg.errors.UniqueViolation as error:
-            if error.diag.constraint_name not in _UNICIDAD_DEL_NOMBRE:
-                raise
-            raise UsuarioDuplicado(username) from error
-        return _row_to_usuario(cursor.fetchone())
+            VALUES (%s, %s, %s, %s, %s, NULL, NULL, %s, NULL)
+            RETURNING *
+            """,
+            (
+                usuario.id,
+                username,
+                usuario.password_hash,
+                usuario.role,
+                PENDIENTE,
+                usuario.creado_en,
+            ),
+            username,
+        )
+
+    def sembrar(self, usuario: Usuario) -> Usuario:
+        """Escribe una fila ya aprobada, con su wallet o sin ella (semilla).
+
+        El alta normal pasa por `add_pendiente` y `aprobar`; este camino existe
+        para que el arranque deje al administrador aprobado sin wallet —la única
+        cuenta a la que el esquema se lo admite— y a los usuarios de demostración
+        aprobados con la wallet que ya sembró. La fila la decide el llamador
+        porque la semilla no pasa por el alta moderada, pero el esquema sigue
+        siendo el que impide una combinación inválida. El nombre se normaliza y
+        la violación de unicidad se traduce igual que en el registro.
+        """
+        username = normalizar_usuario(usuario.username)
+        return self._insertar(
+            """
+            INSERT INTO users (
+                id, username, password_hash, role, estado,
+                motivo_rechazo, wallet_id, creado_en, aprobado_en
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING *
+            """,
+            (
+                usuario.id,
+                username,
+                usuario.password_hash,
+                usuario.role,
+                usuario.estado,
+                usuario.motivo_rechazo,
+                usuario.wallet_id,
+                usuario.creado_en,
+                usuario.aprobado_en,
+            ),
+            username,
+        )
 
     def get_by_username(self, username: str) -> Usuario | None:
         """La cuenta con ese nombre, buscado ya normalizado (REQ-30).
