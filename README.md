@@ -359,6 +359,11 @@ Con la base sembrada y la aplicación corriendo en `http://127.0.0.1:5000`:
   reemplaza una defensa CSRF de verdad (diseño §10).
 - **No hay límite de intentos de ingreso.** Se puede probar contraseñas sin tope; el
   costo de `scrypt` encarece cada intento, pero no limita la cantidad (diseño §10).
+- **El motivo del rechazo de una transacción no se persiste.** La tabla `transactions`
+  no tiene columna para el motivo: se muestra en la respuesta del envío que lo produjo
+  y, al volver al historial, la fila `rejected` aparece sin él. Los motivos que el
+  esquema no admitiría ni siquiera dejan fila; el motivo queda en la respuesta, no en
+  la base.
 
 ## Cómo correr las pruebas
 
