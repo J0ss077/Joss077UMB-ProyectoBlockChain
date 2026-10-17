@@ -15,12 +15,41 @@ import re
 
 GUION = pathlib.Path("src/web/templates/base.html")
 MACROS = pathlib.Path("src/web/templates/_macros.html")
+PRESENTACION = pathlib.Path("src/web")
+COMPOSICION = PRESENTACION / "__main__.py"
+
+
+def _menciona_el_motor(fuente: pathlib.Path) -> bool:
+    """Si el fuente nombra `psycopg` o `persistence`, que es lo que REQ-29 prohíbe."""
+    texto = fuente.read_text(encoding="utf-8")
+    return "psycopg" in texto or "persistence" in texto
 
 
 def test_req_29_la_presentacion_no_importa_persistencia_ni_psycopg():
-    """REQ-29: ninguna ruta decide reglas ni ejecuta consultas."""
-    fuente = (pathlib.Path("src/web/app.py")).read_text(encoding="utf-8")
-    assert "psycopg" not in fuente and "persistence" not in fuente
+    """REQ-29: ninguna ruta decide reglas ni ejecuta consultas.
+
+    Se mira el paquete entero y no sólo `app.py`: `user.py`, `admin.py` y `auth.py`
+    también son presentación, y un import de `psycopg` o de `src.persistence` ahí
+    también le daría una consulta propia a una ruta. La única excepción es
+    `src/web/__main__.py`, que es el punto de composición desde antes de esta
+    función: es quien cablea las fábricas reales (`ledger()` y `transaction()`) y su
+    import de persistencia es deliberado. La excepción se limita a ese archivo: un
+    import del motor o de la persistencia en cualquier otro módulo de `src/web/`
+    hace fallar la guarda.
+    """
+    fuentes = sorted(PRESENTACION.rglob("*.py"))
+    assert fuentes, "`src/web/` tiene que tener los módulos de la presentación"
+    ofensores = [
+        str(fuente)
+        for fuente in fuentes
+        if fuente != COMPOSICION and _menciona_el_motor(fuente)
+    ]
+    assert ofensores == []
+    # El porqué de la excepción tiene que seguir siendo cierto: si `__main__.py`
+    # dejara de importar la persistencia, la excepción sobraría y esta prueba lo dice.
+    assert _menciona_el_motor(COMPOSICION), (
+        "`src/web/__main__.py` ya no importa la persistencia: quite la excepción de esta guarda"
+    )
 
 
 def test_req_29_el_guion_de_copiar_avisa_cuando_la_copia_no_sale():
