@@ -7,6 +7,8 @@ contiene sentencias de definición de datos, y que el esquema que sí se aplica
 """
 import pathlib
 import re
+from decimal import Decimal
+from uuid import uuid4
 
 import psycopg
 import pytest
@@ -178,3 +180,23 @@ def test_req_30_un_usuario_comun_aprobado_sin_wallet_sigue_prohibido(
         error.value.diag.constraint_name
         == "chk_users_wallet_coherente_con_el_estado"
     )
+
+
+def test_req_15_el_esquema_impide_el_emisor_igual_al_receptor(
+    conexion, base_limpia, emisora
+):
+    """REQ-15: el CHECK del eje sigue rechazando una transacción de una wallet a sí misma.
+
+    El dominio valida la precondición antes de escribir (REQ-33), pero el esquema
+    conserva su CHECK como respaldo; esta prueba lo ejerce por el camino directo del
+    motor, que es el que el dominio ya no alcanza.
+    """
+    with pytest.raises(psycopg.errors.CheckViolation):
+        conexion.execute(
+            """
+            INSERT INTO transactions
+                (id, sender_id, receiver_id, amount, status, signature, block_id, created_at)
+            VALUES (%s, %s, %s, %s, 'pending', %s, NULL, now())
+            """,
+            (uuid4(), emisora.id, emisora.id, Decimal("1.00000000"), "firma-de-prueba"),
+        )
