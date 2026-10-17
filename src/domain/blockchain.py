@@ -213,7 +213,21 @@ class Blockchain:
         Las dos escrituras van por los repositorios que recibió la fachada y no por
         una unidad de trabajo propia: la aprobación de REQ-33 abre la transacción
         de base y necesita que estas filas caigan dentro de ella.
+
+        Las precondiciones de la emisión —monto positivo y emisor distinto del
+        destino— se validan antes de leer o escribir nada. El CHECK del esquema
+        también las rechaza, pero este camino no tiene unidad de trabajo propia: si
+        se dejara al motor, el bloque ya estaría escrito cuando la transacción
+        violara la restricción, y una llamada directa fallida dejaría un eslabón
+        huérfano en la cadena.
         """
+        if monto <= 0:
+            raise ValueError("el monto de la emisión tiene que ser positivo")
+        if emisor_id == destino_id:
+            raise ValueError(
+                "el emisor y el destino de la emisión tienen que ser distintos"
+            )
+
         emisor = self.wallets.get(emisor_id)
         destino = self.wallets.get(destino_id)
         if emisor is None or destino is None:

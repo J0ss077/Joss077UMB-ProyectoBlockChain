@@ -4,7 +4,8 @@ La prueba siembra con el arranque del proyecto y comprueba que acreditar mueve
 los saldos disponibles, deja una sola transacción confirmada en un eslabón nuevo
 y no arrastra las pendientes que la semilla ya tiene en el pool.
 """
-import psycopg
+from decimal import Decimal
+
 import pytest
 
 from src.domain.transaction import TransactionStatus
@@ -89,18 +90,43 @@ def test_req_33_la_emision_no_arrastra_las_pendientes(base_vacia_ejecutando_boot
     assert chain.verify_chain().valid is True
 
 
-def test_req_33_el_esquema_impide_acreditar_a_la_misma_wallet(
+def test_req_33_acreditar_a_la_misma_wallet_falla_antes_de_escribir(
     base_vacia_ejecutando_bootstrap,
 ):
-    """El destino no puede ser el emisor: el CHECK del esquema detiene la emisión.
+    """Criterio: el emisor y el destino tienen que ser distintos, y se valida primero.
 
-    El dominio no agrega una regla que el esquema ya tiene; la violación sube cruda
-    (REQ-19), y en la aprobación real la unidad de trabajo deshace el bloque a medio
-    escribir (REQ-33).
+    El CHECK del esquema también lo impide, pero dejarlo al motor ya no sirve: este
+    camino no tiene unidad de trabajo, así que antes el bloque quedaba escrito y el
+    INSERT de la transacción fallaba después, con un eslabón huérfano en la cadena.
+    Ahora la llamada directa falla sin tocar el ledger.
     """
-    with pytest.raises(psycopg.errors.CheckViolation):
-        base_vacia_ejecutando_bootstrap.acreditar(
+    chain = base_vacia_ejecutando_bootstrap
+    antes = chain.ledger_state()
+
+    with pytest.raises(ValueError, match="distintos"):
+        chain.acreditar(
             emisor_id=CONSTITUYENTE_ID,
             destino_id=CONSTITUYENTE_ID,
             monto=SALDO_DE_BIENVENIDA,
         )
+
+    assert chain.ledger_state() == antes
+
+
+@pytest.mark.parametrize("monto", [Decimal("0"), Decimal("-1.00000000")])
+def test_req_33_acreditar_exige_un_monto_positivo(
+    base_vacia_ejecutando_bootstrap, monto
+):
+    """Criterio: un monto de cero o negativo no emite nada y no deja bloque escrito."""
+    chain = base_vacia_ejecutando_bootstrap
+    destino = chain.register_wallet()
+    antes = chain.ledger_state()
+
+    with pytest.raises(ValueError, match="positivo"):
+        chain.acreditar(
+            emisor_id=CONSTITUYENTE_ID,
+            destino_id=destino.id,
+            monto=monto,
+        )
+
+    assert chain.ledger_state() == antes
