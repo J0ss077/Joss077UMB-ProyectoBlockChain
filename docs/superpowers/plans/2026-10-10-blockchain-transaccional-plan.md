@@ -1193,3 +1193,38 @@ Herramienta de verificación y demostración, aprobada por el humano: `python -m
 git add src/sabotaje.py tests/integration/test_sabotaje.py README.md docs
 git commit -m "feat: sabotaje guiado del ledger, con los limites declarados y la recuperacion explicita"
 ```
+
+---
+
+### Task 16: Cierre de los menores diferidos
+
+Siete cabos sueltos que quedaron anotados en las revisiones de las tareas 11 a 15, y dos que se cierran con un ruling de «no se arregla» en vez de con código. No cambia el comportamiento de la aplicación y no agrega funcionalidad: el objetivo es que el registro quede sin deudas y que dos pruebas dejen de afirmar de menos.
+
+**Files:**
+- Modify: `src/persistence/factory.py`, `src/web/templates/*`, `tests/unit/test_req_21_cadena_de_conexion.py`, `tests/test_explicacion.py`, `tests/integration/test_sabotaje.py`, `src/sabotaje.py`, `docs/recorrido-de-casos-de-uso.md`
+- Sin archivos nuevos.
+
+**Los siete arreglos**
+
+1. **La frase «en todas las páginas».** En `docs/recorrido-de-casos-de-uso.md` y en el nombre de una prueba sigue diciendo que el panel de wallets aparece en todas las páginas. Ya no es cierto: el panel lo pasa explícitamente cada ruta de trabajo y la portada de error no lo lleva. Buscar la frase con `grep -rn "todas las páginas"`, mirar qué rutas pasan `wallets_del_panel` y escribir la verdad.
+2. **La prueba del copiado lee la plantilla y no el JavaScript.** Hoy afirma que el atributo está en el marcado, pero no que el guion lo use. Convertirla en una prueba de contrato: el selector que busca el JavaScript y el atributo que escribe la macro tienen que ser el mismo, y la prueba falla si cualquiera de los dos lados cambia solo.
+3. **El nombre de la variable de entorno en una constante.** En `factory.py`, el nombre de la variable hoy aparece como literal. Ponerlo en una constante del módulo, usarla en el lector, y que la prueba de la cadena de conexión vuelva a `monkeypatch.setenv(constante, …)`: así ejercita el camino real del entorno en vez de sustituir el lector privado. El guard de REQ-17 sigue igual: el literal no puede aparecer en `tests/unit/`.
+4. **`open_ledger(..., database_dsn=...)` no se normaliza.** Extraer la normalización a una función del módulo y aplicarla en los dos lugares donde entra una cadena —el lector del entorno y el argumento explícito—, con una prueba de la función y otra de que el argumento explícito también sale con `connect_timeout`.
+5. **El bloque esperado está fijo en 1.** En los casos `alterar-monto` y `alterar-hash`, `bloque_esperado: 1` depende de la forma del sembrado de demostración. Que el valor esperado salga del objeto que el caso altera —el bloque donde vive la transacción, el bloque cuyo hash se cambia—, y que la comparación use ese valor. Si la forma del ledger cambia, el caso tiene que seguir coincidiendo.
+6. **La sonda de la aplicación usa el puerto fijo 5000.** Que la dirección se pueda fijar por variable de entorno, con `http://127.0.0.1:5000` como valor por defecto, y que el mensaje de fallo diga cuál se intentó.
+7. **Los conteos de la prueba están fijados al sembrado.** Las pruebas del sabotaje afirman `5|4|10`. Que capturen los conteos antes de la corrida y exijan que al terminar sean **los mismos**, en vez de afirmar números mágicos.
+
+**Los dos que no se arreglan, con su razón**
+
+- **La restauración del sabotaje no es transaccional.** No se arregla con una transacción: el daño tiene que verse desde la aplicación, que abre su propia conexión, así que la alteración **debe** quedar confirmada. Envolverla en una transacción haría invisible lo que la herramienta existe para mostrar. La mitigación ya está y es la correcta: el cierre imprime el resembrado y la segunda pausa muestra la vuelta.
+- **El formateador de Markdown del workspace.** Reformatea los `.md` al guardar (el `*visible*` → `_visible_` de Prettier). No es un defecto del repositorio y no se toca desde acá; queda como nota de entorno.
+
+- [ ] **Step 1: Las pruebas primero**, donde aplique (2, 3, 4, 5, 6, 7): escribir la que falla, verla fallar, arreglar.
+- [ ] **Step 2: Los arreglos de documentación** (1).
+- [ ] **Step 3: Suite completa** con base propia, `ruff` limpio, 119 pruebas que no deben encogerse.
+- [ ] **Step 4: Commit**
+
+```bash
+git add src tests docs
+git commit -m "refactor: cierra los menores diferidos de las revisiones anteriores"
+```
