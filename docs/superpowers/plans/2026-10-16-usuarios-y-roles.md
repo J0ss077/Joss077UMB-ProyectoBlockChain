@@ -76,6 +76,7 @@ La prueba de las tablas públicas (`test_req_15...`) suma `users` al conjunto es
 **Interfaces:**
 
 - Produces: `normalizar_usuario(texto: str) -> str` (recorta y pasa a minúsculas); `validar_usuario(texto: str) -> str | None` (None válido, o el motivo); `validar_contrasena(texto: str) -> str | None`; `hashear_contrasena(texto: str) -> str` (formato `scrypt$n$r$p$sal_b64$hash_b64`); `verificar_contrasena(texto: str, guardado: str) -> bool`.
+- También: `PATRON_DE_USUARIO = r"[a-z0-9_.-]{3,20}"`, el único lugar donde vive el conjunto de caracteres permitido; la validación y los formularios lo usan desde ahí.
 
 - [ ] **Step 1: Las pruebas**
 
@@ -96,6 +97,14 @@ def test_req_30_el_usuario_se_normaliza_y_se_valida():
     assert validar_usuario("ana") is None
     assert validar_usuario("a") is not None      # demasiado corto
     assert validar_usuario("ana perez") is not None  # espacios
+
+
+def test_req_30_el_patron_y_la_validacion_dicen_lo_mismo():
+    """REQ-30: el patrón de la interfaz acepta exactamente lo que acepta la validación."""
+    for nombre in ("ana", "ana.perez", "ana_perez-2", "a1b"):
+        assert re.fullmatch(PATRON_DE_USUARIO, nombre) and validar_usuario(nombre) is None
+    for nombre in ("Ana", "ana perez", "a", "ana@x", "ñ"):
+        assert not (re.fullmatch(PATRON_DE_USUARIO, nombre) and validar_usuario(nombre) is None)
 ```
 
 - [ ] **Step 2: Ver el rojo** — Run: `.venv/bin/pytest tests/unit/test_req_36_credenciales.py -q` — Expected: FAIL, `ModuleNotFoundError`.
@@ -233,6 +242,7 @@ def test_req_37_ingresar_abre_sesion_y_salir_la_cierra(cliente): ...
 def test_req_38_el_usuario_comun_no_puede_agrupar_un_bloque(cliente_comun): ...  # 403
 def test_req_38_el_usuario_comun_no_puede_aprobar_usuarios(cliente_comun): ...   # 403
 def test_req_32_el_registro_muestra_la_pantalla_de_pendiente(cliente): ...
+def test_req_30_el_formulario_limita_el_usuario_a_los_caracteres_permitidos(cliente): ... # pattern, maxlength y la ayuda visible, tomados de PATRON_DE_USUARIO
 ```
 
 - [ ] **Step 2: Ver el rojo** — Run: `.venv/bin/pytest tests/integration/test_req_3{7,8}_*.py -q`.

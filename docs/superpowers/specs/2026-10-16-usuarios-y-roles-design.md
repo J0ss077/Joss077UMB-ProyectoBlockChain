@@ -45,7 +45,7 @@ La pieza que convierte esto en producto es un **sistema de usuarios con dos role
 
 Se numeran a continuación de los 29 del documento maestro y siguen la misma forma: criterio de aceptación verificable, y una prueba por requerimiento.
 
-- **REQ-30 — Registro.** Una persona se registra con usuario y contraseña, y queda en estado `pendiente`, sin wallet y sin poder ingresar. _Criterio_: el registro responde 200 con el estado «pendiente»; la fila existe con `estado = 'pendiente'`; un usuario repetido se rechaza con motivo.
+- **REQ-30 — Registro.** Una persona se registra con usuario y contraseña, y queda en estado `pendiente`, sin wallet y sin poder ingresar. _Criterio_: el registro responde 200 con el estado «pendiente»; la fila existe con `estado = 'pendiente'`; un usuario repetido se rechaza con motivo. El campo de usuario, en el registro y en el ingreso, sólo admite minúsculas, dígitos, punto, guion y guion bajo, entre 3 y 20 caracteres.
 - **REQ-31 — Aprobación.** El administrador ve la lista de pendientes y aprueba o rechaza. El rechazo es final: ese usuario no puede volver a registrarse con el mismo nombre. _Criterio_: al aprobar, el estado pasa a `aprobado`; al rechazar, a `rechazado` con motivo; un rechazado que intenta ingresar recibe el motivo y no entra.
 - **REQ-32 — Ingreso.** Sólo ingresa quien está aprobado. El pendiente y el rechazado reciben un mensaje que dice su estado, no un error genérico. _Criterio_: con `estado = 'pendiente'` el ingreso no abre sesión y muestra «esperando aprobación»; con `aprobado` abre sesión; con contraseña equivocada no dice si el usuario existe.
 - **REQ-33 — Wallet y saldo al aprobar.** Al aprobar se crea la wallet del usuario y se le acredita el saldo de bienvenida desde el constituyente, **en una sola operación**: si falla cualquiera de las dos, no queda ninguna escrita. _Criterio_: tras la aprobación existe exactamente una wallet ligada al usuario, con 1000 disponibles; el constituyente bajó 1000; y la cadena ganó un bloque con esa única transacción.
@@ -83,7 +83,7 @@ users
 
 ## 7. Flujos
 
-**Registro.** Formulario (usuario, contraseña, repetir contraseña) → validaciones (usuario único y con una forma mínima; contraseña con un largo mínimo; las dos iguales) → se crea la fila `pendiente` → pantalla «tu cuenta está esperando aprobación», con el usuario para que sepa qué ingresar cuando lo aprueben.
+**Registro.** Formulario (usuario, contraseña, repetir contraseña) → validaciones (usuario único; **sólo minúsculas, dígitos, punto, guion y guion bajo, entre 3 y 20 caracteres**, con el campo restringido desde la propia interfaz y una ayuda visible; contraseña con un largo mínimo; las dos iguales) → se crea la fila `pendiente` → pantalla «tu cuenta está esperando aprobación», con el usuario para que sepa qué ingresar cuando lo aprueben.
 
 **Aprobación.** El administrador ve la lista de pendientes con el usuario y la fecha de registro, y dos acciones: aprobar o rechazar (con motivo). Aprobar crea la wallet, acredita el saldo en un bloque nuevo y cambia el estado, todo en una sola operación. Rechazar guarda el motivo. Las dos acciones son irreversibles desde la interfaz: no hay «volver a aprobar» ni «des-rechazar».
 
