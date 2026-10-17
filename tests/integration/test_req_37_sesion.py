@@ -12,6 +12,8 @@ desde la propia interfaz. El cliente pide la aplicación real contra la base rea
 """
 import re
 
+from itsdangerous import URLSafeTimedSerializer
+
 from src.accounts.credentials import (
     AYUDA_DE_USUARIO,
     LARGO_MAXIMO_DE_USUARIO,
@@ -99,6 +101,39 @@ def test_req_37_la_cookie_es_httponly_samesite_lax_y_no_permanente(
     assert "SameSite=Lax" in galleta
     assert "Expires" not in galleta
     assert "Max-Age" not in galleta
+
+
+def test_req_37_una_cookie_manipulada_no_abre_sesion(cliente, administrador):
+    """Criterio: la cookie firmada no se puede alterar para elegir la cuenta.
+
+    Flask descarta la cookie entera cuando la firma no verifica, así que la petición
+    vuelve a ser anónima y la portada manda al ingreso. Se prueban las dos
+    manipulaciones: cambiar la firma, y re-firmar un `usuario_id` con otra clave.
+    """
+    ingresar_como(cliente, administrador.username, CONTRASENA_DEL_ADMINISTRADOR)
+    valida = cliente.get_cookie("session").value
+
+    partes = valida.split(".")
+    assert len(partes) == 3, valida
+    firma = partes[2]
+    partes[2] = ("A" if firma[0] != "A" else "B") + firma[1:]
+
+    cliente.set_cookie("session", ".".join(partes))
+    respuesta = cliente.get("/")
+    assert respuesta.status_code == 302
+    assert respuesta.headers["Location"].endswith("/ingresar")
+
+    # El identificador cambiado, firmado con una clave que la aplicación no conoce,
+    # tampoco vale: la firma es lo que ata la cookie a esta instalación.
+    falso = URLSafeTimedSerializer("clave-del-atacante", salt="cookie-session")
+    cliente.set_cookie(
+        "session", falso.dumps({CLAVE_DEL_USUARIO: str(administrador.id)})
+    )
+    respuesta = cliente.get("/")
+    assert respuesta.status_code == 302
+    assert respuesta.headers["Location"].endswith("/ingresar")
+    with cliente.session_transaction() as sesion:
+        assert CLAVE_DEL_USUARIO not in sesion
 
 
 def test_req_37_la_sesion_guarda_solo_el_identificador(cliente, administrador):
