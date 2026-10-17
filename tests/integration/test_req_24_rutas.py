@@ -6,7 +6,7 @@ fachada real, porque lo que miden es el recorrido de la ruta y no la fachada.
 
 Los tres casos de REQ-29 viven aquí, con las demás pruebas de las páginas, porque
 miden lo que se ve: que la interfaz no explique el proyecto, que el panel lateral
-esté en todas las páginas y que los datos vayan en monoespaciada.
+esté en las páginas de trabajo y que los datos vayan en monoespaciada.
 
 El escenario es el de la demostración del arranque: el fondo y los asociados ya
 tienen saldo confirmado, así que las transacciones que proponen las pruebas se
@@ -301,8 +301,8 @@ def test_req_29_la_interfaz_no_explica_el_proyecto(cliente):
         assert "CU-0" not in cuerpo
 
 
-def test_req_29_el_panel_lateral_aparece_en_todas_las_paginas(cliente, wallet_de_prueba):
-    """REQ-29: el panel lateral lista las wallets en todas las páginas."""
+def test_req_29_el_panel_lateral_aparece_en_las_paginas_de_trabajo(cliente, wallet_de_prueba):
+    """REQ-29: el panel lateral lista las wallets en las páginas de trabajo."""
     clave = wallet_de_prueba.public_key
     corta = f"{clave[:8]}…{clave[-4:]}"
     rutas = ("/", "/wallets", "/transacciones", "/bloques", "/verificar")
