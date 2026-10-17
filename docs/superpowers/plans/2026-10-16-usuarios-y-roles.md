@@ -59,9 +59,9 @@ def test_req_30_el_esquema_tiene_la_tabla_de_usuarios(conexion):
 La prueba de las tablas públicas (`test_req_15...`) suma `users` al conjunto esperado.
 
 - [ ] **Step 2: Correr y ver el rojo** — Run: `.venv/bin/pytest tests/integration/test_req_15_esquema.py -v` — Expected: FAIL, la tabla no existe.
-- [ ] **Step 3: Agregar la tabla a `db/init.sql`** con las columnas del diseño y dos `CHECK` más: `estado <> 'rechazado' OR motivo_rechazo IS NOT NULL`, y `(estado = 'pendiente') = (wallet_id IS NULL)`.
+- [ ] **Step 3: Agregar la tabla a `db/init.sql`** con las columnas del diseño y dos `CHECK` más: `estado <> 'rechazado' OR motivo_rechazo IS NOT NULL`, y `(estado = 'aprobado') = (wallet_id IS NOT NULL)` —así pendiente y rechazado quedan sin wallet, y sólo el aprobado la tiene—.
 - [ ] **Step 4: Cambiar el orden de la limpieza** en `tests/integration/conftest.py`: `DELETE FROM users` antes de wallets.
-- [ ] **Step 5: Las dos funciones de configuración** — prueba en `tests/unit/test_req_21_...` de que sin la variable fallan con el mensaje y de que con ella devuelven el valor; después implementarlas en `factory.py` reusando `_env_value`.
+- [ ] **Step 5: Las dos funciones de configuración** — prueba en `tests/unit/test_req_37_sesion.py` de que sin la variable fallan con el mensaje y de que con ella devuelven el valor; después implementarlas en `factory.py` reusando `_env_value`.
 - [ ] **Step 6: Verificar y commitear** — suites completas; `git commit -m "feat: la tabla de usuarios y la configuracion de la sesion"`.
 
 ---
