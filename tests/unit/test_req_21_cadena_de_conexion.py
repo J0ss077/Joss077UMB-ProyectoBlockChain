@@ -28,12 +28,13 @@ def _parametros(cadena: str) -> dict[str, str]:
 def _cadena_del_entorno(monkeypatch, cadena: str) -> None:
     """Hace que la fábrica lea `cadena` como si viniera del entorno.
 
-    Se sustituye el lector y no la variable: el nombre de esa variable no puede
-    aparecer en `tests/unit` (REQ-17 lo prohíbe para que la suite de reglas no
-    dependa de una cadena real), y esta prueba mide la normalización de la cadena,
-    no de dónde sale el valor.
+    Se fija la variable que la fábrica lee y no se sustituye el lector: el camino
+    que se ejercita es el real —`os.environ` primero y `.env` después—, así que lo
+    que la prueba mide es la normalización de una cadena que entra por donde entra
+    en producción. El nombre de la variable va por la constante del módulo: el
+    guard de REQ-17 prohíbe el literal en `tests/unit`.
     """
-    monkeypatch.setattr(factory, "_env_value", lambda name: cadena)
+    monkeypatch.setenv(factory.VARIABLE_DE_LA_CADENA_DE_CONEXION, cadena)
 
 
 def test_req_21_la_cadena_sin_tiempo_de_espera_recibe_cinco_segundos(monkeypatch):
@@ -52,3 +53,50 @@ def test_req_21_un_tiempo_de_espera_explicito_se_respeta(monkeypatch):
     assert parametros["host"] == "127.0.0.1"
     assert parametros["port"] == "55432"
     assert parametros["connect_timeout"] == "30"
+
+
+def test_req_21_la_normalizacion_es_una_funcion_del_modulo():
+    """REQ-21: la normalización se puede probar sola, sin pasar por el entorno.
+
+    El lector del entorno y el argumento explícito de `open_ledger` tienen que pasar
+    por la misma función: si cada uno normalizara por su cuenta, una de las dos
+    entradas podría quedar sin `connect_timeout` y la espera volvería a decidirla el
+    sistema operativo.
+    """
+    sin = _parametros(factory.normalizar_cadena(SIN_TIEMPO_DE_ESPERA))
+    assert sin["host"] == "127.0.0.1"
+    assert sin["connect_timeout"] == "5"
+
+    con = _parametros(factory.normalizar_cadena(CON_TIEMPO_DE_ESPERA))
+    assert con["connect_timeout"] == "30"
+
+
+def test_req_21_el_argumento_explicito_de_open_ledger_tambien_se_normaliza(monkeypatch):
+    """REQ-21: la cadena que entra por `database_dsn` sale con `connect_timeout`.
+
+    `open_ledger` es la segunda puerta por la que entra una cadena —la primera es el
+    entorno— y es la que se queda la unidad de trabajo. La prueba la captura en el
+    punto en que la fábrica se la pasa, sin abrir ninguna conexión: lo que mide es la
+    normalización, no el motor.
+    """
+    capturadas = []
+
+    class UnidadDeTrabajoFalsa:
+        """Recibe la cadena en el mismo punto en que la recibe la unidad real."""
+
+        @classmethod
+        def open(cls, cadena):
+            capturadas.append(cadena)
+            return object()
+
+    monkeypatch.setattr(factory, "PostgresUnitOfWork", UnidadDeTrabajoFalsa)
+    ledger = factory.open_ledger(
+        object(), encryption_key=b"clave", database_dsn=SIN_TIEMPO_DE_ESPERA
+    )
+    # La unidad de trabajo es diferida: la cadena se pasa al pedirla, y ahí se mira.
+    ledger._unit_of_work()
+
+    assert len(capturadas) == 1
+    parametros = _parametros(capturadas[0])
+    assert parametros["host"] == "127.0.0.1"
+    assert parametros["connect_timeout"] == "5"

@@ -30,6 +30,12 @@ from src.persistence.unit_of_work import PostgresUnitOfWork
 # versionado.
 ENV_FILE = Path(__file__).resolve().parents[2] / ".env"
 
+# Nombre de la variable que trae la cadena de conexión. Es una constante y no un
+# literal porque el lector del entorno y la prueba que lo ejercita tienen que nombrar
+# la misma variable: el guard de REQ-17 prohíbe el literal en `tests/unit`, así que la
+# prueba importa esta constante en vez de escribirlo.
+VARIABLE_DE_LA_CADENA_DE_CONEXION = "DATABASE_URL"
+
 
 def _env_value(name: str) -> str | None:
     """Valor de una variable del entorno o, si no está, del `.env` local.
@@ -48,20 +54,17 @@ def _env_value(name: str) -> str | None:
     return None
 
 
-def database_url() -> str:
-    """Cadena de conexión del entorno o de `.env`, normalizada antes de devolverla.
+def normalizar_cadena(cadena: str) -> str:
+    """Devuelve la cadena de conexión con `connect_timeout` puesto si no lo traía.
 
-    Si falta, falla con la instrucción en vez de adivinar un valor: una
-    configuración a medias tiene que doler ahora y no en la primera consulta.
+    Sin tiempo de espera, cuánto aguantar frente a un puerto que no contesta lo deciden
+    la librería y el sistema operativo —y detrás del retransmisor de WSL2 en Windows
+    puede ser mucho—, así que un puerto mal puesto se ve como un cuelgue en lugar de
+    como un error. Un `connect_timeout` explícito en la cadena se respeta tal cual.
 
-    La cadena vuelve con `connect_timeout` puesto si no lo traía: sin tiempo de
-    espera, cuánto aguantar frente a un puerto que no contesta lo deciden la librería
-    y el sistema operativo —y detrás del retransmisor de WSL2 en Windows puede ser
-    mucho—, así que un puerto mal puesto se ve como un cuelgue en lugar de como un
-    error. Un `connect_timeout` explícito en la cadena se respeta tal cual.
-
-    Normalizar aquí y no en cada conexión cubre las dos que abre el ledger: la de
-    `ledger()` y la de la unidad de trabajo, que reciben esta misma cadena.
+    Las dos entradas de una cadena pasan por acá: el lector del entorno y el argumento
+    explícito de `open_ledger`. Normalizar en una sola función es lo que impide que una
+    de las dos quede sin el tiempo de espera por olvido.
 
     La cadena vuelve en la forma canónica de libpq (`host=... port=...
     connect_timeout=5`), no en la forma de URL que se escribe en `.env`: para saber si
@@ -70,14 +73,27 @@ def database_url() -> str:
     formas, y de esta función solo sale la cadena con la que se conecta, así que el
     cambio de forma no llega a nadie más.
     """
-    url = _env_value("DATABASE_URL")
+    parametros = conninfo_to_dict(cadena)
+    parametros.setdefault("connect_timeout", "5")
+    return make_conninfo(**parametros)
+
+
+def database_url() -> str:
+    """Cadena de conexión del entorno o de `.env`, normalizada antes de devolverla.
+
+    Si falta, falla con la instrucción en vez de adivinar un valor: una
+    configuración a medias tiene que doler ahora y no en la primera consulta.
+
+    Normalizar aquí y no en cada conexión cubre las dos que abre el ledger: la de
+    `ledger()` y la de la unidad de trabajo, que reciben esta misma cadena.
+    """
+    url = _env_value(VARIABLE_DE_LA_CADENA_DE_CONEXION)
     if url:
-        params = conninfo_to_dict(url)
-        params.setdefault("connect_timeout", "5")
-        return make_conninfo(**params)
+        return normalizar_cadena(url)
     raise RuntimeError(
-        "Falta DATABASE_URL en el entorno y en `.env`: levante la base con "
-        "`docker compose up -d` (o `podman compose up -d`) y copie `.env.example` a `.env`."
+        f"Falta {VARIABLE_DE_LA_CADENA_DE_CONEXION} en el entorno y en `.env`: levante "
+        "la base con `docker compose up -d` (o `podman compose up -d`) y copie "
+        "`.env.example` a `.env`."
     )
 
 
@@ -110,13 +126,15 @@ def open_ledger(
     `database_dsn` es la cadena con la que se abre la unidad de trabajo; si no se
     pasa, se resuelve del entorno **una sola vez** aquí. Resolverla una vez y no en
     cada agrupación es lo que garantiza que las lecturas y las escrituras apunten a
-    la misma base aunque el entorno cambie a mitad de camino.
+    la misma base aunque el entorno cambie a mitad de camino. La cadena explícita se
+    normaliza igual que la del entorno: es la otra puerta por la que entra una cadena
+    y no hay razón para que una llegue con `connect_timeout` y la otra sin él.
 
     Los tres repositorios de lectura comparten esa conexión; la agrupación no,
     porque REQ-18 exige que sus dos escrituras ocurran en una sola transacción de
     base de datos y para eso la unidad de trabajo abre la suya propia.
     """
-    dsn = database_dsn if database_dsn is not None else database_url()
+    dsn = database_url() if database_dsn is None else normalizar_cadena(database_dsn)
     return Blockchain(
         wallets=PostgresWalletRepository(connection),
         blocks=PostgresBlockRepository(connection),
