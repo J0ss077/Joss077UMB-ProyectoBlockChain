@@ -3,8 +3,10 @@
 Resuelve de dónde salen la cadena de conexión, la clave maestra, el secreto de la
 sesión y la contraseña del administrador, y arma la fachada del dominio con los
 tres repositorios PostgreSQL y la unidad de trabajo de REQ-18. `open_ledger` trabaja
-sobre una conexión que no abre —así la reutilizan el arranque y las pruebas— y
-`ledger()` es el punto de entrada que sí la abre y la cierra.
+sobre una conexión que no abre —así la reutilizan el arranque y las pruebas—,
+`transaction()` abre la conexión que comparten el ledger y las cuentas para la
+aprobación atómica (REQ-33) y `ledger()` es el punto de entrada que sí la abre y la
+cierra.
 """
 from __future__ import annotations
 
@@ -17,6 +19,8 @@ from pathlib import Path
 import psycopg
 from psycopg.conninfo import conninfo_to_dict, make_conninfo
 
+from src.accounts.ports import RepositorioDeUsuarios
+from src.accounts.postgres import PostgresAccountsRepository
 from src.domain.blockchain import Blockchain
 from src.persistence.postgres import (
     PostgresBlockRepository,
@@ -176,6 +180,67 @@ def open_ledger(
         master_key=encryption_key,
         clock=clock if clock is not None else _utc_now,
     )
+
+
+class TransaccionDeCuentas:
+    """El ledger y las cuentas sobre una sola conexión, con un `commit` único (REQ-33).
+
+    La usa la aprobación, que es la única operación que escribe en los dos
+    contextos: la wallet, el bloque de bienvenida y el estado del usuario tienen
+    que confirmarse juntos o no confirmarse. El `commit` vive acá y no en un
+    `with` implícito porque la operación decide cuándo cerró bien: mientras no se
+    llame, el cierre de la conexión deshace lo escrito.
+    """
+
+    def __init__(
+        self,
+        *,
+        ledger: Blockchain,
+        usuarios: RepositorioDeUsuarios,
+        connection: psycopg.Connection,
+    ) -> None:
+        self.ledger = ledger
+        self.usuarios = usuarios
+        self._connection = connection
+
+    def commit(self) -> None:
+        """Confirma de una vez todo lo escrito en esta transacción."""
+        self._connection.commit()
+
+
+@contextmanager
+def transaction() -> Iterator[TransaccionDeCuentas]:
+    """Abre una transacción de base que compone el ledger y las cuentas (REQ-18, REQ-33).
+
+    Es la pieza que hace atómica la aprobación: `register_wallet`, `acreditar` y
+    el `UPDATE` del estado escriben por los repositorios de **esta** conexión, y el
+    `commit` único del llamador confirma las tres o ninguna. Por eso la conexión no
+    va en autocommit y el `commit` es explícito: lo decide la operación.
+
+    Ante cualquier excepción se deshace lo escrito y el error sigue subiendo sin
+    traducir (REQ-19), igual que en la unidad de trabajo de la agrupación. La
+    conexión se cierra siempre: es de esta transacción y no de los llamadores.
+
+    Se compone acá y no en `unit_of_work.py` porque ese módulo importar `factory`
+    sería circular; la unidad de trabajo sigue siendo la de la agrupación (REQ-18),
+    que no necesita el ledger sobre su conexión.
+    """
+    dsn = database_url()
+    connection = psycopg.connect(dsn)
+    try:
+        connection.execute("SET TIME ZONE 'UTC'")
+        yield TransaccionDeCuentas(
+            ledger=open_ledger(
+                connection, encryption_key=master_key(), database_dsn=dsn
+            ),
+            usuarios=PostgresAccountsRepository(connection),
+            connection=connection,
+        )
+    except BaseException:
+        connection.rollback()
+        raise
+    finally:
+        connection.close()
 
 
 @contextmanager

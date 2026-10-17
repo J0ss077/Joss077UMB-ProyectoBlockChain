@@ -16,11 +16,13 @@ from uuid import UUID, uuid4
 import psycopg
 import pytest
 
+from src.accounts.service import Cuentas
+from src.bootstrap import wallet_del_constituyente
 from src.domain.block import Block
 from src.domain.blockchain import Blockchain, ensure_genesis
 from src.domain.transaction import Transaction, TransactionStatus
 from src.domain.wallet import Wallet, create_wallet, sign_payload
-from src.persistence.factory import database_url, open_ledger
+from src.persistence.factory import database_url, open_ledger, transaction
 from src.persistence.factory import master_key as master_key_from_env
 from src.persistence.ports import BlockRepository, WalletRepository
 from src.persistence.postgres import PostgresBlockRepository, PostgresWalletRepository
@@ -86,6 +88,19 @@ def ledger(conexion, base_limpia, master_key) -> Blockchain:
     chain = open_ledger(conexion, encryption_key=master_key, clock=lambda: BLOCK_AT)
     ensure_genesis(chain)
     return chain
+
+
+@pytest.fixture
+def cuentas(ledger, master_key) -> Cuentas:
+    """El servicio de cuentas real, con el constituyente ya registrado.
+
+    `Cuentas` abre cada operación con `factory.transaction()`, una conexión
+    propia; el ledger de la sesión siembra y lee lo confirmado. El constituyente
+    tiene que existir porque la aprobación emite desde él (REQ-33); el ledger de
+    la sesión lo ve apenas se escribe porque está en autocommit.
+    """
+    ledger.wallets.add(wallet_del_constituyente(master_key))
+    return Cuentas(transaction)
 
 
 @pytest.fixture
