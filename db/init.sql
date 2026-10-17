@@ -100,3 +100,53 @@ CREATE INDEX idx_transactions_status ON transactions (status);
 -- REQ-03, porque dos filas con la misma firma son la misma transacción
 -- presentada dos veces, y el dominio consulta antes para poder dar el motivo.
 CREATE UNIQUE INDEX uq_transactions_signature ON transactions (signature);
+
+-- ---------------------------------------------------------------------------
+-- users: cuentas del sistema, con su rol y el estado de la alta moderada
+-- (REQ-30, REQ-31). La relación va de `users` hacia `wallets` y no al revés: la
+-- wallet nace recién con la aprobación, así que `wallet_id` es nulo mientras la
+-- cuenta esté pendiente o haya sido rechazada (diseño §6). El `UNIQUE` de
+-- `wallet_id` admite varios nulos, que es justo lo que hace falta, y el
+-- `ON DELETE RESTRICT` impide borrar una wallet con dueño.
+-- ---------------------------------------------------------------------------
+CREATE TABLE users (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    username TEXT NOT NULL,
+    password_hash TEXT NOT NULL,
+    role TEXT NOT NULL,
+    estado TEXT NOT NULL,
+    motivo_rechazo TEXT NULL,
+    wallet_id UUID NULL,
+    creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    aprobado_en TIMESTAMPTZ NULL,
+
+    CONSTRAINT users_username_key UNIQUE (username),
+    CONSTRAINT users_wallet_id_key UNIQUE (wallet_id),
+    CONSTRAINT users_role_check CHECK (role IN ('administrador', 'usuario')),
+    CONSTRAINT users_estado_check CHECK (estado IN ('pendiente', 'aprobado', 'rechazado')),
+    CONSTRAINT fk_users_wallet
+        FOREIGN KEY (wallet_id) REFERENCES wallets (id)
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT chk_users_motivo_rechazo_requerido
+        CHECK (estado <> 'rechazado' OR motivo_rechazo IS NOT NULL),
+    -- La wallet acompaña a la aprobación: `aprobado` la exige y `pendiente` o
+    -- `rechazado` la dejan nula. La bicondicional contra `pendiente` obligaría al
+    -- rechazado a tener wallet, y el rechazo nunca la crea.
+    CONSTRAINT chk_users_wallet_coherente_con_el_estado
+        CHECK ((estado = 'aprobado') = (wallet_id IS NOT NULL))
+);
+
+COMMENT ON COLUMN users.username IS
+    'Nombre único con el que se ingresa, normalizado a minúsculas por la aplicación (REQ-30).';
+COMMENT ON COLUMN users.password_hash IS
+    'Hash `scrypt` con sal por usuario; la contraseña en claro nunca se guarda (REQ-36).';
+COMMENT ON COLUMN users.role IS
+    'Rol de autorización: `administrador` o `usuario` (REQ-38).';
+COMMENT ON COLUMN users.estado IS
+    'Estado del alta moderada: `pendiente`, `aprobado` o `rechazado` (REQ-30, REQ-31).';
+COMMENT ON COLUMN users.motivo_rechazo IS
+    'Motivo que deja el administrador al rechazar; obligatorio en estado `rechazado` (REQ-31).';
+COMMENT ON COLUMN users.wallet_id IS
+    'Wallet del usuario, ligada al aprobar; nula mientras el alta no esté aprobada (REQ-33).';
+COMMENT ON COLUMN users.aprobado_en IS
+    'Momento de la aprobación; nulo mientras el alta no esté aprobada (REQ-33).';

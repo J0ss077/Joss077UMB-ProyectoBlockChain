@@ -51,15 +51,18 @@ def conexion():
 
 @pytest.fixture
 def base_limpia(conexion):
-    """Vacía las tres tablas antes de cada prueba, en orden inverso a las claves foráneas.
+    """Vacía las cuatro tablas antes de cada prueba, en orden inverso a las claves foráneas.
 
-    Se borra con `DELETE` y no con `TRUNCATE`: `TRUNCATE` es DDL y REQ-15 lo
-    prohíbe desde las pruebas. No es `autouse` a propósito: una prueba sin base
-    (REQ-15 y REQ-21) no debe arrastrar la conexión y, con ella, la exigencia de
-    `DATABASE_URL`; cada prueba que toca la base lo pide.
+    `users` va antes que `wallets` porque `users.wallet_id` la referencia con
+    `ON DELETE RESTRICT`: al revés, la limpieza fallaría en cuanto hubiera una
+    cuenta aprobada. Se borra con `DELETE` y no con `TRUNCATE`: `TRUNCATE` es DDL y
+    REQ-15 lo prohíbe desde las pruebas. No es `autouse` a propósito: una prueba sin
+    base (REQ-15 y REQ-21) no debe arrastrar la conexión y, con ella, la exigencia
+    de `DATABASE_URL`; cada prueba que toca la base lo pide.
     """
     conexion.execute("DELETE FROM transactions")
     conexion.execute("DELETE FROM blocks")
+    conexion.execute("DELETE FROM users")
     conexion.execute("DELETE FROM wallets")
     yield
 

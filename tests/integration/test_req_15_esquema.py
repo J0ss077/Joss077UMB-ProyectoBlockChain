@@ -2,13 +2,56 @@
 
 Aquí viven las dos comprobaciones del requisito: que ninguna ruta del código
 contiene sentencias de definición de datos, y que el esquema que sí se aplica
-—el de `db/init.sql`— tiene las tres tablas del modelo relacional del eje y el
-índice único sobre `transactions.signature` de la decisión 4.
+—el de `db/init.sql`— tiene las cuatro tablas del modelo —las tres del eje y
+`users`— y el índice único sobre `transactions.signature` de la decisión 4.
 """
 import pathlib
 import re
 
 from psycopg.rows import dict_row
+
+
+def columnas_de(conexion, tabla: str) -> set[str]:
+    """Columnas de una tabla del esquema público, leídas del catálogo."""
+    with conexion.cursor(row_factory=dict_row) as cursor:
+        cursor.execute(
+            """
+            SELECT column_name
+            FROM information_schema.columns
+            WHERE table_schema = 'public' AND table_name = %s
+            """,
+            (tabla,),
+        )
+        return {fila["column_name"] for fila in cursor.fetchall()}
+
+
+def indices_y_restricciones(conexion, tabla: str) -> set[str]:
+    """Nombres de las restricciones y los índices de una tabla del esquema público.
+
+    Se miran las dos fuentes porque un `UNIQUE` deja restricción e índice con el
+    mismo nombre, mientras que un `CHECK` solo vive en `pg_constraint`: el conjunto
+    tiene que cubrir las dos clases para que la prueba no dependa de cuál es cuál.
+    """
+    with conexion.cursor(row_factory=dict_row) as cursor:
+        cursor.execute(
+            """
+            SELECT conname AS nombre
+            FROM pg_constraint
+            WHERE conrelid = to_regclass(%s)
+            """,
+            (f"public.{tabla}",),
+        )
+        nombres = {fila["nombre"] for fila in cursor.fetchall()}
+        cursor.execute(
+            """
+            SELECT indexname AS nombre
+            FROM pg_indexes
+            WHERE schemaname = 'public' AND tablename = %s
+            """,
+            (tabla,),
+        )
+        nombres |= {fila["nombre"] for fila in cursor.fetchall()}
+    return nombres
 
 
 def test_req_15_no_hay_ddl_en_el_codigo():
@@ -24,8 +67,10 @@ def test_req_15_no_hay_ddl_en_el_codigo():
     assert ofensores == []
 
 
-def test_req_15_el_esquema_aplicado_tiene_las_tres_tablas_y_el_indice_unico(conexion, base_limpia):
-    """El esquema aplicado tiene `wallets`, `blocks` y `transactions`, y `signature` es única."""
+def test_req_15_el_esquema_aplicado_tiene_las_cuatro_tablas_y_el_indice_unico(
+    conexion, base_limpia
+):
+    """El esquema aplicado tiene las cuatro tablas y `signature` es única."""
     with conexion.cursor(row_factory=dict_row) as cursor:
         cursor.execute(
             """
@@ -35,7 +80,7 @@ def test_req_15_el_esquema_aplicado_tiene_las_tres_tablas_y_el_indice_unico(cone
             """
         )
         tablas = {fila["table_name"] for fila in cursor.fetchall()}
-    assert tablas == {"wallets", "blocks", "transactions"}
+    assert tablas == {"wallets", "blocks", "transactions", "users"}
 
     # El catálogo se consulta en vez de reaplicar `db/init.sql`: reaplicarlo
     # sería DDL desde la prueba, que es justo lo que REQ-15 prohíbe.
@@ -52,3 +97,18 @@ def test_req_15_el_esquema_aplicado_tiene_las_tres_tablas_y_el_indice_unico(cone
         )
         indices_unicos = cursor.fetchall()
     assert len(indices_unicos) == 1, "hace falta el índice único sobre transactions.signature"
+
+
+def test_req_30_el_esquema_tiene_la_tabla_de_usuarios(conexion):
+    """REQ-30: la tabla `users` existe con sus restricciones."""
+    columnas = columnas_de(conexion, "users")
+    assert set(columnas) == {"id", "username", "password_hash", "role", "estado",
+                             "motivo_rechazo", "wallet_id", "creado_en", "aprobado_en"}
+    assert indices_y_restricciones(conexion, "users") >= {
+        "users_username_key",
+        "users_wallet_id_key",
+        "users_role_check",
+        "users_estado_check",
+        "chk_users_motivo_rechazo_requerido",
+        "chk_users_wallet_coherente_con_el_estado",
+    }

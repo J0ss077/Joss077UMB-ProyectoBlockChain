@@ -1,10 +1,10 @@
 """Ensamblado del ledger: configuración del entorno y adaptadores (REQ-16, REQ-21).
 
-Resuelve de dónde salen la cadena de conexión y la clave maestra, y arma la
-fachada del dominio con los tres repositorios PostgreSQL y la unidad de trabajo de
-REQ-18. `open_ledger` trabaja sobre una conexión que no abre —así la reutilizan el
-arranque y las pruebas— y `ledger()` es el punto de entrada que sí la abre y la
-cierra.
+Resuelve de dónde salen la cadena de conexión, la clave maestra, el secreto de la
+sesión y la contraseña del administrador, y arma la fachada del dominio con los
+tres repositorios PostgreSQL y la unidad de trabajo de REQ-18. `open_ledger` trabaja
+sobre una conexión que no abre —así la reutilizan el arranque y las pruebas— y
+`ledger()` es el punto de entrada que sí la abre y la cierra.
 """
 from __future__ import annotations
 
@@ -35,6 +35,12 @@ ENV_FILE = Path(__file__).resolve().parents[2] / ".env"
 # la misma variable: el guard de REQ-17 prohíbe el literal en `tests/unit`, así que la
 # prueba importa esta constante en vez de escribirlo.
 VARIABLE_DE_LA_CADENA_DE_CONEXION = "DATABASE_URL"
+
+# Las dos variables de la sesión y del administrador sembrado van en constantes por
+# la misma razón que la cadena de conexión: el lector y su prueba tienen que nombrar
+# la misma variable y el guard de REQ-17 prohíbe el literal en `tests/unit`.
+VARIABLE_DEL_SECRETO_DE_SESION = "SESSION_SECRET"
+VARIABLE_DE_LA_CONTRASENA_DEL_ADMINISTRADOR = "ADMIN_PASSWORD"
 
 
 def _env_value(name: str) -> str | None:
@@ -103,6 +109,33 @@ def master_key() -> bytes:
     if value:
         return value.encode("ascii")
     raise RuntimeError("Falta MASTER_KEY en el entorno y en `.env`: copie `.env.example` a `.env`.")
+
+
+def session_secret() -> bytes:
+    """Clave con la que Flask firma la cookie de sesión (REQ-37).
+
+    Se devuelve como bytes porque es lo que espera `app.secret_key`; se lee del
+    entorno y, si no está, de `.env`, igual que la clave maestra.
+    """
+    value = _env_value(VARIABLE_DEL_SECRETO_DE_SESION)
+    if value:
+        return value.encode("utf-8")
+    raise RuntimeError(
+        f"Falta {VARIABLE_DEL_SECRETO_DE_SESION} en el entorno y en `.env`: copie "
+        "`.env.example` a `.env` y genere la clave con "
+        '`.venv/bin/python -c "import secrets; print(secrets.token_hex(32))"`.'
+    )
+
+
+def admin_password() -> str:
+    """Contraseña de la cuenta de administrador que siembra el arranque (decisión 4)."""
+    value = _env_value(VARIABLE_DE_LA_CONTRASENA_DEL_ADMINISTRADOR)
+    if value:
+        return value
+    raise RuntimeError(
+        f"Falta {VARIABLE_DE_LA_CONTRASENA_DEL_ADMINISTRADOR} en el entorno y en "
+        "`.env`: copie `.env.example` a `.env` y fije la contraseña del administrador."
+    )
 
 
 def _utc_now() -> datetime:
