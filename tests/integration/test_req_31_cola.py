@@ -15,10 +15,12 @@ from uuid import uuid4
 
 from src.accounts.model import APROBADO, PENDIENTE, RECHAZADO
 from src.accounts.service import Cuentas
+from src.bootstrap import FONDO, USERNAME_DEL_ADMINISTRADOR
 from src.domain.blockchain import Blockchain
 from src.emision import SALDO_DE_BIENVENIDA
+from src.persistence.factory import admin_password
 from src.web.admin import MENSAJE_SIN_MOTIVO
-from tests.integration.conftest import CONTRASENA_DE_PRUEBA
+from tests.integration.conftest import CONTRASENA_DE_PRUEBA, ingresar_como
 
 RUTA_DE_LA_COLA = "/admin/pendientes"
 
@@ -26,6 +28,28 @@ RUTA_DE_LA_COLA = "/admin/pendientes"
 def _registrar(cuentas: Cuentas, nombre: str):
     """Una cuenta pendiente real, por el mismo camino que usa el registro."""
     return cuentas.registrar(nombre, CONTRASENA_DE_PRUEBA)
+
+
+def test_req_31_la_cola_muestra_el_panel_con_saldos(
+    base_vacia_ejecutando_bootstrap, cliente
+):
+    """La cola pinta el mismo panel de wallets con saldos que las otras páginas.
+
+    La lista sale de la fuente compartida y no de una consulta propia de la cola:
+    se exige una línea de saldo por wallet sembrada y el saldo conocido del fondo
+    (300), además de su clave pública completa en el marcado.
+    """
+    chain = base_vacia_ejecutando_bootstrap
+    ingresar_como(cliente, USERNAME_DEL_ADMINISTRADOR, admin_password())
+
+    respuesta = cliente.get(RUTA_DE_LA_COLA)
+
+    assert respuesta.status_code == 200
+    cuerpo = respuesta.get_data(as_text=True)
+    assert "Wallets" in cuerpo
+    assert cuerpo.count("Saldo:") == chain.ledger_state()["wallets"]
+    assert FONDO in cuerpo
+    assert "300.00000000" in cuerpo
 
 
 def test_req_31_el_administrador_ve_los_pendientes(cliente_admin, cuentas):

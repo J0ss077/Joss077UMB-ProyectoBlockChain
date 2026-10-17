@@ -180,7 +180,8 @@
             {% endif %}
         </div>
         <div class="columnas">
-            {# El panel solo se pinta si la ruta pasó la lista: la página de error no la pasa, porque no puede depender del ledger para dibujarse. #} {% if wallets_del_panel is defined %}
+            {# El panel solo se pinta si la ruta pasó la lista: la página de error no la pasa, porque no puede depender del ledger para dibujarse. Las páginas del administrador la pasan siempre con `panel.datos_del_panel`, que incluye el saldo; las del
+            usuario común no, a propósito (REQ-35). #} {% if wallets_del_panel is defined %}
             <aside class="panel">
                 <h2>Wallets</h2>
                 {% if wallets_del_panel %}
@@ -189,7 +190,7 @@
                     <li>
                         {{ dato(registrada.public_key) }} {{ copiar(registrada.public_key, "la clave pública " ~ corto(registrada.public_key)) }}
                         <a href="/historial/{{ registrada.id }}">Historial</a>
-                        {# El saldo solo lo pasa la portada: las demás páginas no lo consultan y el panel se pinta sin él. #} {% if saldos_de_las_wallets is defined %}
+                        {# El saldo viene de la misma fuente que la lista, así que el panel del administrador nunca se pinta sin él. #} {% if saldos_de_las_wallets is defined %}
                         <span class="saldo">Saldo: <span class="mono">{{ saldos_de_las_wallets[registrada.id] }}</span></span>
                         {% endif %}
                     </li>

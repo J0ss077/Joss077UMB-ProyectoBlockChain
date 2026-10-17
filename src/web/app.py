@@ -54,6 +54,7 @@ from src.web.auth import (
     usuario_de_la_sesion,
 )
 from src.web.forms import a_monto, a_uuid
+from src.web.panel import datos_del_panel
 from src.web.user import crear_blueprint_del_usuario
 
 # Nombre de la variable que firma la cookie. Es una constante y no un literal
@@ -116,9 +117,11 @@ def create_app(
     # Las rutas del usuario común se registran con las mismas fábricas: el
     # blueprint no arma el ledger ni las cuentas por su cuenta (REQ-29).
     app.register_blueprint(crear_blueprint_del_usuario(abrir_cadena, abrir_cuentas))
-    # La cola de pendientes del administrador sigue la misma regla: recibe la
-    # fábrica de cuentas y no abre conexiones por su cuenta (REQ-29, REQ-31).
-    app.register_blueprint(crear_blueprint_de_la_cola(abrir_cuentas))
+    # La cola de pendientes del administrador sigue la misma regla: recibe las
+    # fábricas de cuentas y de cadena y no abre conexiones por su cuenta; la cadena
+    # es la que alimenta el panel de wallets con saldos que comparten sus páginas
+    # (REQ-29, REQ-31).
+    app.register_blueprint(crear_blueprint_de_la_cola(abrir_cuentas, abrir_cadena))
 
     @app.context_processor
     def valores_de_los_formularios() -> dict[str, object]:
@@ -226,17 +229,15 @@ def create_app(
         if g.user.role != ADMINISTRADOR:
             return redirect(url_for("usuario.mi_tablero"))
         with abrir_cadena() as chain:
-            wallets = chain.wallets.list()
-            # El saldo se pide a la fachada, la misma cuenta que usa el envío para
-            # decidir: la portada no lo recalcula ni consulta la base (REQ-29). Es
-            # la celda de la matriz de permisos (§8) que pide ver las wallets con
-            # sus saldos del lado del administrador.
-            saldos = {wallet.id: chain.available_balance(wallet.id) for wallet in wallets}
+            # El panel sale de una sola fuente, la misma para todas las páginas del
+            # administrador: la lista de wallets y el saldo disponible que calcula la
+            # fachada con la cuenta del envío (REQ-05, REQ-29). Es la celda de la
+            # matriz de permisos (§8) que le da al administrador las wallets con sus
+            # saldos, y el usuario común no la recibe (REQ-35).
             return render_template(
                 "index.html",
                 estado=chain.ledger_state(),
-                wallets_del_panel=wallets,
-                saldos_de_las_wallets=saldos,
+                **datos_del_panel(chain),
             )
 
     @app.route("/wallets", methods=["GET", "POST"])
@@ -252,12 +253,12 @@ def create_app(
         if request.method == "GET":
             with abrir_cadena() as chain:
                 return render_template(
-                    "wallet.html", wallet=None, wallets_del_panel=chain.wallets.list()
+                    "wallet.html", wallet=None, **datos_del_panel(chain)
                 )
         with abrir_cadena() as chain:
             wallet = chain.register_wallet()
             return render_template(
-                "wallet.html", wallet=wallet, wallets_del_panel=chain.wallets.list()
+                "wallet.html", wallet=wallet, **datos_del_panel(chain)
             )
 
     @app.route("/transacciones", methods=["GET", "POST"])
@@ -275,8 +276,8 @@ def create_app(
                 return render_template(
                     "transaccion.html",
                     resultado=None,
-                    wallets_del_panel=chain.wallets.list(),
                     error_formulario=None,
+                    **datos_del_panel(chain),
                 )
         with abrir_cadena() as chain:
             sender_id = a_uuid(request.form.get("sender_id"))
@@ -287,8 +288,8 @@ def create_app(
                 return render_template(
                     "transaccion.html",
                     resultado=None,
-                    wallets_del_panel=chain.wallets.list(),
                     error_formulario="El emisor y el receptor deben ser wallets registradas.",
+                    **datos_del_panel(chain),
                 )
             resultado = chain.create_transaction(
                 sender_id=sender_id,
@@ -298,8 +299,8 @@ def create_app(
             return render_template(
                 "transaccion.html",
                 resultado=resultado,
-                wallets_del_panel=chain.wallets.list(),
                 error_formulario=None,
+                **datos_del_panel(chain),
             )
 
     @app.route("/bloques", methods=["GET", "POST"])
@@ -316,7 +317,7 @@ def create_app(
                     "bloque.html",
                     bloque=None,
                     habia_pool=False,
-                    wallets_del_panel=chain.wallets.list(),
+                    **datos_del_panel(chain),
                 )
         with abrir_cadena() as chain:
             habia_pool = bool(chain.transactions.pending())
@@ -325,7 +326,7 @@ def create_app(
                 "bloque.html",
                 bloque=bloque,
                 habia_pool=habia_pool,
-                wallets_del_panel=chain.wallets.list(),
+                **datos_del_panel(chain),
             )
 
     @app.get("/verificar")
@@ -336,7 +337,7 @@ def create_app(
             return render_template(
                 "verificar.html",
                 dictamen=chain.verify_chain(),
-                wallets_del_panel=chain.wallets.list(),
+                **datos_del_panel(chain),
             )
 
     @app.get("/historial/<wallet>")
@@ -360,7 +361,7 @@ def create_app(
                 "historial.html",
                 wallet_id=wallet_id,
                 transacciones=chain.wallet_history(wallet_id),
-                wallets_del_panel=chain.wallets.list(),
+                **datos_del_panel(chain),
             )
 
     @app.errorhandler(404)

@@ -7,6 +7,11 @@ delega en `Cuentas.pendientes`, `Cuentas.aprobar` y `Cuentas.rechazar`. La
 aprobación crea la wallet y acredita el saldo dentro del servicio (REQ-33), así
 que la presentación sólo informa el resultado.
 
+La lista también recibe la fábrica de cadena para pintar el mismo panel de wallets
+con saldos que el resto de las páginas del administrador. Es una sola fuente
+(`panel.datos_del_panel`) y no una consulta propia de esta ruta: la cola no
+recalcula saldos ni habla con el motor (REQ-29).
+
 El único control que vive acá es el del motivo del rechazo: un texto en blanco no
 llega al servicio porque el rechazo tiene que explicar por qué. Una fila que dejó
 de estar pendiente —o que ya no existe— se informa y se vuelve a la cola: la
@@ -30,9 +35,12 @@ from flask import (
 )
 
 from src.accounts.service import Cuentas, UsuarioInexistente, UsuarioNoPendiente
+from src.domain.blockchain import Blockchain
 from src.web.auth import requiere_administrador
+from src.web.panel import datos_del_panel
 
 FabricaDeCuentas = Callable[[], AbstractContextManager[Cuentas]]
+FabricaDeCadenas = Callable[[], AbstractContextManager[Blockchain]]
 
 # Los avisos de la cola. El de la aprobación nombra lo que se creó porque la
 # persona no ve la wallet desde acá; los de fallo repiten el texto del servicio,
@@ -42,16 +50,26 @@ MENSAJE_RECHAZADA = "La cuenta quedó rechazada con el motivo indicado."
 MENSAJE_SIN_MOTIVO = "El rechazo necesita un motivo."
 
 
-def crear_blueprint_de_la_cola(abrir_cuentas: FabricaDeCuentas) -> Blueprint:
-    """Arma la cola con la fábrica de cuentas que recibe de `create_app`."""
+def crear_blueprint_de_la_cola(
+    abrir_cuentas: FabricaDeCuentas, abrir_cadena: FabricaDeCadenas
+) -> Blueprint:
+    """Arma la cola con las fábricas que recibe de `create_app`."""
     cola = Blueprint("admin", __name__, url_prefix="/admin")
 
     @cola.get("/pendientes")
     @requiere_administrador
     def pendientes() -> str:
-        """REQ-31: las cuentas que esperan aprobación, con su usuario y su fecha."""
-        with abrir_cuentas() as cuentas:
-            return render_template("pendientes.html", pendientes=cuentas.pendientes())
+        """REQ-31: las cuentas que esperan aprobación, con su usuario y su fecha.
+
+        El panel de wallets con saldos se pinta con la misma fuente que las demás
+        páginas del administrador; la cola no lo arma por su cuenta.
+        """
+        with abrir_cuentas() as cuentas, abrir_cadena() as chain:
+            return render_template(
+                "pendientes.html",
+                pendientes=cuentas.pendientes(),
+                **datos_del_panel(chain),
+            )
 
     @cola.post("/pendientes/<identificador>/aprobar")
     @requiere_administrador

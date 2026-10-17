@@ -326,6 +326,40 @@ def test_req_29_el_panel_lateral_aparece_en_las_paginas_de_trabajo(cliente, wall
         assert clave not in _texto_visible(cuerpo)   # pero nunca como texto visible
 
 
+def test_req_29_el_panel_con_saldos_aparece_en_todas_las_paginas_del_administrador(
+    cliente, cadena, wallet_de_prueba
+):
+    """REQ-29: todas las páginas del administrador pintan el panel con saldos.
+
+    La lista y los saldos vienen de una sola fuente (`panel.datos_del_panel`), así
+    que la portada, las páginas de trabajo y la cola de pendientes tienen que
+    mostrar el mismo marcado y una línea de saldo por wallet. El saldo del fondo
+    sembrado —300— es el valor conocido que se exige en cada una.
+    """
+    clave = wallet_de_prueba.public_key
+    corta = f"{clave[:8]}…{clave[-4:]}"
+    rutas = (
+        "/",
+        "/wallets",
+        "/transacciones",
+        "/bloques",
+        "/verificar",
+        f"/historial/{wallet_de_prueba.id}",
+        "/admin/pendientes",
+    )
+    for ruta in rutas:
+        cuerpo = cliente.get(ruta).get_data(as_text=True)
+        # Una línea de saldo por wallet, no un total suelto.
+        assert cuerpo.count("Saldo:") == cadena.ledger_state()["wallets"], ruta
+        # El mismo marcado del panel en todas: enlace, forma corta y valor completo.
+        assert f"/historial/{wallet_de_prueba.id}" in cuerpo, ruta
+        assert f">{corta}<" in cuerpo, ruta
+        assert f'title="{clave}"' in cuerpo, ruta
+        assert clave not in _texto_visible(cuerpo), ruta
+        # El saldo conocido del fondo sembrado llega a todas las páginas.
+        assert "300.00000000" in cuerpo, ruta
+
+
 def test_req_29_los_controles_del_formulario_van_en_monoespaciada(cliente, wallet_de_prueba):
     """REQ-29: los controles con códigos y números van en monoespaciada.
 
