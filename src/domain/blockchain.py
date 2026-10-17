@@ -2,12 +2,13 @@
 
 Reúne las reglas que el CU-02 y el CU-03 necesitan detrás de una sola clase, para
 que la presentación no decida nada: `create_transaction` valida y firma con el
-saldo disponible del emisor (REQ-04, REQ-05, REQ-06) y `group_pending` encadena un
-bloque nuevo con el último (REQ-08), confirma las transacciones del pool (REQ-09)
-y hace las dos escrituras dentro de una sola transacción de base de datos
-(REQ-18). `ensure_genesis` registra el eslabón cero de forma idempotente (REQ-14)
-y `verify_chain` recalcula la cadena y localiza la alteración sin escribir nada
-(REQ-10, REQ-22).
+saldo disponible del emisor (REQ-04, REQ-05, REQ-06), `acreditar` emite el saldo
+de bienvenida en un bloque propio sin pasar por esa regla (REQ-33) y
+`group_pending` encadena un bloque nuevo con el último (REQ-08), confirma las
+transacciones del pool (REQ-09) y hace las dos escrituras dentro de una sola
+transacción de base de datos (REQ-18). `ensure_genesis` registra el eslabón cero
+de forma idempotente (REQ-14) y `verify_chain` recalcula la cadena y localiza la
+alteración sin escribir nada (REQ-10, REQ-22).
 
 El dominio no conoce el motor: habla con los protocolos de
 `src/persistence/ports.py` (REQ-16), y por eso la agrupación recibe una fábrica de
@@ -194,6 +195,65 @@ class Blockchain:
                 False, validation.reason, self.transactions.add(transaction)
             )
         return TransactionResult(False, validation.reason, None)
+
+    def acreditar(
+        self, *, emisor_id: UUID, destino_id: UUID, monto: Decimal
+    ) -> Block:
+        """Emite saldo desde el emisor al destino en un bloque propio (REQ-33).
+
+        Es la única operación que acredita sin pasar por la regla de saldo: el
+        emisor es la puerta por la que el capital entra al ledger y el diseño lo
+        admite en negativo. La transacción se firma con el mismo camino que
+        `create_transaction` —se descifra la privada del emisor y se firma la forma
+        canónica— y se escribe ya confirmada, ligada a un bloque calculado sobre
+        ella y sólo ella. Agrupar el pool no sirve para esto: el saldo disponible
+        sólo cuenta lo confirmado, y arrastrar las pendientes haría que el crédito
+        dependiera de lo que haya en el pool.
+
+        Las dos escrituras van por los repositorios que recibió la fachada y no por
+        una unidad de trabajo propia: la aprobación de REQ-33 abre la transacción
+        de base y necesita que estas filas caigan dentro de ella.
+        """
+        emisor = self.wallets.get(emisor_id)
+        destino = self.wallets.get(destino_id)
+        if emisor is None or destino is None:
+            # Es un error de armado y no un rechazo de negocio: quien emite crea el
+            # destino en la misma operación, así que una wallet que falta no se
+            # informa con un motivo sino que se detiene antes de escribir.
+            raise ValueError("el emisor y el destino de la emisión tienen que existir")
+
+        # La transacción nace como cualquier otra y se confirma recién cuando el
+        # bloque está calculado: la firma y el hash cubren la forma canónica, que no
+        # incluye el estado ni el bloque, y eso es lo que permite ligarla después.
+        transaction = Transaction(
+            id=uuid4(),
+            sender_id=emisor_id,
+            receiver_id=destino_id,
+            amount=monto,
+            status=TransactionStatus.PENDING,
+            signature="",
+            block_id=None,
+            created_at=self._clock(),
+        )
+        transaction.signature = sign_payload(
+            emisor,
+            transaction.signing_payload(emisor.public_key, destino.public_key),
+            self._master_key,
+        )
+
+        last = self.blocks.last()
+        block = self._build_block(
+            block_index=0 if last is None else last.block_index + 1,
+            previous_hash=GENESIS_PREVIOUS_HASH if last is None else last.hash,
+            transactions=[transaction],
+        )
+        transaction.status = TransactionStatus.CONFIRMED
+        transaction.block_id = block.id
+
+        # El bloque primero: la clave foránea de la transacción lo referencia.
+        self.blocks.add(block)
+        self.transactions.add(transaction)
+        return block
 
     def group_pending(self) -> Block | None:
         """Agrupa el pool en un bloque nuevo encadenado al último (CU-03, REQ-08, REQ-09).

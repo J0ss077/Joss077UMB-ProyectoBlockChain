@@ -23,6 +23,7 @@ from src.domain.block import Block
 from src.domain.blockchain import Blockchain, ensure_genesis
 from src.domain.transaction import Transaction, TransactionStatus
 from src.domain.wallet import CURVE, Wallet, encrypt_private_key, public_key_hex, sign_payload
+from src.emision import CONSTITUYENTE_ID, CONSTITUYENTE_SEED
 from src.persistence.factory import ledger
 
 # Semilla del par de llaves del fondo: fijarla hace que su clave pública sea la
@@ -33,12 +34,6 @@ FONDO_SEED = b"blockchain-transaccional/fondo"
 # Identificador fijo del fondo, por la misma razón que la semilla: es un dato de la
 # convención y no un valor que se pueda elegir al azar en cada arranque.
 FONDO_ID = uuid5(NAMESPACE_URL, "blockchain-transaccional/fondo")
-
-# Semilla e identificador del constituyente, la wallet por la que el capital de
-# constitución entra al ledger. Son fijos para que el arranque sea el mismo en cada
-# corrida, igual que los del fondo.
-CONSTITUYENTE_SEED = b"blockchain-transaccional/constituyente"
-CONSTITUYENTE_ID = uuid5(NAMESPACE_URL, "blockchain-transaccional/constituyente")
 
 # Montos de la demostración. El constituyente dota al fondo con el capital de
 # constitución; el fondo entrega de ahí el capital de asociación a cada asociado,

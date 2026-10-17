@@ -176,8 +176,15 @@ def build_chain(
     *,
     blocks: Sequence[Block] = (),
     transactions: Sequence[Transaction] = (),
+    master_key: bytes | None = None,
 ) -> Blockchain:
-    """Ledger sobre dobles en memoria, con la cadena que se le pase ya poblada."""
+    """Ledger sobre dobles en memoria, con la cadena que se le pase ya poblada.
+
+    `master_key` se fija cuando la prueba tiene que armar wallets que el ledger
+    pueda descifrar —como la emisión, que firma con la privada de su emisor—; sin
+    él se genera una clave nueva, que es lo que necesitan las pruebas que solo
+    verifican hashes y saldos.
+    """
     wallets = InMemoryWalletRepository()
     block_repository = InMemoryBlockRepository(blocks)
     transaction_repository = InMemoryTransactionRepository(transactions)
@@ -188,7 +195,7 @@ def build_chain(
         unit_of_work=lambda: InMemoryUnitOfWork(
             wallets, block_repository, transaction_repository
         ),
-        master_key=Fernet.generate_key(),
+        master_key=Fernet.generate_key() if master_key is None else master_key,
         clock=lambda: BLOCK_AT,
     )
 
