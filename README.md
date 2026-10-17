@@ -11,6 +11,8 @@ El eje del proyecto es el documento académico **`documentacion_proyecto_transac
 (46 páginas, Grupo 1, Universidad Manuela Beltrán). Ese documento fija el problema, los
 29 requerimientos (REQ) con su criterio de aceptación, los 5 casos de uso (CU), las
 clases del dominio, la arquitectura en capas, las rutas HTTP y el modelo relacional.
+Este repositorio agrega los diez requerimientos del sistema de usuarios (REQ-30 a
+REQ-39), que también tienen su prueba.
 **Este repositorio no vuelve a decidir nada de eso: existe para hacer verdadero lo que
 el eje describe como prototipo.** Su página 43 afirma que "el núcleo del prototipo ya
 está implementado y probado"; este repositorio es la evidencia de ese párrafo.
@@ -159,11 +161,12 @@ volver a sembrar.
 <venv> -m src.web
 ```
 
-Abra `http://127.0.0.1:5000`. La portada muestra los conteos de las tres tablas; la
-barra superior con los enlaces y el panel lateral con las wallets están a la vista en
-todas las páginas de trabajo. La aplicación arranca sin el depurador interactivo ni el
-recargador de código; se activan con `FLASK_DEBUG=1` en el entorno, solo para desarrollo
-local.
+Abra `http://127.0.0.1:5000`. La portada muestra los conteos del ledger —wallets,
+bloques y transacciones— y, junto a cada wallet del panel lateral, su saldo disponible.
+La barra superior con los enlaces del administrador y el panel con las wallets están a
+la vista en todas las páginas de trabajo; el saldo solo se consulta en la portada. La
+aplicación arranca sin el depurador interactivo ni el recargador de código; se activan
+con `FLASK_DEBUG=1` en el entorno, solo para desarrollo local.
 
 ## Problemas conocidos
 
@@ -181,13 +184,17 @@ motor en vez de esperar lo que decida el sistema operativo. El tiempo de espera 
 
 ## Las cinco rutas
 
-| Ruta                      | Caso de uso | Qué hace                                                           |
-| ------------------------- | ----------- | ------------------------------------------------------------------ |
-| `POST /wallets`           | CU-01       | Registra una wallet y muestra su clave pública (REQ-24)            |
-| `POST /transacciones`     | CU-02       | Firma, admite o rechaza, y devuelve el estado o el motivo (REQ-25) |
-| `POST /bloques`           | CU-03       | Agrupa el pool en un bloque y muestra el eslabón creado (REQ-26)   |
-| `GET /verificar`          | CU-04       | Devuelve el dictamen y, si falla, el bloque alterado (REQ-27)      |
-| `GET /historial/<wallet>` | CU-05       | Lista las transacciones de una wallet con su estado (REQ-28)       |
+| Ruta                      | Caso de uso | Qué hace                                                           | Rol que exige   |
+| ------------------------- | ----------- | ------------------------------------------------------------------ | --------------- |
+| `POST /wallets`           | CU-01       | Registra una wallet y muestra su clave pública (REQ-24)            | administrador   |
+| `POST /transacciones`     | CU-02       | Firma, admite o rechaza, y devuelve el estado o el motivo (REQ-25) | administrador   |
+| `POST /bloques`           | CU-03       | Agrupa el pool en un bloque y muestra el eslabón creado (REQ-26)   | administrador   |
+| `GET /verificar`          | CU-04       | Devuelve el dictamen y, si falla, el bloque alterado (REQ-27)      | administrador   |
+| `GET /historial/<wallet>` | CU-05       | Lista las transacciones de una wallet con su estado (REQ-28)       | administrador   |
+
+Las cinco rutas exigen una sesión de administrador (REQ-38): sin sesión redirigen a
+`/ingresar`, y con una sesión de usuario común responden 403. La puerta vive en
+`src/web/auth.py` y cada ruta la declara con su decorador.
 
 `GET /historial/<wallet>` con un identificador que no es un UUID, o de una wallet que
 no existe, responde la página de error con `404` y nunca un error del motor en
@@ -196,8 +203,9 @@ pantalla (RF-5).
 `GET /wallets` es la misma ruta del CU-01, y el panel lateral de las páginas de trabajo
 lista las wallets registradas: la clave pública en forma corta y monoespaciada, con el
 valor completo en el atributo `title` y un botón que lo copia, además del enlace a su
-historial. El CU-05 se alcanza desde ese panel: no hay que teclear el identificador a
-mano.
+historial. En la portada del administrador el panel muestra también el saldo disponible
+de cada wallet, que es la celda de la matriz de permisos del diseño §8. El CU-05 se
+alcanza desde ese panel: no hay que teclear el identificador a mano.
 
 ## Los datos de demostración
 
@@ -367,7 +375,7 @@ silencio:
 
 La suite incluye las pruebas de reglas, las de integración contra PostgreSQL y
 `tests/test_explicacion.py`, que comprueba que cada caso de uso está en el recorrido y
-que cada uno de los 29 requerimientos tiene una prueba `test_req_NN_` (REQ-17, REQ-20
+que cada uno de los 39 requerimientos tiene una prueba `test_req_NN_` (REQ-17, REQ-20
 y REQ-23 incluidos).
 
 Si prefiere correr solo la integración:
@@ -519,7 +527,7 @@ confirmó completa o no ocurrió.
 **Apagar PostgreSQL 16.** `docker compose down` (o `podman compose down`) quita el
 contenedor **y conserva los datos**: el volumen `postgres_data` sigue en el equipo, así
 que el próximo `docker compose up -d` levanta el mismo ledger. `docker compose down -v`
-es el que borra el volumen y, con él, las tres tablas. Tras borrarlo, el esquema de
+es el que borra el volumen y, con él, las cuatro tablas. Tras borrarlo, el esquema de
 `db/init.sql` se vuelve a aplicar solo en el próximo `up` (el punto de entrada de la
 imagen lo lee al crear el volumen de nuevo), la base queda vacía y hay que volver a
 sembrar la demostración:
@@ -560,12 +568,12 @@ con la clave nueva. El arranque solo siembra cuando la tabla de wallets está va
 
 - **El esquema en PostgreSQL 16**, la versión del piso: `db/init.sql` se aplicó como
   guion de inicialización de un contenedor `postgres:16-alpine` (PostgreSQL 16.15) y
-  quedaron las tres tablas, `uuid-ossp`, los once índices y todos los `CHECK` del eje;
+  quedaron las cuatro tablas, `uuid-ossp`, los once índices y todos los `CHECK` del eje;
   una transacción de una wallet a sí misma la rechazó el motor.
 - **Las reglas sin base de datos (REQ-17)**: `pytest tests/unit` pasa con
   `DATABASE_URL` sin definir y sin contenedor, porque el dominio no importa el driver.
 - **La suite completa** contra el clúster PostgreSQL del equipo de desarrollo: las
-  reglas, la integración y la coherencia de la explicación. La cobertura de los 29
+  reglas, la integración y la coherencia de la explicación. La cobertura de los 39
   requerimientos no se cuenta a mano: la exige `tests/test_explicacion.py`.
 - **La suite completa dentro del contenedor del piso de Python** (`python:3.11-slim`):
   con el repositorio montado en solo lectura, `requirements.txt` instalado y `pytest`

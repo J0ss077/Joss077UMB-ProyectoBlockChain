@@ -16,17 +16,27 @@ es `ledger()` de `src/persistence/factory.py`, que resuelve `DATABASE_URL` y
 `MASTER_KEY` del entorno o de `.env`, abre la conexión y la cierra al salir— y
 asegura el génesis con `ensure_genesis`, que es idempotente: comprueba
 `blocks.get_by_index(0)` y solo inserta el eslabón cero si falta. La portada `GET /`
-usa `ledger_state()` y hace un `SELECT count(*)` por tabla para mostrar los conteos.
+usa `ledger_state()` y hace un `SELECT count(*)` por tabla para mostrar los conteos, y
+pide `available_balance(wallet_id)` de cada wallet para mostrarlos en el panel.
+
+**La sesión y las puertas por rol.** Las cinco rutas del eje exigen una sesión de
+administrador (REQ-38): sin sesión redirigen a `/ingresar`, y con una sesión de usuario
+común responden 403. Antes de seguir este recorrido hay que ingresar con una cuenta
+administradora —la de demostración está en el README—; las pantallas del usuario común
+(su tablero, su historial y su verificación) no pasan por estas rutas.
 
 La interfaz no explica el proyecto: los títulos nombran la acción —«Registrar wallet»,
 «Nueva transacción», «Cerrar bloque», «Verificar cadena», «Historial»— y ninguna página
 lleva párrafos sobre el eje ni números de caso de uso. `base.html` pinta una barra
-superior con el nombre de la aplicación y los cuatro enlaces a las rutas, un panel
-lateral con las wallets —forma corta en monoespaciada, botón que copia la clave y
-enlace a su historial; «Todavía no hay wallets» cuando no hay ninguna— y el área de
-contenido. El panel lo pasa cada ruta con `wallets_del_panel=chain.wallets.list()`, una
-sola vez por página: no hay procesador de contexto, porque abrir el ledger al pintar la
-página de error convertiría un 404 sin base en un 500 y podría escribir el génesis.
+superior con el nombre de la aplicación y los enlaces del administrador —Pendientes,
+Registrar wallet, Nueva transacción, Cerrar bloque y Verificar cadena—, un panel lateral
+con las wallets —forma corta en monoespaciada, botón que copia la clave y enlace a su
+historial; «Todavía no hay wallets» cuando no hay ninguna— y el área de contenido. En la
+portada el panel muestra además el saldo disponible de cada wallet; las demás páginas lo
+pintan sin saldo para no consultar la fachada de más. El panel lo pasa cada ruta con
+`wallets_del_panel=chain.wallets.list()`, una sola vez por página: no hay procesador de
+contexto, porque abrir el ledger al pintar la página de error convertiría un 404 sin base
+en un 500 y podría escribir el génesis.
 `base.html` envuelve el panel en `{% if wallets_del_panel is defined %}` y la página de
 error no lo pasa, así que se pinta sin tocar la fachada. Los identificadores, hashes,
 montos, fechas y conteos van en `code` o en la clase `.mono`, y los controles del
@@ -329,4 +339,4 @@ y `...::test_req_28_rf5_historial_con_uuid_invalido_o_inexistente_responde_una_p
 | ¿La página de error depende de la base de datos?                         | No: no recibe el panel y `base.html` lo omite si no está definido, así que un 404 se pinta aunque el ledger no abra y nunca escribe el génesis                   | `src/web/app.py`, `base.html`, `tests/integration/test_req_24_rutas.py::test_req_28_rf5_la_pagina_de_error_no_depende_del_ledger`                              |
 | ¿Cómo se sabe que corre en el piso de Python 3.11?                       | `pyproject.toml` declara `requires-python = ">=3.11"`; la corrida dentro del contenedor del piso es la que lo confirma                                           | `pyproject.toml`, `tests/test_explicacion.py::test_req_20_el_interprete_cumple_el_piso_declarado`, README                                                      |
 | ¿Qué pasa si se pide el historial de una wallet que no existe?           | La ruta valida el identificador y responde la página de error con 404 (RF-5)                                                                                     | `src/web/app.py`, `tests/integration/test_req_24_rutas.py::test_req_28_rf5_historial_con_uuid_invalido_o_inexistente_responde_una_pagina_clara`                |
-| ¿Cómo se sabe que la explicación no se separó del código?                | Una prueba exige que los cinco casos de uso estén en este recorrido y que los 29 requerimientos tengan su `test_req_NN_`                                         | `tests/test_explicacion.py`                                                                                                                                    |
+| ¿Cómo se sabe que la explicación no se separó del código?                | Una prueba exige que los cinco casos de uso estén en este recorrido y que los 39 requerimientos tengan su `test_req_NN_`                                         | `tests/test_explicacion.py`                                                                                                                                    |
