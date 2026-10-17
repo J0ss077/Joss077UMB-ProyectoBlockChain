@@ -6,18 +6,14 @@ administrador. Las rutas del eje (`/wallets`, `/transacciones`, `/bloques`,
 recibe 403 y la vista no se ejecuta. La portada no es una ruta de trabajo: sin
 sesión manda al ingreso y al común a su tablero.
 
-La aprobación de usuarios todavía no tiene ruta propia en esta entrega; se mide
-la puerta sobre el endpoint angosto de la cola que monta la Task 8, con la misma
-vista inalcanzable para el común y alcanzable para el administrador.
+La cola de pendientes es la ruta real de la aprobación (Task 8): se mide la
+puerta sobre `/admin/pendientes/<id>/aprobar`, con la vista inalcanzable para el
+común y la aprobación efectiva para el administrador.
 """
 from uuid import uuid4
 
-from src.web.auth import requiere_administrador
-from tests.integration.conftest import (
-    CONTRASENA_DE_PRUEBA,
-    CONTRASENA_DEL_ADMINISTRADOR,
-    ingresar_como,
-)
+from src.accounts.model import APROBADO
+from tests.integration.conftest import CONTRASENA_DE_PRUEBA
 
 RUTAS_DEL_ADMINISTRADOR = ("/wallets", "/transacciones", "/bloques", "/verificar")
 
@@ -33,37 +29,23 @@ def test_req_38_el_usuario_comun_no_puede_agrupar_un_bloque(cliente_comun, conex
     assert conexion.execute("SELECT count(*) FROM blocks").fetchone()[0] == antes
 
 
-def test_req_38_el_usuario_comun_no_puede_aprobar_usuarios(aplicacion, usuario_comun):
+def test_req_38_el_usuario_comun_no_puede_aprobar_usuarios(cliente_comun):
     """Criterio: el usuario común que intenta aprobar a otro usuario recibe 403."""
-
-    @aplicacion.post("/admin/pendientes/<identificador>/aprobar")
-    @requiere_administrador
-    def aprobar(identificador: str):
-        raise AssertionError("la vista de aprobación no debería ejecutarse")
-
-    cliente = aplicacion.test_client()
-    ingresar_como(cliente, usuario_comun.username, CONTRASENA_DE_PRUEBA)
-
-    respuesta = cliente.post(f"/admin/pendientes/{uuid4()}/aprobar")
+    respuesta = cliente_comun.post(f"/admin/pendientes/{uuid4()}/aprobar")
 
     assert respuesta.status_code == 403
 
 
-def test_req_38_el_administrador_si_puede_aprobar_usuarios(aplicacion, administrador):
+def test_req_38_el_administrador_si_puede_aprobar_usuarios(cliente_admin, cuentas):
     """Criterio: la misma puerta deja pasar al administrador; no es un 403 general."""
+    pendiente = cuentas.registrar("nuevo", CONTRASENA_DE_PRUEBA)
 
-    @aplicacion.post("/admin/pendientes/<identificador>/aprobar")
-    @requiere_administrador
-    def aprobar(identificador: str):
-        return f"aprobado {identificador}"
+    respuesta = cliente_admin.post(f"/admin/pendientes/{pendiente.id}/aprobar")
 
-    cliente = aplicacion.test_client()
-    ingresar_como(cliente, administrador.username, CONTRASENA_DEL_ADMINISTRADOR)
-
-    respuesta = cliente.post(f"/admin/pendientes/{uuid4()}/aprobar")
-
-    assert respuesta.status_code == 200
-    assert respuesta.get_data(as_text=True).startswith("aprobado ")
+    assert respuesta.status_code == 302
+    aprobado = cuentas.por_id(pendiente.id)
+    assert aprobado is not None
+    assert aprobado.estado == APROBADO
 
 
 def test_req_38_el_usuario_comun_no_puede_registrar_wallets(cliente_comun, conexion):

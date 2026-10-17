@@ -152,6 +152,7 @@
             <a class="marca" href="/">Ledger transaccional</a>
             <nav>
                 {# Las rutas del eje son del administrador: el común sólo tiene su tablero. El rol se lee de la sesión recargada, no de la cookie. #} {% if g.user and g.user.role == rol_administrador %}
+                <a href="/admin/pendientes">Pendientes</a>
                 <a href="/wallets">Registrar wallet</a>
                 <a href="/transacciones">Nueva transacción</a>
                 <a href="/bloques">Cerrar bloque</a>

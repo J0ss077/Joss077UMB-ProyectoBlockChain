@@ -8,10 +8,11 @@ fábrica de cuentas, y habla con `Blockchain`, con `Wallet` y con `Cuentas`.
 
 La sesión guarda sólo el identificador de la cuenta y se recarga de la base en
 cada petición (REQ-37). Las puertas de `auth.py` deciden quién puede llamar: las
-rutas del eje quedan del lado del administrador y el usuario común tiene su
-tablero, que vive en `user.py` (REQ-34, REQ-35, REQ-39). El motivo del rechazo se
-muestra porque el CU-02 lo pide: quien propone una transacción tiene que saber por
-qué no entró al pool.
+rutas del eje quedan del lado del administrador, el usuario común tiene su
+tablero, que vive en `user.py` (REQ-34, REQ-35, REQ-39), y la cola de pendientes
+del administrador está en `admin.py` (REQ-31). El motivo del rechazo se muestra
+porque el CU-02 lo pide: quien propone una transacción tiene que saber por qué no
+entró al pool.
 
 Uso: `python -m src.web`.
 """
@@ -43,6 +44,7 @@ from src.accounts.credentials import (
 from src.accounts.model import ADMINISTRADOR, UsuarioDuplicado
 from src.accounts.service import CredencialesInvalidas, Cuentas, NoAprobado
 from src.domain.blockchain import Blockchain, ensure_genesis
+from src.web.admin import crear_blueprint_de_la_cola
 from src.web.auth import (
     CLAVE_DEL_USUARIO,
     abrir_sesion,
@@ -108,6 +110,9 @@ def create_app(
     # Las rutas del usuario común se registran con las mismas fábricas: el
     # blueprint no arma el ledger ni las cuentas por su cuenta (REQ-29).
     app.register_blueprint(crear_blueprint_del_usuario(abrir_cadena, abrir_cuentas))
+    # La cola de pendientes del administrador sigue la misma regla: recibe la
+    # fábrica de cuentas y no abre conexiones por su cuenta (REQ-29, REQ-31).
+    app.register_blueprint(crear_blueprint_de_la_cola(abrir_cuentas))
 
     @app.context_processor
     def valores_de_los_formularios() -> dict[str, object]:
