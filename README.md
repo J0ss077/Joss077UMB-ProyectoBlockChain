@@ -308,7 +308,10 @@ La contraseña de demostración es la misma para las cinco cuentas y está hashe
 `scrypt`, igual que cualquier otra (REQ-36). La del administrador no está en el
 repositorio: sale de `ADMIN_PASSWORD`. La semilla no reescribe una cuenta que ya
 existe, así que para cambiar la contraseña del administrador hay que recrear el
-volumen y volver a sembrar.
+volumen y volver a sembrar. El administrador se reconoce por rol y estado, no sólo por
+el nombre: si alguien se registró como `admin` antes del primer arranque, la semilla
+falla con un mensaje que dice cómo liberar el nombre, en vez de dejar el sistema sin
+administrador.
 
 La cuenta `constituyente` maneja la wallet de la puerta de entrada, así que su saldo
 disponible es negativo y no puede enviar: es la única wallet de la demostración a la

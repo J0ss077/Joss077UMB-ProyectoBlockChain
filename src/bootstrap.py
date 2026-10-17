@@ -274,7 +274,8 @@ def sembrar_usuarios() -> int:
     """
     creadas = 0
     with transaction() as actual:
-        if actual.usuarios.get_by_username(USERNAME_DEL_ADMINISTRADOR) is None:
+        administrador = actual.usuarios.get_by_username(USERNAME_DEL_ADMINISTRADOR)
+        if administrador is None:
             actual.usuarios.sembrar(
                 _cuenta_aprobada(
                     USERNAME_DEL_ADMINISTRADOR,
@@ -284,6 +285,12 @@ def sembrar_usuarios() -> int:
                 )
             )
             creadas += 1
+        elif administrador.role != ADMINISTRADOR or administrador.estado != APROBADO:
+            # El nombre por sí solo no dice que la cuenta sea el administrador: una
+            # persona pudo registrarse como `admin` antes del primer arranque. La
+            # semilla no la convierte ni la saltea en silencio; sin esto el sistema
+            # quedaba sin administrador y nadie podía aprobar a nadie.
+            raise SystemExit(_mensaje_de_admin_ocupado(administrador))
 
         wallets = _wallets_de_la_demostracion(actual.ledger)
         # Sin `strict`: si una wallet de la convención ya no está por una
@@ -300,6 +307,23 @@ def sembrar_usuarios() -> int:
             creadas += 1
         actual.commit()
     return creadas
+
+
+def _mensaje_de_admin_ocupado(usuario: Usuario) -> str:
+    """Qué hacer cuando `admin` ya existe y no es un administrador aprobado.
+
+    El nombre lo pudo tomar una persona por el registro abierto antes del primer
+    arranque. Convertir esa cuenta en administrador sería regalar el control del
+    sistema a quien eligió el nombre, y saltearla dejaría el sistema sin nadie que
+    apruebe; por eso el arranque se detiene y nombra las dos salidas.
+    """
+    return (
+        f"El nombre `{USERNAME_DEL_ADMINISTRADOR}` ya está tomado por una cuenta con "
+        f"rol `{usuario.role}` y estado `{usuario.estado}`, que no es un administrador "
+        "aprobado: la semilla no la puede convertir. Recreá el volumen "
+        "(`docker compose down -v`, `docker compose up -d`) y volvé a sembrar, o "
+        "borrá esa cuenta de `users` y volvé a correr el arranque."
+    )
 
 
 def main() -> None:

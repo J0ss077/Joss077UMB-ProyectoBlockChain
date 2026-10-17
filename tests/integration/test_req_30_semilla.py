@@ -89,6 +89,30 @@ def test_req_30_la_semilla_es_idempotente(base_vacia_ejecutando_bootstrap):
     assert chain.ledger_state() == ledger_antes
 
 
+def test_req_30_el_arranque_falla_si_el_nombre_admin_ya_es_otra_cuenta(
+    base_limpia, cuentas
+):
+    """Criterio: el administrador se reconoce por rol y estado, no sólo por nombre.
+
+    Si una persona se registró como `admin` antes del primer arranque, la semilla no
+    puede crear al administrador. En vez de seguir sin nadie que apruebe, falla con
+    un mensaje que dice liberar el nombre o recrear el volumen.
+    """
+    cuentas.registrar(USERNAME_DEL_ADMINISTRADOR, CONTRASENA_DE_LA_DEMO)
+
+    proceso = subprocess.run(
+        [sys.executable, "-m", "src.bootstrap"], capture_output=True, text=True
+    )
+
+    assert proceso.returncode == 1, proceso.stdout
+    assert USERNAME_DEL_ADMINISTRADOR in proceso.stderr
+    assert "rol `usuario`" in proceso.stderr
+    assert "estado `pendiente`" in proceso.stderr
+    assert "no es un administrador aprobado" in proceso.stderr
+    assert "Recreá el volumen" in proceso.stderr
+    assert "Traceback" not in proceso.stderr
+
+
 def test_req_33_el_recorrido_de_demostracion_completo(
     base_vacia_ejecutando_bootstrap, cliente
 ):
