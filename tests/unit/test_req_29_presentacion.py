@@ -34,9 +34,7 @@ def test_req_29_el_guion_de_copiar_avisa_cuando_la_copia_no_sale():
     guion = GUION.read_text(encoding="utf-8")
 
     assert "navigator.clipboard" in guion
-    # El atributo exacto lo ata la prueba de contrato; acá se mira que se escriba el
-    # valor completo del origen y no el texto que se ve.
-    assert "writeText(origen.dataset." in guion
+    assert "writeText(origen.dataset.copiar)" in guion
     # La rama de rechazo: sin ella la escritura denegada no avisa y la promesa queda sin manejar.
     assert re.search(r"\.then\([\s\S]*?\)\s*\.catch\(", guion)
     # El aviso de fallo cubre las dos salidas: la API ausente y la escritura rechazada.
@@ -61,21 +59,37 @@ def test_req_29_el_guion_de_copiar_usa_el_atributo_que_escriben_las_macros():
     assert f'closest("[{atributo}]")' in guion, (
         f"el guion no busca el atributo {atributo} que escriben las macros"
     )
-    # `dataset` es como el DOM lee el atributo: `data-foo-bar` se lee `fooBar`.
-    assert f"dataset.{_como_lo_lee_el_dom(atributo)}" in guion, (
-        f"el guion no lee el atributo {atributo} con la forma de `dataset`"
+    # `dataset` es como el DOM lee el atributo: `data-foo-bar` se lee `fooBar`. La
+    # llamada se exige entera, no por prefijo: el guion tiene que escribir el valor
+    # completo del origen con ese nombre.
+    lectura = _como_lo_lee_el_dom(atributo)
+    assert f"writeText(origen.dataset.{lectura})" in guion, (
+        f"el guion no escribe `origen.dataset.{lectura}`"
     )
 
 
-def _atributo_de_las_macros(macros: str) -> str:
-    """El atributo `data-*` con el que las dos macros entregan el valor completo.
+MACRO = re.compile(r"\{% macro (\w+)\((.*?)\{%- endmacro %\}", re.DOTALL)
 
-    Se lee del propio marcado y no de una lista escrita acá: una prueba que nombrara
-    el atributo por su cuenta seguiría pasando si las dos mitades cambiaran juntas.
+
+def _atributo_de_las_macros(macros: str) -> str:
+    """El atributo `data-*` con el que **cada** macro entrega el valor completo.
+
+    Se mira macro por macro y no el conjunto de atributos del archivo: si una de las
+    dos perdiera el atributo, el conjunto seguiría teniendo el de la otra y el botón
+    quedaría sin coincidir con el guion sin que la prueba lo notara. El nombre se lee
+    del propio marcado, no de una lista escrita acá.
     """
-    escritos = set(re.findall(r'\b(data-[a-z-]+)="\{\{ texto \}\}"', macros))
-    assert len(escritos) == 1, f"las macros escriben un solo atributo de copia: {escritos}"
-    return escritos.pop()
+    escritos = {
+        nombre: re.findall(r'\b(data-[a-z-]+)="\{\{ texto \}\}"', cuerpo)
+        for nombre, cuerpo in MACRO.findall(macros)
+    }
+    con_atributo = {nombre: valores for nombre, valores in escritos.items() if valores}
+    assert set(con_atributo) == {"dato", "copiar"}, (
+        f"`dato` y `copiar` son las macros que entregan el valor completo: {sorted(con_atributo)}"
+    )
+    nombres = {valor for valores in con_atributo.values() for valor in valores}
+    assert len(nombres) == 1, f"las dos macros tienen que escribir el mismo atributo: {nombres}"
+    return nombres.pop()
 
 
 def _como_lo_lee_el_dom(atributo: str) -> str:
