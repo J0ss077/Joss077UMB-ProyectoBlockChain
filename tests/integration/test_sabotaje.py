@@ -162,9 +162,57 @@ def test_el_caso_del_monto_coincide_aunque_la_transaccion_viva_en_otro_bloque(
             web=web_simulada, claves=["alterar-monto"], pausas=False
         )
 
+    assert recorrido.detenido_por_la_comprobacion_previa is False
+    assert len(recorrido.resultados) == 1
     resultado = recorrido.resultados[0]
     assert resultado.coincide is True, resultado.detalle
     assert resultado.bloque_observado == destino
+
+
+def test_el_veredicto_usa_el_bloque_capturado_y_no_el_observado(
+    base_limpia, conexion, con_sabotaje, web_simulada, monkeypatch
+):
+    """El veredicto compara contra el bloque capturado, no contra el que se observa.
+
+    Se fuerza la única situación que separa las dos cosas: el caso altera una
+    transacción de un bloque y captura el índice de otro —la fila se le entrega con el
+    `block_id` cambiado—, así que la verificación señala el bloque real y el caso espera
+    el capturado. Si `_comparar` usara el observado, el caso coincidiría; y si la
+    aplicación del caso dejara de capturar el bloque, la comprobación se saltearía y
+    también coincidiría. Las dos formas de romperlo tienen que hacer fallar esta prueba.
+    """
+    with con_sabotaje as sabotaje:
+        fila = conexion.execute(
+            "SELECT t.id, t.sender_id, t.receiver_id, t.amount, t.status, t.signature, "
+            "t.block_id, t.created_at, b.block_index "
+            "FROM transactions t JOIN blocks b ON b.id = t.block_id "
+            "WHERE t.status = 'confirmed' ORDER BY b.block_index DESC, t.id LIMIT 1"
+        ).fetchone()
+        observado = fila[8]
+        ajeno = conexion.execute(
+            "SELECT id, block_index FROM blocks WHERE block_index < %s "
+            "ORDER BY block_index DESC LIMIT 1",
+            (observado,),
+        ).fetchone()
+        esperado = ajeno[1]
+        assert esperado not in (1, observado), (
+            "el bloque ajeno tiene que existir, no ser el 1 y no ser el observado"
+        )
+        # La fila que el caso recibe miente sobre su bloque: el índice que captura no es
+        # el que la verificación va a señalar.
+        mentida = fila[:6] + (ajeno[0],) + (fila[7],)
+        monkeypatch.setattr("src.sabotaje._una_confirmada", lambda herramienta: mentida)
+        recorrido = sabotaje.recorrido(
+            web=web_simulada, claves=["alterar-monto"], pausas=False
+        )
+
+    assert recorrido.detenido_por_la_comprobacion_previa is False
+    assert len(recorrido.resultados) == 1
+    resultado = recorrido.resultados[0]
+    assert resultado.coincide is False, resultado.detalle
+    assert resultado.bloque_observado == observado
+    assert f"fue {observado}" in resultado.detalle
+    assert f"se esperaba {esperado}" in resultado.detalle
 
 
 def test_la_sonda_usa_la_direccion_de_siempre_cuando_no_hay_variable(monkeypatch):
@@ -188,6 +236,28 @@ def test_la_sonda_usa_la_direccion_que_fija_el_entorno_y_la_dice_al_fallar(monke
 
     assert responde is False
     assert "http://127.0.0.1:9/verificar" in detalle
+
+
+def test_la_comprobacion_previa_dice_la_direccion_que_intento(
+    base_limpia, con_sabotaje, monkeypatch
+):
+    """La comprobación previa usa la sonda real y el aviso final nombra la dirección.
+
+    Es la llamada que hace la herramienta (sin `web` inyectado) y no la de `probar_web`
+    por separado: con `SABOTAJE_APLICACION` apuntando a un puerto cerrado, la corrida se
+    detiene y el aviso de la comprobación previa nombra la dirección configurada. Un
+    «/verificar» suelto no dice dónde se miró cuando el puerto no es el de siempre.
+    """
+    monkeypatch.setenv("SABOTAJE_APLICACION", "http://127.0.0.1:9")
+    salida = []
+    with con_sabotaje as sabotaje:
+        recorrido = sabotaje.recorrido(pausas=False, salida=salida.append)
+
+    assert recorrido.detenido_por_la_comprobacion_previa is True
+    assert recorrido.resultados == ()
+    avisos = [linea for linea in salida if linea.startswith("la aplicación no responde")]
+    assert len(avisos) == 1, avisos
+    assert "http://127.0.0.1:9/verificar" in avisos[0]
 
 
 def test_la_comprobacion_previa_impide_empezar_sobre_una_cadena_alterada(
@@ -301,6 +371,8 @@ def test_el_recorrido_no_depende_de_la_forma_del_sembrado(
         assert antes["transactions"] == sembrado["transactions"] + 1
         recorrido = sabotaje.recorrido(web=web_simulada)
 
+    assert recorrido.detenido_por_la_comprobacion_previa is False
+    assert recorrido.resultados, "el recorrido tiene que haber corrido los casos"
     assert recorrido.desacuerdos == 0
     assert _conteos(conexion) == antes
 
