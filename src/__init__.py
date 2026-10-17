@@ -2,5 +2,5 @@
 
 Contiene las tres capas del sistema: `domain` (reglas), `persistence`
 (PostgreSQL) y `web` (Flask). El diseño vive en
-`docs/superpowers/specs/2026-10-10-blockchain-transaccional-design.md`.
+`docs/specs/2026-10-10-blockchain-transaccional-design.md`.
 """

@@ -7,7 +7,6 @@
 .reference/
 
 # Andamiaje de ejecución y cachés
-.superpowers/
 __pycache__/
 *.py[codz]
 .pytest_cache/

@@ -1,86 +1,26 @@
-{% from "_macros.html" import corto, dato, copiar -%}
 <!doctype html>
 <html lang="es">
     <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="color-scheme" content="light dark" />
         <title>{% block titulo %}Ledger transaccional{% endblock %}</title>
+        {# El tema guardado se aplica aquí, antes de cargar el CSS, para que la página no se pinte un instante con el tema equivocado. Sin elección guardada manda el sistema. #}
+        <script>
+            try {
+                const tema = localStorage.getItem("tema");
+                if (tema === "claro" || tema === "oscuro") document.documentElement.dataset.tema = tema;
+            } catch {}
+        </script>
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/tokens.css') }}" />
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}" />
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/animaciones.css') }}" />
+        <script src="{{ url_for('static', filename='js/tema.js') }}" defer></script>
+        <script src="{{ url_for('static', filename='js/codigos.js') }}" defer></script>
+        <script src="{{ url_for('static', filename='js/animaciones.js') }}" defer></script>
         <style>
             :root {
-                --mono: ui-monospace, "Cascadia Code", Consolas, monospace;
-            }
-            body {
-                font-family: system-ui, sans-serif;
-                margin: 0;
-            }
-            .barra {
-                display: flex;
-                flex-wrap: wrap;
-                align-items: baseline;
-                gap: 1rem;
-                padding: 0.8rem 1.5rem;
-                border-bottom: 1px solid #bbb;
-            }
-            .barra .marca {
-                font-weight: bold;
-                text-decoration: none;
-            }
-            .barra nav a {
-                margin-right: 1rem;
-            }
-            /* La sesión va al extremo derecho: el nombre de quien entró y la
-               salida tienen que estar a la vista sin competir con la navegación. */
-            .barra .sesion {
-                display: flex;
-                align-items: baseline;
-                gap: 0.8rem;
-                margin-left: auto;
-            }
-            .barra .sesion form {
-                display: inline;
-                margin: 0;
-            }
-            .barra .sesion .nombre {
-                font-weight: bold;
-            }
-            .ayuda {
-                color: #555;
-                margin-top: -0.4rem;
-            }
-            .columnas {
-                display: flex;
-                align-items: flex-start;
-                gap: 1.5rem;
-                padding: 1.5rem;
-            }
-            .panel {
-                flex: 0 0 19rem;
-                border-right: 1px solid #ddd;
-                padding-right: 1rem;
-            }
-            .panel h2 {
-                font-size: 1rem;
-                margin-top: 0;
-            }
-            .panel ul {
-                list-style: none;
-                margin: 0;
-                padding: 0;
-            }
-            .panel li {
-                margin-bottom: 0.6rem;
-            }
-            .panel .saldo {
-                display: block;
-                color: #555;
-            }
-            main {
-                flex: 1 1 auto;
-                min-width: 0;
-            }
-            h1 {
-                font-size: 1.5rem;
-                margin-top: 0;
+                --mono: var(--fuente-mono);
             }
             /* Los controles que muestran claves, códigos o montos usan la misma pila:
                si no, el `select` y el `input` del formulario quedarían en la
@@ -92,119 +32,48 @@
             input {
                 font-family: var(--mono);
             }
-            code {
-                word-break: break-all;
-            }
-            /* El dato corto también copia al hacer clic; el botón de al lado es el
-               camino accesible, este es el atajo. */
-            .mono[data-copiar] {
-                cursor: copy;
-            }
-            .aviso-copia {
-                color: #060;
-            }
-            table {
-                border-collapse: collapse;
-                width: 100%;
-                margin-top: 1rem;
-            }
-            th,
-            td {
-                border: 1px solid #bbb;
-                padding: 0.4rem 0.6rem;
-                text-align: left;
-                vertical-align: top;
-            }
-            th {
-                background: #f0f0f0;
-            }
-            .motivo {
-                background: #ffe8e8;
-                border: 1px solid #c66;
-                padding: 0.8rem;
-                margin-top: 1rem;
-            }
-            .exito {
-                background: #e8ffe8;
-                border: 1px solid #6c6;
-                padding: 0.8rem;
-                margin-top: 1rem;
-            }
-            .aviso {
-                background: #fff8e0;
-                border: 1px solid #cc6;
-                padding: 0.8rem;
-                margin-top: 1rem;
-            }
-            /* En pantalla angosta el panel deja de ser columna: se pierde la
-               comparación lado a lado, no el acceso a las wallets. */
-            @media (max-width: 40rem) {
-                .columnas {
-                    display: block;
-                }
-                .panel {
-                    flex: none;
-                    border-right: none;
-                    border-bottom: 1px solid #ddd;
-                    padding: 0 0 1rem;
-                }
-            }
         </style>
     </head>
     <body>
-        <div class="barra">
-            <a class="marca" href="/">Ledger transaccional</a>
-            <nav>
-                {# Las rutas del eje son del administrador: el común sólo tiene su tablero. El rol se lee de la sesión recargada, no de la cookie. #} {% if g.user and g.user.role == rol_administrador %}
-                <a href="/admin/pendientes">Pendientes</a>
-                <a href="/wallets">Registrar wallet</a>
-                <a href="/transacciones">Nueva transacción</a>
-                <a href="/bloques">Cerrar bloque</a>
-                <a href="/verificar">Verificar cadena</a>
-                {% elif g.user %}
-                <a href="/mi-tablero">Mi tablero</a>
-                {% endif %}
-            </nav>
+        {# Primer elemento enfocable: con teclado se salta la barra y la navegación (WCAG 2.4.1). #}
+        <a class="saltar" href="#contenido">Saltar al contenido</a>
+        <div class="pagina">
             {% if g.user %}
-            <span class="sesion">
-                <span class="nombre">{{ g.user.username }}</span>
-                <form method="post" action="{{ url_for('salir') }}">
-                    <button type="submit">Salir</button>
-                </form>
-            </span>
-            {% else %}
-            <span class="sesion">
-                <a href="{{ url_for('ingresar') }}">Ingresar</a>
-                <a href="{{ url_for('registrarme') }}">Registrarme</a>
-            </span>
-            {% endif %}
-        </div>
-        <div class="columnas">
-            {# El panel solo se pinta si la ruta pasó la lista: la página de error no la pasa, porque no puede depender del ledger para dibujarse. Las páginas del administrador la pasan siempre con `panel.datos_del_panel`, que incluye el saldo; las del
-            usuario común no, a propósito (REQ-35). #} {% if wallets_del_panel is defined %}
-            <aside class="panel">
-                <h2>Wallets</h2>
-                {% if wallets_del_panel %}
-                <ul>
-                    {% for registrada in wallets_del_panel %}
-                    <li>
-                        {{ dato(registrada.public_key) }} {{ copiar(registrada.public_key, "la clave pública " ~ corto(registrada.public_key)) }}
-                        <a href="/historial/{{ registrada.id }}">Historial</a>
-                        {# El saldo viene de la misma fuente que la lista, así que el panel del administrador nunca se pinta sin él. #} {% if saldos_de_las_wallets is defined %}
-                        <span class="saldo">Saldo: <span class="mono">{{ saldos_de_las_wallets[registrada.id] }}</span></span>
-                        {% endif %}
-                    </li>
+            <header class="barra-superior">
+                <a class="marca" href="/"><span class="marca-cuadro" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span>Ledger</span></a>
+                {# Las rutas del eje son del administrador: el común sólo tiene su tablero y su historial. El rol se lee de la sesión recargada, no de la cookie. #}
+                {% if g.user.role == rol_administrador %}
+                <nav class="navegacion" aria-label="Administración">
+                    {% for ruta, texto in [("/", "Resumen"), ("/admin/pendientes", "Pendientes"), ("/wallets", "Wallets"), ("/transacciones", "Transacciones"), ("/bloques", "Bloques"), ("/verificar", "Verificar")] %}
+                    <a href="{{ ruta }}"{% if request.path == ruta %} aria-current="page"{% endif %}>{{ texto }}</a>
                     {% endfor %}
-                </ul>
+                </nav>
                 {% else %}
-                <p>Todavía no hay wallets.</p>
+                <nav class="navegacion" aria-label="Mi cuenta">
+                    {% for ruta, texto in [("/mi-tablero", "Mi tablero"), ("/mi-historial", "Mi historial")] %}
+                    <a href="{{ ruta }}"{% if request.path == ruta %} aria-current="page"{% endif %}>{{ texto }}</a>
+                    {% endfor %}
+                </nav>
                 {% endif %}
-            </aside>
+                <div class="sesion">
+                    {% include "_alternar_tema.html" %}
+                    <span>{{ g.user.username }}</span>
+                    {% if g.user.role == rol_administrador %}<span class="rol">administrador</span>{% endif %}
+                    <form method="post" action="{{ url_for('salir') }}">
+                        <button class="boton" type="submit">Salir</button>
+                    </form>
+                </div>
+            </header>
+            {% else %}
+            {# Sin sesión la barra es mínima: Regresar (si la pantalla lo pide), la marca y el tema. #}
+            <header class="barra-minima">
+                {% block regresar %}{% endblock %}
+                <a class="marca" href="{{ url_for('ingresar') }}"><span class="marca-cuadro" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span>Ledger transaccional</span></a>
+                {% include "_alternar_tema.html" %}
+            </header>
             {% endif %}
-            <main>
-                <h1>{% block encabezado %}{% endblock %}</h1>
-                {% block contenido %}{% endblock %}
-            </main>
+            {# Cada pantalla pone aquí su rejilla con su propio <main id="contenido">. #}
+            {% block cuerpo %}{% endblock %}
         </div>
         <script>
             // Un solo guion para los datos copiables de las páginas de trabajo: cada

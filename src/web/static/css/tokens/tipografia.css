@@ -1,0 +1,37 @@
+/* Tipografía: Bricolage Grotesque para todo el texto y Geist Mono para claves,
+   identificadores, hashes y montos (los datos que se comparan carácter a carácter).
+   La escala sale de las pantallas aprobadas; los tamaños grandes llevan tracking
+   negativo y los títulos van en 800. */
+
+:root {
+    --fuente-texto: "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
+    --fuente-mono: "Geist Mono", ui-monospace, "Cascadia Code", Consolas, monospace;
+
+    --texto-2xs: 0.6875rem; /* 11px: contadores, etiquetas */
+    --texto-xs: 0.75rem; /* 12px: códigos, píldoras, encabezados de tabla */
+    --texto-sm: 0.8125rem; /* 13px: ayudas, metadatos */
+    --texto-base: 0.875rem; /* 14px: tablas, navegación */
+    --texto-md: 0.9375rem; /* 15px: cuerpo, etiquetas de formulario */
+    --texto-lg: 1rem; /* 16px: inputs, entradillas */
+    --texto-xl: 1.125rem; /* 18px: títulos de bloque */
+    --texto-2xl: 1.5rem; /* 24px */
+    --texto-3xl: 2.5rem; /* 40px: título de página */
+    --texto-4xl: 3rem; /* 48px: ingreso */
+    --texto-5xl: 3.375rem; /* 54px: métricas */
+    --texto-6xl: 4rem; /* 64px: saldo */
+
+    --peso-normal: 400;
+    --peso-medio: 500;
+    --peso-semi: 600;
+    --peso-negrita: 700;
+    --peso-titulo: 800;
+
+    --interlinea-ajustada: 1;
+    --interlinea-titulo: 1.2;
+    --interlinea-cuerpo: 1.45;
+    --interlinea-codigo: 1.55;
+
+    --tracking-titulo: -0.035em;
+    --tracking-cifra: -0.04em;
+    --tracking-etiqueta: 0.08em;
+}

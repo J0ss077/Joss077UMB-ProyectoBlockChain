@@ -1,31 +1,60 @@
-{% extends "base.html" %} {% from "_macros.html" import dato, copiar %} {% block titulo %}Historial{% endblock %} {% block encabezado %}Historial{% endblock %} {% block contenido %}
-<p><strong>wallet:</strong> {{ dato(wallet_id) }} {{ copiar(wallet_id, "el identificador") }}</p>
-<table>
-    <thead>
-        <tr>
-            <th>Identificador</th>
-            <th>Emisor</th>
-            <th>Receptor</th>
-            <th>Monto</th>
-            <th>Estado</th>
-            <th>Bloque</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for transaction in transacciones %}
-        <tr>
-            <td>{{ dato(transaction.id) }}</td>
-            <td>{{ dato(transaction.sender_id) }}</td>
-            <td>{{ dato(transaction.receiver_id) }}</td>
-            <td><code>{{ "%.8f"|format(transaction.amount) }}</code></td>
-            <td><code>{{ transaction.status }}</code></td>
-            <td>{% if transaction.block_id %}{{ dato(transaction.block_id) }}{% else %}—{% endif %}</td>
-        </tr>
+{% extends "base.html" %}
+{% from "_macros.html" import dato, copiar, identidad, cantidad %}
+{% block titulo %}Historial{% endblock %}
+{% block cuerpo %}
+{# La clave pública y el saldo salen del panel, que la ruta ya pasa: es la misma fuente, así que la cabecera no puede contradecir al panel. #}
+{% set registrada = (wallets_del_panel|selectattr("id", "equalto", wallet_id)|list)[0] if wallets_del_panel else none %}
+{% set dueno = nombre_de_wallet(wallet_id) %}
+<div class="rejilla">
+    <main id="contenido" tabindex="-1" class="mosaico columna-principal">
+        <div>
+            <nav class="migas" aria-label="Ruta"><a href="/wallets">Wallets</a><span aria-hidden="true">/</span><span>Historial</span></nav>
+            <h1 class="titulo-pagina">Historial{% if dueno %} de {{ dueno }}{% endif %}</h1>
+            <div class="cabecera-wallet">
+                <div class="dato-wallet"><span class="etiqueta">Wallet</span><span class="codigo">{{ dato(wallet_id) }}{{ copiar(wallet_id, "el identificador de la wallet") }}</span></div>
+                {% if registrada %}
+                <div class="dato-wallet"><span class="etiqueta">Clave pública</span><span class="codigo">{{ dato(registrada.public_key) }}{{ copiar(registrada.public_key, "la clave pública") }}</span></div>
+                {% endif %}
+                {% if not dueno %}<div class="dato-wallet"><span class="etiqueta">Dueño</span><span class="nombre sin-dueno">Sin dueño</span></div>{% endif %}
+            </div>
+        </div>
+        <div class="resumen" role="list" aria-label="Resumen de la wallet">
+            {% if wallet_id in saldos_de_las_wallets %}
+            <div class="resumen-dato resumen-acento" role="listitem"><span>Saldo disponible</span><b>{{ cantidad(saldos_de_las_wallets[wallet_id]) }}</b></div>
+            {% endif %}
+            <div class="resumen-dato" role="listitem"><span>Confirmadas</span><b>{{ transacciones|selectattr("status", "equalto", "confirmed")|list|length }}</b></div>
+            <div class="resumen-dato" role="listitem"><span>En el pool</span><b>{{ transacciones|selectattr("status", "equalto", "pending")|list|length }}</b></div>
+            <div class="resumen-dato" role="listitem"><span>Rechazadas</span><b>{{ transacciones|selectattr("status", "equalto", "rejected")|list|length }}</b></div>
+        </div>
+        <h2 class="titulo-bloque">Transacciones <span class="contador">{{ transacciones|length }} en total</span></h2>
+        {% if transacciones %}
+        <div class="tabla-desplazable">
+            {# Las celdas de monto y estado quedan `<td><code>…</code></td>`, como las leen las pruebas; la píldora del estado la dibuja el CSS con el `data-estado` de la fila. #}
+            <table class="tabla tabla-movimientos">
+                <thead>
+                    <tr><th>Transacción</th><th>Emisor</th><th>Receptor</th><th class="derecha">Monto</th><th>Estado</th><th>Bloque</th></tr>
+                </thead>
+                <tbody>
+                    {% for transaction in transacciones %}
+                    <tr data-estado="{{ transaction.status }}">
+                        <td><span class="codigo">{{ dato(transaction.id) }}{{ copiar(transaction.id, "el identificador de la transacción") }}</span></td>
+                        <td>{{ identidad(transaction.sender_id, nombre_de_wallet(transaction.sender_id), "el identificador del emisor", marca="esta" if transaction.sender_id == wallet_id) }}</td>
+                        <td>{{ identidad(transaction.receiver_id, nombre_de_wallet(transaction.receiver_id), "el identificador del receptor", marca="esta" if transaction.receiver_id == wallet_id) }}</td>
+                        <td><code>{{ "%.8f"|format(transaction.amount) }}</code></td>
+                        <td><code>{{ transaction.status }}</code></td>
+                        <td>{% if transaction.block_id %}<span class="codigo">{{ dato(transaction.block_id) }}</span>{% else %}<span class="suave">—</span>{% endif %}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
         {% else %}
-        <tr>
-            <td colspan="6">Esta wallet no tiene transacciones.</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+        <div class="vacio">
+            <p class="vacio-titulo">Esta wallet no tiene transacciones.</p>
+            <p class="ayuda">Aparecerán aquí en cuanto la wallet envíe o reciba.</p>
+        </div>
+        {% endif %}
+    </main>
+    {% include "_panel_wallets.html" %}
+</div>
 {% endblock %}

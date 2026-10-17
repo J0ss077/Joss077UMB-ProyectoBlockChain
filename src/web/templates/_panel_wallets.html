@@ -1,0 +1,28 @@
+{# Panel lateral de wallets del administrador. Lo pasa la ruta con `panel.datos_del_panel`: la lista y el saldo salen de la misma fuente, así que nunca se pinta sin él. `con_nombres` (por defecto sí) agrega el dueño de cada wallet; la cola de pendientes lo apaga, porque no puede listar los nombres de las cuentas ya aprobadas (REQ-31). #}
+{% from "_macros.html" import identidad, corto, cantidad %}
+{% set con_nombres = con_nombres if con_nombres is defined else true %}
+<aside class="mosaico panel-wallets" aria-labelledby="titulo-wallets">
+    <h2 class="titulo-bloque" id="titulo-wallets">Wallets <span class="contador">{{ wallets_del_panel|length }}</span></h2>
+    {% if not con_nombres %}
+    <p class="ayuda">En esta página el panel muestra sólo las claves: los nombres de las cuentas aprobadas no se listan junto a la cola.</p>
+    {% endif %}
+    {% if wallets_del_panel %}
+    <ul class="lista-wallets">
+        {% for registrada in wallets_del_panel %}
+        {% set bits = registrada.public_key[2]|int(0, 16) %}
+        <li class="fila-wallet">
+            <span class="identicono" aria-hidden="true">{% for n in [1, 2, 4, 8] %}<i{% if not bits // n % 2 %} class="apagado"{% endif %}></i>{% endfor %}</span>
+            <div class="fila-wallet-datos">
+                {{ identidad(registrada.public_key, nombre_de_wallet(registrada.id) if con_nombres else none, "la clave pública " ~ corto(registrada.public_key), con_nombre=con_nombres) }}
+                {# El signo se lee del texto y no comparando con cero: un saldo `NaN` (una fila envenenada en la base) hace fallar la comparación de `Decimal`, y el panel no puede tirar la página. #}
+                {% set saldo = saldos_de_las_wallets[registrada.id]|string %}
+                <span class="saldo">Saldo: <b class="{{ 'negativo' if saldo.startswith('-') }}">{{ cantidad(saldos_de_las_wallets[registrada.id]) }}</b></span>
+            </div>
+            <a class="enlace-mini" href="/historial/{{ registrada.id }}">Historial</a>
+        </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p class="ayuda">Todavía no hay wallets.</p>
+    {% endif %}
+</aside>

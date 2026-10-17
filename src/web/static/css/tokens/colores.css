@@ -1,0 +1,99 @@
+/* Colores: primero la paleta base y después los alias semánticos, que son los que
+   usan los componentes. El tema oscuro sólo redefine los alias.
+
+   El tema se elige así: sin preferencia guardada manda `prefers-color-scheme`; con
+   preferencia, el atributo `data-tema` de <html> ("claro" u "oscuro") la impone. Por
+   eso el bloque oscuro aparece dos veces: una para el sistema y otra para la elección
+   explícita. Todas las parejas de texto pasan WCAG AA (4.5:1) en los dos temas y los
+   bordes de controles pasan 3:1. */
+
+:root {
+    /* Paleta base */
+    --cobalto-300: #8394ff;
+    --cobalto-400: #7286ff;
+    --cobalto-500: #5468ff;
+    --cobalto-600: #2e46f0;
+    --cobalto-700: #1c2fb8;
+    --lima-400: #c8f54a;
+    --lima-950: #1a2600;
+    --tinta-950: #0a0c18;
+    --tinta-900: #0e1330;
+    --tinta-850: #141830;
+    --tinta-800: #1b2040;
+    --tinta-700: #2e3563;
+    --niebla-50: #ffffff;
+    --niebla-100: #f3f5fb;
+    --niebla-200: #e9ecf5;
+    --niebla-300: #d6dbea;
+    /* Reflejo blanco de los brillos animados (animaciones.css), igual en los dos temas. */
+    --reflejo: rgb(255 255 255 / 0.35);
+
+    /* Alias semánticos — tema claro */
+    color-scheme: light;
+    --color-fondo: var(--niebla-200);
+    --color-superficie: var(--niebla-50);
+    --color-superficie-2: var(--niebla-100);
+    --color-texto: var(--tinta-900);
+    --color-texto-suave: #4a5275;
+    --color-borde: var(--niebla-300);
+    --color-borde-fuerte: #7c86a8;
+    --color-acento: var(--cobalto-600);
+    --color-sobre-acento: #ffffff;
+    --color-lima: var(--lima-400);
+    --color-sobre-lima: var(--lima-950);
+    --color-exito: #167a4a;
+    --color-exito-fondo: #ddf6e8;
+    --color-pendiente: #8f4f00;
+    --color-pendiente-fondo: #ffefd6;
+    --color-peligro: #b4232a;
+    --color-peligro-fondo: #fde4e4;
+    --color-cadena-1: var(--cobalto-600);
+    --color-cadena-2: var(--cobalto-500);
+    --color-foco: var(--cobalto-600);
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-tema="claro"]) {
+        color-scheme: dark;
+        --color-fondo: var(--tinta-950);
+        --color-superficie: var(--tinta-850);
+        --color-superficie-2: var(--tinta-800);
+        --color-texto: #eef0ff;
+        --color-texto-suave: #a3a9cc;
+        --color-borde: var(--tinta-700);
+        --color-borde-fuerte: #6b74a3;
+        --color-acento: var(--cobalto-400);
+        --color-sobre-acento: var(--tinta-950);
+        --color-exito: #6ee7a8;
+        --color-exito-fondo: #12301f;
+        --color-pendiente: #ffc46b;
+        --color-pendiente-fondo: #33240e;
+        --color-peligro: #ff9aa0;
+        --color-peligro-fondo: #3a1418;
+        --color-cadena-1: #5d72ff;
+        --color-cadena-2: var(--cobalto-300);
+        --color-foco: var(--cobalto-400);
+    }
+}
+
+:root[data-tema="oscuro"] {
+    color-scheme: dark;
+    --color-fondo: var(--tinta-950);
+    --color-superficie: var(--tinta-850);
+    --color-superficie-2: var(--tinta-800);
+    --color-texto: #eef0ff;
+    --color-texto-suave: #a3a9cc;
+    --color-borde: var(--tinta-700);
+    --color-borde-fuerte: #6b74a3;
+    --color-acento: var(--cobalto-400);
+    --color-sobre-acento: var(--tinta-950);
+    --color-exito: #6ee7a8;
+    --color-exito-fondo: #12301f;
+    --color-pendiente: #ffc46b;
+    --color-pendiente-fondo: #33240e;
+    --color-peligro: #ff9aa0;
+    --color-peligro-fondo: #3a1418;
+    --color-cadena-1: #5d72ff;
+    --color-cadena-2: var(--cobalto-300);
+    --color-foco: var(--cobalto-400);
+}

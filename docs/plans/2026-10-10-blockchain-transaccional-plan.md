@@ -1,14 +1,12 @@
 # Reconstrucción del prototipo transaccional basado en blockchain — plan de implementación
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** Implementar los 29 requerimientos del eje y sus 5 casos de uso en un prototipo de nodo único con dominio aislado, persistencia PostgreSQL y presentación Flask, explicable línea por línea.
 
 **Architecture:** Tres capas. El dominio (cinco clases) no conoce el motor y se prueba sin base de datos; la persistencia implementa tres protocolos y una unidad de trabajo detrás de los cuales vive PostgreSQL; la presentación Flask llama al ledger y pinta plantillas, sin reglas ni SQL.
 
 **Tech Stack:** Python 3.11+, `cryptography` (ECDSA secp256k1 y Fernet), `psycopg` 3, Flask, PostgreSQL 16 en contenedor, `pytest`.
 
-**Spec:** `docs/superpowers/specs/2026-10-10-blockchain-transaccional-design.md` — el plan argumenta desde el diseño y el diseño cita el eje (`documentacion_proyecto_transaccionales.pdf`); quien ejecute lee los dos.
+**Spec:** `docs/specs/2026-10-10-blockchain-transaccional-design.md` — el plan argumenta desde el diseño y el diseño cita el eje (`documentacion_proyecto_transaccionales.pdf`); quien ejecute lee los dos.
 
 ## Global Constraints
 
@@ -986,7 +984,7 @@ Expected: verde, con una prueba más
 
 - [ ] **Step 5: README — apagar y limpiar**
 
-Agregar una sección que cubra: detener la aplicación (Ctrl+C); `docker compose down` conserva los datos y `docker compose down -v` borra el volumen, tras lo cual el esquema se reaplica solo en el próximo `up` y hay que volver a sembrar con `python -m src.bootstrap`; cómo deshacer la alteración de la demostración; y qué se puede borrar sin miedo (`.venv/`, `.reference/`, `.superpowers/`, `.legacy-project/` y `.env`, advirtiendo que borrar `.env` obliga a generar otra `MASTER_KEY` y volver a sembrar, porque las wallets ya guardadas quedan ilegibles).
+Agregar una sección que cubra: detener la aplicación (Ctrl+C); `docker compose down` conserva los datos y `docker compose down -v` borra el volumen, tras lo cual el esquema se reaplica solo en el próximo `up` y hay que volver a sembrar con `python -m src.bootstrap`; cómo deshacer la alteración de la demostración; y qué se puede borrar sin miedo (`.venv/`, `.reference/`, `.legacy-project/` y `.env`, advirtiendo que borrar `.env` obliga a generar otra `MASTER_KEY` y volver a sembrar, porque las wallets ya guardadas quedan ilegibles).
 
 - [ ] **Step 6: Commit**
 
@@ -1149,7 +1147,7 @@ Herramienta de verificación y demostración, aprobada por el humano: `python -m
 **Files:**
 
 - Create: `src/sabotaje.py`, `tests/integration/test_sabotaje.py`
-- Modify: `README.md`, `docs/superpowers/specs/2026-10-10-blockchain-transaccional-design.md`, este plan
+- Modify: `README.md`, `docs/specs/2026-10-10-blockchain-transaccional-design.md`, este plan
 
 **Interfaces:**
 

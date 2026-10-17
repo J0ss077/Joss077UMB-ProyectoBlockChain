@@ -4,7 +4,9 @@
    pinta en monoespaciada y deja el valor completo en `title` y en `data-copiar`, así
    que la pantalla muestra poco sin perder el dato. `copiar` es el botón accesible que
    copia ese mismo valor: sin el valor completo a un clic, la forma corta convertiría
-   en pérdida lo que antes se podía copiar. #}
+   en pérdida lo que antes se podía copiar. `identidad` junta las dos con el nombre
+   del dueño encima; no escribe el atributo de copia por su cuenta, para que `dato` y
+   `copiar` sigan siendo las únicas que lo hacen. #}
 
 {% macro corto(valor) -%}
 {%- set texto = valor|string -%}
@@ -18,7 +20,30 @@
 {%- endmacro %}
 
 
+{# Un monto sin los ceros que sobran: 1000.00000000 se lee 1000 y 12.50000000 se lee 12.5. El valor exacto, con sus ocho decimales, queda en el `title`. #}
+{% macro cantidad(valor) -%}
+{%- set exacto = "%.8f"|format(valor) -%}
+<span class="cantidad" title="{{ exacto }}">{{ exacto.rstrip("0").rstrip(".") }}</span>
+{%- endmacro %}
+
+
 {% macro copiar(valor, que="el valor completo") -%}
 {%- set texto = valor|string -%}
-<button type="button" class="copiar" data-copiar="{{ texto }}" aria-label="Copiar {{ que }}" title="Copiar {{ que }}">Copiar</button>
+<button type="button" class="copiar" data-copiar="{{ texto }}" aria-label="Copiar {{ que }}" title="Copiar {{ que }}"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="4.5" y="4.5" width="7.5" height="7.5" rx="1.5" /><path d="M9.5 2H3.5A1.5 1.5 0 0 0 2 3.5v6" /></svg></button>
+{%- endmacro %}
+
+
+{# El nombre del dueño en negrita y, debajo, el código corto con su botón de copiar.
+   `nombre` vacío pinta «Sin dueño»; `propio` pinta el chip «Tú»; `con_nombre=False`
+   deja sólo el código (la cola de pendientes no puede listar nombres de aprobadas).
+   `marca` agrega una etiqueta corta junto al nombre («esta» en el historial). #}
+{% macro identidad(valor, nombre=None, que="el identificador", propio=False, con_nombre=True, marca=None) -%}
+<span class="identidad">
+    {%- if con_nombre or propio %}<span class="linea-nombre">
+    {%- if propio %}<span class="nombre es-propio">Tú</span>
+    {%- elif nombre %}<span class="nombre">{{ nombre }}</span>
+    {%- else %}<span class="nombre sin-dueno">Sin dueño</span>{% endif %}
+    {%- if marca %}<span class="marca-identidad">{{ marca }}</span>{% endif %}</span>{% endif %}
+    <span class="codigo">{{ dato(valor) }}{{ copiar(valor, que) }}</span>
+</span>
 {%- endmacro %}

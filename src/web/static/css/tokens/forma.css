@@ -1,0 +1,19 @@
+/* Radios y sombras. La dirección "Bloques" es plana: las superficies se separan por
+   color y radio, no por sombra. Las sombras quedan para el bloque más reciente de la
+   cadena y para elementos que flotan (menús, avisos). */
+
+:root {
+    --radio-xs: 0.375rem; /* 6px: chips pequeños */
+    --radio-sm: 0.5rem; /* 8px: botón copiar */
+    --radio-md: 0.75rem; /* 12px: botones, inputs pequeños */
+    --radio-lg: 0.875rem; /* 14px: inputs, filas de tabla */
+    --radio-xl: 1rem; /* 16px: nodos de la cadena, filas de wallet */
+    --radio-2xl: 1.25rem; /* 20px: barra superior */
+    --radio-3xl: 1.5rem; /* 24px: mosaicos */
+    --radio-4xl: 1.75rem; /* 28px: paneles del ingreso */
+    --radio-pildora: 999px;
+
+    --sombra-flotante: 0 12px 32px -12px rgb(14 19 48 / 0.28);
+    --sombra-lima: 0 10px 24px -12px #6f8f00;
+    --anillo-foco: 0 0 0 3px color-mix(in srgb, var(--color-foco) 45%, transparent);
+}

@@ -163,8 +163,8 @@ tests/unit/test_req_NN_*.py           reglas, sin base de datos (REQ-17)
 tests/integration/test_req_NN_*.py    atomicidad, esquema, coherencia, alteración (REQ-10..12, REQ-18, REQ-19, REQ-22)
 tests/test_explicacion.py             coherencia entre el recorrido y los requerimientos
 docs/recorrido-de-casos-de-uso.md     el camino real de cada caso de uso y las preguntas del tutor
-docs/superpowers/specs/               este diseño
-docs/superpowers/plans/               el plan de implementación
+docs/specs/                           este diseño
+docs/plans/                           el plan de implementación
 ```
 
 ## Riesgos y límites conocidos

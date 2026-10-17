@@ -167,6 +167,18 @@ class PostgresAccountsRepository:
         )
         return [_row_to_usuario(row) for row in cursor.fetchall()]
 
+    def nombres_por_wallet(self) -> dict[UUID, str]:
+        """El nombre de usuario de cada wallet que tiene dueño.
+
+        Sólo las cuentas aprobadas tienen wallet (el CHECK del esquema lo exige),
+        así que el mapa no incluye pendientes ni rechazadas. Las wallets que no son
+        de ninguna cuenta —las que registra el administrador— no aparecen.
+        """
+        filas = self._connection.execute(
+            "SELECT wallet_id, username FROM users WHERE wallet_id IS NOT NULL"
+        ).fetchall()
+        return {wallet_id: username for wallet_id, username in filas}
+
     def aprobar(self, id: UUID, wallet_id: UUID) -> Usuario | None:
         """Liga la wallet y pasa la cuenta a `aprobado` en una sola escritura (REQ-31).
 

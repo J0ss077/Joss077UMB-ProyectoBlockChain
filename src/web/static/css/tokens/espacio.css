@@ -1,0 +1,21 @@
+/* Espaciado y medidas de layout. Los valores son los de las pantallas aprobadas
+   (bento de 12 columnas con 16px de separación, mosaicos con 24px de relleno). */
+
+:root {
+    --espacio-1: 0.25rem; /* 4px */
+    --espacio-2: 0.5rem; /* 8px */
+    --espacio-3: 0.75rem; /* 12px */
+    --espacio-4: 1rem; /* 16px */
+    --espacio-5: 1.25rem; /* 20px */
+    --espacio-6: 1.5rem; /* 24px */
+    --espacio-7: 1.75rem; /* 28px */
+    --espacio-8: 2rem; /* 32px */
+    --espacio-10: 2.5rem; /* 40px */
+    --espacio-12: 3rem; /* 48px */
+    --espacio-14: 3.5rem; /* 56px */
+
+    --ancho-contenido: 87.5rem; /* 1400px */
+    --separacion-rejilla: var(--espacio-4);
+    --relleno-mosaico: var(--espacio-6);
+    --objetivo-tactil: 2.75rem; /* 44px, WCAG 2.5.5 */
+}

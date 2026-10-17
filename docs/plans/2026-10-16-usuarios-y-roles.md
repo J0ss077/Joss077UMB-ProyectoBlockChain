@@ -1,14 +1,12 @@
 # Usuarios y roles — plan de implementación
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** Agregar al prototipo un sistema de usuarios con dos roles —usuario común y administrador—, alta moderada con aprobación, sesión y pantallas separadas por rol, sin cambiar el comportamiento verificado del ledger.
 
 **Architecture:** Las cuentas son un contexto aparte del ledger: un paquete nuevo `src/accounts/` (modelo, credenciales, puertos, persistencia y servicio) que el dominio no conoce. La autorización vive en la presentación, en puertas por ruta; las reglas del ledger siguen en el dominio. La única operación nueva del dominio es **acreditar saldo en un bloque propio**, que emite desde el constituyente sin pasar por la regla de saldo. La aprobación corre en una sola transacción de base: wallet, bloque de bienvenida y estado del usuario, o nada.
 
 **Tech Stack:** Python 3.11, Flask, psycopg 3, PostgreSQL 16, `hashlib.scrypt` y la cookie firmada de Flask. Sin dependencias nuevas.
 
-**Spec:** `docs/superpowers/specs/2026-10-16-usuarios-y-roles-design.md`
+**Spec:** `docs/specs/2026-10-16-usuarios-y-roles-design.md`
 
 ## Global Constraints
 

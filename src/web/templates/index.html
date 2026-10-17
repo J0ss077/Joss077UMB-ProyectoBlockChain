@@ -1,24 +1,74 @@
-{% extends "base.html" %} {% block titulo %}Ledger transaccional{% endblock %} {% block encabezado %}Estado del ledger{% endblock %} {% block contenido %}
-<table>
-    <thead>
-        <tr>
-            <th>Tabla</th>
-            <th>Filas</th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr>
-            <td>wallets</td>
-            <td><code>{{ estado.wallets }}</code></td>
-        </tr>
-        <tr>
-            <td>blocks</td>
-            <td><code>{{ estado.blocks }}</code></td>
-        </tr>
-        <tr>
-            <td>transactions</td>
-            <td><code>{{ estado.transactions }}</code></td>
-        </tr>
-    </tbody>
-</table>
+{% extends "base.html" %}
+{% from "_macros.html" import dato, copiar, identidad, cantidad %}
+{% from "_estado.html" import estado as pildora %}
+{% block titulo %}Ledger transaccional{% endblock %}
+{% block cuerpo %}
+{# El índice de cada bloque por su identificador: la transacción guarda el bloque y la persona compara índices. #}
+{% set indices = {} %}{% for bloque in bloques %}{% set _ = indices.update({bloque.id: bloque.block_index}) %}{% endfor %}
+<main id="contenido" tabindex="-1" class="rejilla-portada">
+    <section class="mosaico estado-ledger" aria-labelledby="titulo-estado">
+        <div class="estado-cabecera">
+            <div>
+                {% if dictamen.valid %}
+                <span class="insignia insignia-valida"><span class="punto" aria-hidden="true"></span>Cadena válida</span>
+                {% else %}
+                <span class="insignia insignia-invalida"><span class="punto" aria-hidden="true"></span>Cadena alterada en el bloque #{{ dictamen.altered_block_index }}</span>
+                {% endif %}
+                <h1 class="titulo-pagina" id="titulo-estado">Estado del ledger</h1>
+            </div>
+            <div class="acciones">
+                <a class="boton" href="/verificar">Verificar</a>
+                <a class="boton boton-primario" href="/bloques">Cerrar bloque</a>
+            </div>
+        </div>
+        {# Se dibujan los últimos cinco eslabones, que caben junto al pool en escritorio; en pantallas angostas la fila se desliza. #}
+        {% set visibles = bloques[-5:] %}
+        <ol class="cadena" aria-label="Últimos {{ visibles|length }} bloques de la cadena y {{ en_el_pool }} transacciones en el pool" tabindex="0">
+            {% for bloque in visibles %}
+            <li class="eslabon-cadena{% if loop.last %} es-ultimo{% endif %}">
+                <span class="eslabon-indice">#{{ bloque.block_index }} · {% if bloque.block_index == 0 %}génesis{% else %}{{ transacciones_por_bloque[bloque.id] }} tx{% endif %}</span>
+                <span class="codigo">{{ dato(bloque.hash) }}{{ copiar(bloque.hash, "el hash del bloque " ~ bloque.block_index) }}</span>
+            </li>
+            <li class="union-cadena" aria-hidden="true"></li>
+            {% endfor %}
+            <li class="pool-cadena{% if not en_el_pool %} vacio-pool{% endif %}"><b>{{ en_el_pool }}</b>en el pool</li>
+        </ol>
+    </section>
+    <div class="metricas" role="list" aria-label="Conteos del ledger">
+        <div class="metrica metrica-acento" role="listitem"><span class="metrica-texto">Transacciones</span><span class="metrica-numero">{{ estado.transactions }}</span></div>
+        <div class="metrica" role="listitem"><span class="metrica-texto">Bloques</span><span class="metrica-numero">{{ estado.blocks }}</span></div>
+        <div class="metrica" role="listitem"><span class="metrica-texto">Wallets</span><span class="metrica-numero">{{ estado.wallets }}</span></div>
+        <div class="metrica metrica-lima" role="listitem"><span class="metrica-texto">En el pool</span><span class="metrica-numero">{{ en_el_pool }}</span></div>
+    </div>
+    <section class="mosaico ultimas" aria-labelledby="titulo-ultimas">
+        <h2 class="titulo-bloque" id="titulo-ultimas">Últimas transacciones</h2>
+        {% if ultimas %}
+        <div class="tabla-desplazable">
+            <table class="tabla">
+                <thead>
+                    <tr><th>Transacción</th><th>Emisor</th><th>Receptor</th><th class="derecha">Monto</th><th>Estado</th><th>Bloque</th></tr>
+                </thead>
+                <tbody>
+                    {% for transaccion in ultimas %}
+                    <tr>
+                        <td><span class="codigo">{{ dato(transaccion.id) }}{{ copiar(transaccion.id, "el identificador de la transacción") }}</span></td>
+                        <td>{{ identidad(transaccion.sender_id, nombre_de_wallet(transaccion.sender_id), "el identificador del emisor") }}</td>
+                        <td>{{ identidad(transaccion.receiver_id, nombre_de_wallet(transaccion.receiver_id), "el identificador del receptor") }}</td>
+                        <td class="derecha cifra">{{ cantidad(transaccion.amount) }}</td>
+                        <td>{{ pildora(transaccion.status) }}</td>
+                        <td class="cifra suave">{% if transaccion.block_id in indices %}#{{ indices[transaccion.block_id] }}{% else %}—{% endif %}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="vacio">
+            <p class="vacio-titulo">Todavía no hay transacciones.</p>
+            <p class="ayuda">Propón la primera desde <a href="/transacciones">Transacciones</a>.</p>
+        </div>
+        {% endif %}
+    </section>
+    {% include "_panel_wallets.html" %}
+</main>
 {% endblock %}

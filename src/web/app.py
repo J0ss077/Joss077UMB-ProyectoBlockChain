@@ -139,6 +139,23 @@ def create_app(
             "rol_administrador": ADMINISTRADOR,
         }
 
+    @app.context_processor
+    def nombres_de_las_wallets() -> dict[str, object]:
+        """Publica `nombre_de_wallet(id)`: el usuario dueño de una wallet, o `None`.
+
+        La lectura es perezosa y se hace una vez por petición: sólo la paga la
+        página que muestra nombres, y una página de error no abre las cuentas. Las
+        wallets que registra el administrador no tienen dueño y devuelven `None`.
+        """
+
+        def nombre_de_wallet(wallet_id: UUID) -> str | None:
+            if "nombres_por_wallet" not in g:
+                with abrir_cuentas() as cuentas:
+                    g.nombres_por_wallet = cuentas.nombres_por_wallet()
+            return g.nombres_por_wallet.get(wallet_id)
+
+        return {"nombre_de_wallet": nombre_de_wallet}
+
     @app.before_request
     def recargar_usuario() -> None:
         """Recarga la cuenta de la cookie en cada petición (REQ-37).
@@ -229,6 +246,12 @@ def create_app(
         if g.user.role != ADMINISTRADOR:
             return redirect(url_for("usuario.mi_tablero"))
         with abrir_cadena() as chain:
+            estado = chain.ledger_state()
+            bloques = chain.blocks.list()
+            # Todo son lecturas de la fachada: la cadena para dibujar sus eslabones,
+            # el pool, el dictamen y las últimas transacciones. El repositorio lista
+            # de la más vieja a la más nueva, así que las últimas son la cola de la
+            # lista completa.
             # El panel sale de una sola fuente, la misma para todas las páginas del
             # administrador: la lista de wallets y el saldo disponible que calcula la
             # fachada con la cuenta del envío (REQ-05, REQ-29). Es la celda de la
@@ -236,7 +259,15 @@ def create_app(
             # saldos, y el usuario común no la recibe (REQ-35).
             return render_template(
                 "index.html",
-                estado=chain.ledger_state(),
+                estado=estado,
+                bloques=bloques,
+                # Sólo se cuentan los cinco eslabones que dibuja la portada.
+                transacciones_por_bloque={
+                    bloque.id: len(chain.transactions.of_block(bloque.id)) for bloque in bloques[-5:]
+                },
+                en_el_pool=len(chain.transactions.pending()),
+                dictamen=chain.verify_chain(),
+                ultimas=list(reversed(chain.transactions.list(limit=estado["transactions"])[-5:])),
                 **datos_del_panel(chain),
             )
 

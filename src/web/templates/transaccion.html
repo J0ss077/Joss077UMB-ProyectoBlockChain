@@ -1,51 +1,85 @@
-{% extends "base.html" %} {% from "_macros.html" import corto, dato, copiar %} {% block titulo %}Nueva transacción{% endblock %} {% block encabezado %}Nueva transacción{% endblock %} {% block contenido %}
-<form method="post" action="/transacciones">
-    <p>
-        <label
-            >Emisor
-            <select name="sender_id">
+{% extends "base.html" %}
+{% from "_macros.html" import corto, dato, copiar, identidad, cantidad %}
+{% from "_estado.html" import estado as pildora %}
+{% block titulo %}Nueva transacción{% endblock %}
+{% block cuerpo %}
+<div class="rejilla">
+    <main id="contenido" tabindex="-1" class="mosaico columna-principal">
+        <div>
+            <p class="antetitulo">Proponer</p>
+            <h1 class="titulo-pagina">Nueva transacción</h1>
+        </div>
+        {% if error_formulario %}
+        <div class="motivo" role="alert">
+            <p>{{ error_formulario }}</p>
+        </div>
+        {% endif %}
+        {% if resultado %}
+        {% if resultado.accepted %}
+        <section class="exito resultado" role="status">
+            <p>La transacción entró al pool.</p>
+            {% if resultado.stored %}
+            <dl class="ficha">
+                <dt>Transacción</dt>
+                <dd><span class="codigo">{{ dato(resultado.stored.id) }}{{ copiar(resultado.stored.id, "el identificador de la transacción") }}</span></dd>
+                <dt>De</dt>
+                <dd>{{ identidad(resultado.stored.sender_id, nombre_de_wallet(resultado.stored.sender_id), "el identificador del emisor") }}</dd>
+                <dt>Para</dt>
+                <dd>{{ identidad(resultado.stored.receiver_id, nombre_de_wallet(resultado.stored.receiver_id), "el identificador del receptor") }}</dd>
+                <dt>Monto</dt>
+                <dd class="cifra">{{ cantidad(resultado.stored.amount) }}</dd>
+                <dt>Estado</dt>
+                <dd>{{ pildora(resultado.stored.status) }}</dd>
+            </dl>
+            <p>Quedará confirmada cuando se cierre el próximo bloque.</p>
+            {% endif %}
+        </section>
+        {% else %}
+        {# El motivo se muestra porque el CU-02 lo pide: quien propone tiene que saber por qué no entró. #}
+        <section class="motivo resultado" role="alert">
+            <p>La transacción no entró al pool.</p>
+            <p><strong>motivo:</strong> {{ resultado.reason }}</p>
+            {% if resultado.stored %}
+            <dl class="ficha">
+                <dt>Transacción</dt>
+                <dd><span class="codigo">{{ dato(resultado.stored.id) }}{{ copiar(resultado.stored.id, "el identificador de la transacción") }}</span></dd>
+                <dt>Estado</dt>
+                <dd>{{ pildora(resultado.stored.status) }}</dd>
+            </dl>
+            {% endif %}
+        </section>
+        {% endif %}
+        {% endif %}
+        <form class="formulario" method="post" action="/transacciones">
+            {# Se escribe el nombre del dueño o el identificador de la wallet (o sus primeros caracteres); `transaccion.js` lo resuelve a la wallet y, al enviar, deja en el campo el identificador, que es lo único que recibe la ruta. Sin JavaScript el campo acepta el identificador. #}
+            <div class="ruta-envio" data-ruta-envio>
+                <div class="campo">
+                    <label for="emisor">Emisor</label>
+                    <input id="emisor" name="sender_id" list="wallets-conocidas" value="{{ request.form.get('sender_id', '') }}" placeholder="Nombre o ID" autocomplete="off" spellcheck="false" aria-describedby="resuelve-emisor" required />
+                </div>
+                <span class="flecha-envio" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 10h12M11 5l5 5-5 5" /></svg></span>
+                <div class="campo">
+                    <label for="receptor">Receptor</label>
+                    <input id="receptor" name="receiver_id" list="wallets-conocidas" value="{{ request.form.get('receiver_id', '') }}" placeholder="Nombre o ID" autocomplete="off" spellcheck="false" aria-describedby="resuelve-receptor" required />
+                </div>
+                <p class="ayuda resolucion" id="resuelve-emisor" aria-live="polite"></p>
+                <p class="ayuda resolucion" id="resuelve-receptor" aria-live="polite"></p>
+                {# Las sugerencias de los dos campos: cada opción lleva el identificador de la wallet como valor y, a la vista, el nombre del dueño, la clave corta y el saldo; la clave completa queda en el `title`, que es lo que exigen las pruebas, y nunca como texto visible. #}
+                <datalist id="wallets-conocidas">
                 {% for wallet in wallets_del_panel %}
-                <option value="{{ wallet.id }}" title="{{ wallet.public_key }}">{{ corto(wallet.public_key) }}</option>
+                <option value="{{ wallet.id }}" title="{{ wallet.public_key }}">{{ nombre_de_wallet(wallet.id) or "Sin dueño" }} · {{ corto(wallet.public_key) }} · saldo {{ ("%.8f"|format(saldos_de_las_wallets[wallet.id])).rstrip("0").rstrip(".") }}</option>
                 {% endfor %}
-            </select>
-        </label>
-    </p>
-    <p>
-        <label
-            >Receptor
-            <select name="receiver_id">
-                {% for wallet in wallets_del_panel %}
-                <option value="{{ wallet.id }}" title="{{ wallet.public_key }}">{{ corto(wallet.public_key) }}</option>
-                {% endfor %}
-            </select>
-        </label>
-    </p>
-    <p>
-        <label>Monto <input name="amount" value="10.00000000" /></label>
-    </p>
-    <button type="submit">Proponer</button>
-</form>
-
-{% if error_formulario %}
-<div class="motivo">
-    <p><strong>motivo:</strong> {{ error_formulario }}</p>
+                </datalist>
+            </div>
+            <div class="campo">
+                <label for="monto">Monto</label>
+                <input id="monto" name="amount" value="10" inputmode="decimal" aria-describedby="ayuda-monto" />
+                <p class="ayuda" id="ayuda-monto">Hasta ocho decimales. El emisor necesita saldo disponible suficiente.</p>
+            </div>
+            <button class="boton boton-grande boton-primario" type="submit">Proponer transacción</button>
+        </form>
+        <script src="{{ url_for('static', filename='js/transaccion.js') }}" defer></script>
+    </main>
+    {% include "_panel_wallets.html" %}
 </div>
-{% endif %} {% if resultado %} {% if resultado.accepted %}
-<div class="exito">
-    <p>La transacción entró al pool.</p>
-    {% if resultado.stored %}
-    <p><strong>identificador:</strong> {{ dato(resultado.stored.id) }} {{ copiar(resultado.stored.id, "el identificador") }}</p>
-    <p><strong>estado:</strong> <code>{{ resultado.stored.status }}</code></p>
-    <p><strong>monto:</strong> <code>{{ "%.8f"|format(resultado.stored.amount) }}</code></p>
-    {% endif %}
-</div>
-{% else %} {# El motivo se muestra porque el CU-02 lo pide: quien propone tiene que saber por qué no entró. #}
-<div class="motivo">
-    <p>La transacción no entró al pool.</p>
-    <p><strong>motivo:</strong> {{ resultado.reason }}</p>
-    {% if resultado.stored %}
-    <p><strong>identificador:</strong> {{ dato(resultado.stored.id) }} {{ copiar(resultado.stored.id, "el identificador") }}</p>
-    <p><strong>estado:</strong> <code>{{ resultado.stored.status }}</code></p>
-    {% endif %}
-</div>
-{% endif %} {% endif %} {% endblock %}
+{% endblock %}
