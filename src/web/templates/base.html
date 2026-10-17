@@ -28,6 +28,25 @@
             .barra nav a {
                 margin-right: 1rem;
             }
+            /* La sesión va al extremo derecho: el nombre de quien entró y la
+               salida tienen que estar a la vista sin competir con la navegación. */
+            .barra .sesion {
+                display: flex;
+                align-items: baseline;
+                gap: 0.8rem;
+                margin-left: auto;
+            }
+            .barra .sesion form {
+                display: inline;
+                margin: 0;
+            }
+            .barra .sesion .nombre {
+                font-weight: bold;
+            }
+            .ayuda {
+                color: #555;
+                margin-top: -0.4rem;
+            }
             .columnas {
                 display: flex;
                 align-items: flex-start;
@@ -132,11 +151,28 @@
         <div class="barra">
             <a class="marca" href="/">Ledger transaccional</a>
             <nav>
+                {# Las rutas del eje son del administrador: el común sólo tiene su tablero. El rol se lee de la sesión recargada, no de la cookie. #} {% if g.user and g.user.role == rol_administrador %}
                 <a href="/wallets">Registrar wallet</a>
                 <a href="/transacciones">Nueva transacción</a>
                 <a href="/bloques">Cerrar bloque</a>
                 <a href="/verificar">Verificar cadena</a>
+                {% elif g.user %}
+                <a href="/mi-tablero">Mi tablero</a>
+                {% endif %}
             </nav>
+            {% if g.user %}
+            <span class="sesion">
+                <span class="nombre">{{ g.user.username }}</span>
+                <form method="post" action="{{ url_for('salir') }}">
+                    <button type="submit">Salir</button>
+                </form>
+            </span>
+            {% else %}
+            <span class="sesion">
+                <a href="{{ url_for('ingresar') }}">Ingresar</a>
+                <a href="{{ url_for('registrarme') }}">Registrarme</a>
+            </span>
+            {% endif %}
         </div>
         <div class="columnas">
             {# El panel solo se pinta si la ruta pasó la lista: la página de error no la pasa, porque no puede depender del ledger para dibujarse. #} {% if wallets_del_panel is defined %}

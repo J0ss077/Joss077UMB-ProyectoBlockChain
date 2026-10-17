@@ -17,15 +17,23 @@ import pytest
 
 from src.domain.blockchain import ensure_genesis
 from src.persistence.factory import open_ledger
-from src.web.app import create_app
+from tests.integration.conftest import (
+    CONTRASENA_DEL_ADMINISTRADOR,
+    crear_app_de_prueba,
+    ingresar_como,
+)
 
 
 @pytest.fixture
-def cliente(conexion, base_limpia, master_key, base_vacia_ejecutando_bootstrap):
-    """El cliente de Flask sobre la conexión de la prueba, con la demostración cargada.
+def cliente(
+    conexion, base_limpia, master_key, base_vacia_ejecutando_bootstrap, administrador
+):
+    """El cliente de Flask sobre la conexión de la prueba, ya con sesión de administrador.
 
-    La fábrica entrega la fachada sobre la conexión de la sesión y no abre otra: así
-    lo que escribe una ruta queda visible para las aserciones en el mismo instante.
+    Las rutas del eje exigen administrador (REQ-38); la prueba entra con la cuenta
+    sembrada y después pide la lista. La fábrica entrega la fachada sobre la
+    conexión de la sesión y no abre otra: así lo que escribe una ruta queda visible
+    para las aserciones en el mismo instante.
     """
 
     @contextmanager
@@ -34,7 +42,9 @@ def cliente(conexion, base_limpia, master_key, base_vacia_ejecutando_bootstrap):
         ensure_genesis(chain)
         yield chain
 
-    return create_app(fabrica).test_client()
+    cliente = crear_app_de_prueba(fabrica).test_client()
+    ingresar_como(cliente, administrador.username, CONTRASENA_DEL_ADMINISTRADOR)
+    return cliente
 
 
 @pytest.fixture

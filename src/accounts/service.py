@@ -184,6 +184,17 @@ class Cuentas:
         with self._transaction() as actual:
             return actual.usuarios.list_pendientes()
 
+    def por_id(self, id: UUID) -> Usuario | None:
+        """La cuenta con ese identificador, o `None` si ya no existe (REQ-37).
+
+        Es la lectura que hace la sesión en cada petición: la cookie guarda sólo
+        el identificador y el rol y el estado se releen de la base, así un cambio
+        se nota sin reiniciar y una cuenta borrada descarta la sesión. No escribe,
+        así que la transacción se cierra sin confirmar nada.
+        """
+        with self._transaction() as actual:
+            return actual.usuarios.get(id)
+
     def aprobar(self, id: UUID) -> Usuario:
         """Abre la cuenta: wallet, saldo de bienvenida y estado en una sola transacción.
 

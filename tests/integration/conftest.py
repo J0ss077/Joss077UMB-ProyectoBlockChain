@@ -9,23 +9,30 @@ leer cosas distintas de `.env`.
 """
 import subprocess
 import sys
+from contextlib import contextmanager
 from datetime import UTC, datetime
 from decimal import Decimal
 from uuid import UUID, uuid4
 
 import psycopg
 import pytest
+from flask import Flask
+from flask.testing import FlaskClient
 
+from src.accounts.credentials import hashear_contrasena
+from src.accounts.model import ADMINISTRADOR, PENDIENTE, Usuario
+from src.accounts.postgres import PostgresAccountsRepository
 from src.accounts.service import Cuentas
 from src.bootstrap import wallet_del_constituyente
 from src.domain.block import Block
 from src.domain.blockchain import Blockchain, ensure_genesis
 from src.domain.transaction import Transaction, TransactionStatus
 from src.domain.wallet import Wallet, create_wallet, sign_payload
-from src.persistence.factory import database_url, open_ledger, transaction
+from src.persistence.factory import database_url, open_ledger, session_secret, transaction
 from src.persistence.factory import master_key as master_key_from_env
 from src.persistence.ports import BlockRepository, WalletRepository
 from src.persistence.postgres import PostgresBlockRepository, PostgresWalletRepository
+from src.web.app import create_app
 
 # Marca de tiempo fija: el payload firmado la incluye, y fijarla hace
 # reproducibles las transacciones que arman las pruebas.
@@ -35,6 +42,79 @@ CREATED_AT = datetime(2026, 10, 10, 12, 0, tzinfo=UTC)
 # corridas.
 BLOCK_AT = datetime(2026, 10, 10, 13, 0, tzinfo=UTC)
 DEFAULT_AMOUNT = Decimal("10.00000000")
+
+# Contraseñas de las cuentas que siembran las pruebas de la sesión. Son constantes
+# y no las del entorno porque el administrador de estas pruebas no es el de la
+# semilla de la Task 9: acá se crea directo con el repositorio.
+CONTRASENA_DE_PRUEBA = "secreta1"
+CONTRASENA_DEL_ADMINISTRADOR = "clave-del-administrador-de-prueba"
+
+
+def crear_app_de_prueba(chain_factory, *, secret_key=None) -> Flask:
+    """Arma la aplicación con la fábrica del ledger y la del servicio de cuentas.
+
+    La fábrica de cuentas se compone acá, con `transaction()` real, para que las
+    rutas de entrada y la recarga del usuario por petición usen la misma base que
+    el resto de la suite. La clave de la sesión sale del entorno por el mismo
+    lector que usa el arranque, así la prueba firma con la clave de verdad.
+    """
+
+    @contextmanager
+    def fabrica_de_cuentas():
+        yield Cuentas(transaction)
+
+    return create_app(
+        chain_factory,
+        fabrica_de_cuentas,
+        secret_key=session_secret() if secret_key is None else secret_key,
+    )
+
+
+def ingresar_como(cliente, usuario: str, contrasena: str):
+    """Ingresa con esas credenciales y exige que la sesión se haya abierto.
+
+    Se usa en las pruebas de rutas para dejar al cliente como administrador. Un
+    ingreso fallido devuelve 200 con el motivo, así que un 302 es la señal de que
+    la cookie quedó puesta.
+    """
+    respuesta = cliente.post(
+        "/ingresar", data={"usuario": usuario, "contrasena": contrasena}
+    )
+    assert respuesta.status_code == 302, respuesta.get_data(as_text=True)
+    return respuesta
+
+
+def _sembrar_cuenta(
+    conexion,
+    *,
+    username: str,
+    role: str,
+    contrasena: str,
+    wallet_id=None,
+) -> Usuario:
+    """Crea una cuenta aprobada directo en la base, sin pasar por el servicio.
+
+    El servicio siempre registra el rol `usuario`, así que el administrador sólo
+    puede nacer por el repositorio. El esquema exige wallet en toda cuenta
+    aprobada, por eso la del administrador también se registra aunque no la use.
+    """
+    usuarios = PostgresAccountsRepository(conexion)
+    pendiente = usuarios.add_pendiente(
+        Usuario(
+            id=uuid4(),
+            username=username,
+            password_hash=hashear_contrasena(contrasena),
+            role=role,
+            estado=PENDIENTE,
+            motivo_rechazo=None,
+            wallet_id=None,
+            creado_en=datetime.now(UTC),
+            aprobado_en=None,
+        )
+    )
+    aprobado = usuarios.aprobar(pendiente.id, wallet_id)
+    assert aprobado is not None
+    return aprobado
 
 
 @pytest.fixture(scope="session")
@@ -219,4 +299,65 @@ def bloque(bloques):
         return bloques.add(creado)
 
     return build
+
+
+@pytest.fixture
+def aplicacion(conexion, base_limpia, master_key) -> Flask:
+    """La aplicación sobre la base limpia, con el génesis asegurado.
+
+    La fábrica entrega el ledger sobre la conexión de la sesión y no abre otra: lo
+    que escribe una ruta queda visible para las aserciones en el mismo instante.
+    """
+
+    @contextmanager
+    def fabrica():
+        chain = open_ledger(conexion, encryption_key=master_key)
+        ensure_genesis(chain)
+        yield chain
+
+    return crear_app_de_prueba(fabrica)
+
+
+@pytest.fixture
+def cliente(aplicacion) -> FlaskClient:
+    """El cliente de Flask de la aplicación de prueba, todavía sin sesión."""
+    return aplicacion.test_client()
+
+
+@pytest.fixture
+def administrador(base_limpia, conexion, wallets, master_key) -> Usuario:
+    """Un administrador aprobado, con la wallet que el esquema le exige.
+
+    No es la semilla del arranque: esa llega con la Task 9. Acá alcanza con una
+    cuenta `administrador` aprobada para abrir la sesión y cruzar las puertas.
+    """
+    wallet = wallets.add(create_wallet(master_key=master_key))
+    return _sembrar_cuenta(
+        conexion,
+        username="admin",
+        role=ADMINISTRADOR,
+        contrasena=CONTRASENA_DEL_ADMINISTRADOR,
+        wallet_id=wallet.id,
+    )
+
+
+@pytest.fixture
+def cliente_admin(cliente, administrador) -> FlaskClient:
+    """El cliente con la sesión de administrador ya abierta."""
+    ingresar_como(cliente, administrador.username, CONTRASENA_DEL_ADMINISTRADOR)
+    return cliente
+
+
+@pytest.fixture
+def usuario_comun(cuentas) -> Usuario:
+    """Un usuario común aprobado, con su wallet y su saldo de bienvenida (REQ-33)."""
+    creado = cuentas.registrar("ana", CONTRASENA_DE_PRUEBA)
+    return cuentas.aprobar(creado.id)
+
+
+@pytest.fixture
+def cliente_comun(cliente, usuario_comun) -> FlaskClient:
+    """El cliente con la sesión de un usuario común ya abierta."""
+    ingresar_como(cliente, usuario_comun.username, CONTRASENA_DE_PRUEBA)
+    return cliente
 

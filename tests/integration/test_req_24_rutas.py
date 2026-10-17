@@ -22,7 +22,11 @@ import pytest
 from src.bootstrap import CONSTITUYENTE_ID, FONDO
 from src.domain.blockchain import ensure_genesis
 from src.persistence.factory import open_ledger
-from src.web.app import create_app
+from tests.integration.conftest import (
+    CONTRASENA_DEL_ADMINISTRADOR,
+    crear_app_de_prueba,
+    ingresar_como,
+)
 
 MONTO = "10.00000000"
 
@@ -39,11 +43,15 @@ def _texto_visible(cuerpo: str) -> str:
 
 
 @pytest.fixture
-def cliente(conexion, base_limpia, master_key, base_vacia_ejecutando_bootstrap):
-    """El cliente de Flask sobre la conexión de la prueba, con la demostración cargada.
+def cliente(
+    conexion, base_limpia, master_key, base_vacia_ejecutando_bootstrap, administrador
+):
+    """El cliente de Flask sobre la conexión de la prueba, ya con sesión de administrador.
 
-    La fábrica entrega la fachada sobre la conexión de la sesión y no abre otra: así
-    lo que escribe una ruta queda visible para las aserciones en el mismo instante.
+    Las rutas del eje exigen administrador (REQ-38), así que la prueba entra con la
+    cuenta sembrada por el fixture y recién después pide las páginas. La fábrica
+    entrega la fachada sobre la conexión de la sesión y no abre otra: así lo que
+    escribe una ruta queda visible para las aserciones en el mismo instante.
     """
 
     @contextmanager
@@ -52,7 +60,9 @@ def cliente(conexion, base_limpia, master_key, base_vacia_ejecutando_bootstrap):
         ensure_genesis(chain)
         yield chain
 
-    return create_app(fabrica).test_client()
+    cliente = crear_app_de_prueba(fabrica).test_client()
+    ingresar_como(cliente, administrador.username, CONTRASENA_DEL_ADMINISTRADOR)
+    return cliente
 
 
 @pytest.fixture
@@ -275,12 +285,13 @@ def test_req_28_rf5_historial_con_uuid_invalido_o_inexistente_responde_una_pagin
     assert "No se encontró lo que buscaba" in ruta_que_no_existe.get_data(as_text=True)
 
 
-def test_req_28_rf5_la_pagina_de_error_no_depende_del_ledger():
+def test_req_28_rf5_la_pagina_de_error_no_depende_del_ledger(administrador):
     """REQ-28 (RF-5): la página de error se pinta sin abrir el ledger.
 
     El panel lateral lo pasa cada ruta y no un procesador de contexto: si el ledger no
     abre, un identificador inválido tiene que seguir siendo un 404 en pantalla —nunca
-    un 500— y la página de error no puede llegar a escribir el génesis.
+    un 500— y la página de error no puede llegar a escribir el génesis. La sesión se
+    abre antes de la petición que falla: el ingreso no toca el ledger.
     """
 
     @contextmanager
@@ -288,7 +299,8 @@ def test_req_28_rf5_la_pagina_de_error_no_depende_del_ledger():
         raise RuntimeError("el ledger no abre")
         yield  # pragma: no cover
 
-    cliente = create_app(fabrica_rota).test_client()
+    cliente = crear_app_de_prueba(fabrica_rota).test_client()
+    ingresar_como(cliente, administrador.username, CONTRASENA_DEL_ADMINISTRADOR)
 
     assert cliente.get("/historial/no-es-un-uuid").status_code == 404
     assert cliente.get("/no-existe").status_code == 404

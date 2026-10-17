@@ -1,15 +1,31 @@
 """Punto de entrada de la aplicación: `python -m src.web`.
 
-Aquí, y no en `app.py`, vive la única línea que conoce la capa que arma el ledger:
-el módulo de la aplicación tiene que poder importarse sin arrastrar el motor
-(REQ-29), y quien cablea la fábrica real es este arranque.
+Aquí, y no en `app.py`, vive la única línea que conoce la capa que arma el ledger
+y el servicio de cuentas: el módulo de la aplicación tiene que poder importarse sin
+arrastrar el motor (REQ-29), y quien cablea las fábricas reales es este arranque.
+La clave de la cookie también se resuelve acá, con el lector que sabe mirar el
+entorno y el `.env` (REQ-37).
 """
 import os
+from contextlib import contextmanager
 
-from src.persistence.factory import ledger
+from src.accounts.service import Cuentas
+from src.persistence.factory import ledger, session_secret, transaction
 from src.web.app import create_app
 
-app = create_app(ledger)
+
+@contextmanager
+def cuentas():
+    """Entrega un servicio de cuentas por petición sobre la transacción real.
+
+    `Cuentas` no guarda conexión: cada operación abre la que necesita con la
+    fábrica recibida. Se arma por petición igual que el ledger para que la
+    presentación no dependa de una instancia compartida entre hilos.
+    """
+    yield Cuentas(transaction)
+
+
+app = create_app(ledger, cuentas, secret_key=session_secret())
 
 
 if __name__ == "__main__":

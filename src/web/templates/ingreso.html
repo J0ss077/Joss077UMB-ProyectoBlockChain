@@ -1,0 +1,20 @@
+{% extends "base.html" %} {% block titulo %}Ingresar{% endblock %} {% block encabezado %}Ingresar{% endblock %} {% block contenido %} {% if error %}
+<div class="motivo" id="error-de-ingreso">
+    <p>{{ error }}</p>
+</div>
+{% endif %}
+<form method="post" action="{{ url_for('ingresar') }}">
+    <p>
+        <label
+            >Usuario <input name="usuario" value="{{ usuario }}" pattern="{{ patron_usuario }}" maxlength="{{ largo_maximo_de_usuario }}" autocapitalize="off" spellcheck="false" autocomplete="username" aria-describedby="ayuda-usuario" required
+        /></label>
+    </p>
+    {# La ayuda sale de la misma constante que valida el servicio: la interfaz no puede prometer un conjunto de caracteres distinto del que acepta el registro. #}
+    <p class="ayuda" id="ayuda-usuario">{{ ayuda_de_usuario }}</p>
+    <p>
+        <label>Contraseña <input type="password" name="contrasena" autocomplete="current-password" required /></label>
+    </p>
+    <button type="submit">Ingresar</button>
+</form>
+<p>¿No tiene cuenta? <a href="{{ url_for('registrarme') }}">Registrarme</a>.</p>
+{% endblock %}

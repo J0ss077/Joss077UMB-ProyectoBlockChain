@@ -11,13 +11,25 @@ import secrets
 
 # El único lugar donde vive el conjunto de caracteres permitidos: los formularios
 # lo usan como `pattern` y `validar_usuario` lo aplica, así que no pueden divergir.
-PATRON_DE_USUARIO = r"[a-z0-9_.-]{3,20}"
+# Los dos largos son constantes porque el patrón, el `maxlength` del formulario y la
+# ayuda visible se arman de ellos: cambiarlos en un solo lado no los desincroniza.
+LARGO_MINIMO_DE_USUARIO = 3
+LARGO_MAXIMO_DE_USUARIO = 20
+PATRON_DE_USUARIO = rf"[a-z0-9_.-]{{{LARGO_MINIMO_DE_USUARIO},{LARGO_MAXIMO_DE_USUARIO}}}"
 
 # El motivo repite la regla del patrón porque es el texto que lee la persona; si
 # el patrón cambia, este mensaje cambia con él.
 MOTIVO_DE_USUARIO_INVALIDO = (
     "El usuario sólo admite minúsculas, dígitos, punto, guion y guion bajo, "
-    "entre 3 y 20 caracteres."
+    f"entre {LARGO_MINIMO_DE_USUARIO} y {LARGO_MAXIMO_DE_USUARIO} caracteres."
+)
+
+# Ayuda que acompaña al campo de usuario en el registro y en el ingreso. Dice lo
+# mismo que el motivo, en el tono de una instrucción y no de un error, y sale de
+# los mismos largos para que la interfaz no prometa otra cosa que la validación.
+AYUDA_DE_USUARIO = (
+    "Sólo minúsculas, números, punto, guion y guion bajo, "
+    f"entre {LARGO_MINIMO_DE_USUARIO} y {LARGO_MAXIMO_DE_USUARIO} caracteres."
 )
 
 # Piso de contraseña que el diseño deja a criterio: ocho caracteres alcanzan para
