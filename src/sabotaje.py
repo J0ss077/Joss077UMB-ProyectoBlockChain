@@ -12,11 +12,14 @@ una consecuencia del catálogo y no al revés, así que el mismo recorrido sirve
 persona que mira el navegador y para una corrida sin nadie enfrente.
 
 Uso: `python -m src.sabotaje` (interactivo), `--sin-pausas` (sin esperar a nadie),
-`--destructivos` (agrega los tres casos que borran datos).
+`--destructivos` (agrega los tres casos que borran datos). La aplicación se mira en
+`http://127.0.0.1:5000` salvo que la variable `SABOTAJE_APLICACION` diga otra
+dirección.
 """
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 import urllib.error
 import urllib.request
@@ -40,8 +43,15 @@ CADENA_VALIDA = "cadena-valida"
 CADENA_INVALIDA = "cadena-invalida"
 MOTOR_RECHAZA = "motor-rechaza"
 
-# Dirección que la persona tiene que mirar en el navegador entre caso y caso.
-VERIFICACION = "http://127.0.0.1:5000/verificar"
+# Dirección de la aplicación de este prototipo: la que levanta `python -m src.web`. Es
+# solo el valor por defecto de la sonda y no una constante de la herramienta: el 5000
+# puede estar tomado y un servidor de prueba puede escuchar en otro puerto, así que la
+# variable del entorno manda cuando está.
+APLICACION_POR_DEFECTO = "http://127.0.0.1:5000"
+
+# Variable con la que se apunta la sonda a otra dirección. Se lee cada vez que hace
+# falta y no al importar el módulo, para que se pueda fijar después.
+VARIABLE_DE_LA_APLICACION = "SABOTAJE_APLICACION"
 
 # Clase SQLSTATE de las violaciones de restricción: integridad, clave foránea,
 # unicidad y CHECK. Es la que el motor levanta cuando rechaza una fila antes de
@@ -100,6 +110,11 @@ class Caso:
     que es el resultado esperado de los casos `motor-rechaza`; `restaurar` deja la
     base como estaba. `limite` es obligatorio cuando el caso no se detecta: un caso
     que el sistema no ve sin decir por qué es un olvido, no un límite.
+
+    `bloque_esperado` no guarda el índice sino cómo obtenerlo de lo que el caso
+    alteró: el bloque donde vive la transacción que toca, el bloque cuyo hash cambia.
+    Fijarlo acá ataría los dos casos que lo declaran a la forma del sembrado de
+    demostración; derivarlo es lo que los deja coincidir con cualquier forma.
     """
 
     clave: str
@@ -107,7 +122,7 @@ class Caso:
     que_hace: str
     que_mirar: str
     esperado: str
-    bloque_esperado: int | None
+    bloque_esperado: Callable[[EstadoCaso], int | None] | None
     limite: str | None
     destructivo: bool
     aplicar: Callable[[Herramienta, EstadoCaso], str]
@@ -321,6 +336,12 @@ def _aplicar_alterar_monto(herramienta: Herramienta, estado: EstadoCaso) -> str:
     objetivo = _una_confirmada(herramienta)
     estado.valores["id"] = objetivo[0]
     estado.valores["amount"] = objetivo[3]
+    # El bloque que la verificación tiene que señalar es el de esta transacción, y se
+    # captura acá: es lo único que sabe cuál es, y el catálogo no puede declararlo sin
+    # atarse a la forma del sembrado.
+    estado.valores["bloque_esperado"] = herramienta.uno(
+        "SELECT block_index FROM blocks WHERE id = %s", (objetivo[6],)
+    )[0]
     herramienta.ejecutar(
         "UPDATE transactions SET amount = amount + 1 WHERE id = %s", (objetivo[0],)
     )
@@ -351,6 +372,9 @@ def _aplicar_alterar_hash(herramienta: Herramienta, estado: EstadoCaso) -> str:
     """Escribe sesenta y cuatro ceros como hash de un bloque."""
     bloque = herramienta.todos(SQL_BLOQUES)[1]
     estado.valores["bloque"] = bloque
+    # El índice esperado es el del bloque que se altera, no el 1: si el caso cambiara
+    # de eslabón, la comparación tiene que seguir apuntando al que tocó.
+    estado.valores["bloque_esperado"] = bloque[1]
     herramienta.ejecutar("UPDATE blocks SET hash = %s WHERE id = %s", ("0" * 64, bloque[0]))
     return f"el hash del bloque {bloque[1]} pasó a sesenta y cuatro ceros"
 
@@ -656,6 +680,20 @@ def _comprobar_truncar_cola(herramienta: Herramienta, estado: EstadoCaso) -> Non
         raise LookupError("las transacciones reinsertadas no son las que se habían borrado")
 
 
+def _bloque_alterado(estado: EstadoCaso) -> int | None:
+    """El índice del bloque que el caso alteró, capturado al aplicarlo.
+
+    Es lo que declaran los dos casos que esperan un bloque concreto: el valor sale de
+    lo que el caso tocó y no de un número escrito en el catálogo, así que una forma
+    distinta de la demostración no los hace desacordar.
+
+    Devuelve `None` cuando la aplicación del caso no llegó a capturarlo —falló antes
+    de tocar nada—: no hay bloque que comparar y el desacuerdo ya lo marca el
+    veredicto observado.
+    """
+    return estado.valores.get("bloque_esperado")
+
+
 CASOS: tuple[Caso, ...] = (
     Caso(
         clave="alterar-monto",
@@ -663,7 +701,7 @@ CASOS: tuple[Caso, ...] = (
         que_hace="suma uno al monto de una transacción confirmada, por SQL directo",
         que_mirar="el bloque que /verificar señala como alterado",
         esperado=CADENA_INVALIDA,
-        bloque_esperado=1,
+        bloque_esperado=_bloque_alterado,
         limite=None,
         destructivo=False,
         aplicar=_aplicar_alterar_monto,
@@ -676,7 +714,7 @@ CASOS: tuple[Caso, ...] = (
         que_hace="escribe sesenta y cuatro ceros como hash de un bloque",
         que_mirar="el bloque que /verificar señala como alterado",
         esperado=CADENA_INVALIDA,
-        bloque_esperado=1,
+        bloque_esperado=_bloque_alterado,
         limite=None,
         destructivo=False,
         aplicar=_aplicar_alterar_hash,
@@ -879,20 +917,37 @@ class Salida:
             self._escribir(mensaje)
 
 
-def probar_web(url: str = VERIFICACION, tiempo_de_espera: float = 3.0) -> tuple[bool, str]:
+def direccion_de_verificacion() -> str:
+    """La dirección de `/verificar` que la sonda pide y que se le muestra a la persona.
+
+    Sale de la variable del entorno y, si no está, de la dirección por defecto. Se
+    resuelve en cada llamada y no al importar el módulo: el valor puede fijarse
+    después, y la dirección que se muestra tiene que ser la que se sondeó.
+    """
+    base = os.environ.get(VARIABLE_DE_LA_APLICACION) or APLICACION_POR_DEFECTO
+    return f"{base.rstrip('/')}/verificar"
+
+
+def probar_web(
+    url: str | None = None, tiempo_de_espera: float = 3.0
+) -> tuple[bool, str]:
     """Pide `/verificar` y devuelve si respondió HTTP 200, con la descripción del desenlace.
 
     Es la comprobación de que hay algo que mirar: la pausa de cada caso existe para
     que alguien vea el dictamen en el navegador, así que sin aplicación corriendo la
     herramienta se detiene y dice cómo levantarla, en vez de sabotear a ciegas.
+
+    Todos los fracasos nombran la dirección que se intentó: si la sonda mira un puerto
+    donde no hay nada, el mensaje tiene que decir cuál fue, no solo que no respondió.
     """
+    url = direccion_de_verificacion() if url is None else url
     try:
         with urllib.request.urlopen(url, timeout=tiempo_de_espera) as respuesta:
             if respuesta.status == 200:
-                return True, "la aplicación respondió HTTP 200 en /verificar"
-            return False, f"la aplicación respondió HTTP {respuesta.status} en /verificar"
+                return True, f"la aplicación respondió HTTP 200 en {url}"
+            return False, f"la aplicación respondió HTTP {respuesta.status} en {url}"
     except urllib.error.HTTPError as error:
-        return False, f"la aplicación respondió HTTP {error.code} en /verificar"
+        return False, f"la aplicación respondió HTTP {error.code} en {url}"
     except (urllib.error.URLError, OSError) as error:
         return False, f"la aplicación no respondió en {url}: {error}"
 
@@ -904,7 +959,9 @@ def _texto_del_esperado(caso: Caso) -> str:
     if caso.esperado == CADENA_INVALIDA:
         esperado = "la cadena queda inválida"
         if caso.bloque_esperado is not None:
-            esperado += f" y el bloque señalado es el {caso.bloque_esperado}"
+            # El índice no se nombra acá: sale de lo que el caso altera y todavía no
+            # pasó. Nombrarlo antes de tiempo obligaría a fijarlo en el catálogo.
+            esperado += " y el bloque señalado es el que el caso altera"
         return esperado
     return "la cadena sigue válida: este caso no se detecta"
 
@@ -916,7 +973,7 @@ def _mostrar_caso(caso: Caso, indice: int, total: int, salida: Salida) -> None:
     # La dirección de la verificación solo se agrega cuando el caso pide mirarla: los
     # casos que rechaza el motor se ven en esta misma consola y nombrar la página
     # mandaría a mirar donde no pasa nada.
-    donde = f" en {VERIFICACION}" if caso.esperado != MOTOR_RECHAZA else ""
+    donde = f" en {direccion_de_verificacion()}" if caso.esperado != MOTOR_RECHAZA else ""
     salida.linea(f"{'que mirar':<{ANCHO_ETIQUETA}}: {caso.que_mirar}{donde}")
     salida.linea(f"{'se espera':<{ANCHO_ETIQUETA}}: {_texto_del_esperado(caso)}")
     if caso.limite is not None:
@@ -983,9 +1040,18 @@ def _detectar_veredicto(herramienta: Herramienta) -> tuple[str, int | None]:
 
 
 def _comparar(
-    caso: Caso, observado: str, indice: int | None, error_del_motor: str = ""
+    caso: Caso,
+    observado: str,
+    indice: int | None,
+    bloque_esperado: int | None,
+    error_del_motor: str = "",
 ) -> tuple[bool, str]:
-    """Compara lo observado con lo que el caso declara; devuelve si coincide y el detalle."""
+    """Compara lo observado con lo que el caso declara; devuelve si coincide y el detalle.
+
+    `bloque_esperado` llega calculado desde lo que el caso alteró —no se lee del
+    catálogo— porque el índice verdadero solo se conoce después de aplicarlo. El
+    catálogo dice **cómo** obtenerlo y esta comparación lo usa.
+    """
     if observado == MOTOR_RECHAZA:
         if caso.esperado == MOTOR_RECHAZA:
             return True, f"el motor rechazó la fila ({error_del_motor}), como estaba declarado"
@@ -994,8 +1060,8 @@ def _comparar(
         return False, f"error inesperado de la herramienta: {error_del_motor}"
     if observado != caso.esperado:
         return False, f"se observó {observado} y se esperaba {caso.esperado}"
-    if caso.bloque_esperado is not None and indice != caso.bloque_esperado:
-        return False, f"el bloque señalado fue {indice} y se esperaba {caso.bloque_esperado}"
+    if bloque_esperado is not None and indice != bloque_esperado:
+        return False, f"el bloque señalado fue {indice} y se esperaba {bloque_esperado}"
     return True, "coincide con lo declarado"
 
 
@@ -1050,7 +1116,13 @@ def _siguiente(
         observado, bloque = _detectar_veredicto(herramienta)
         salida.linea(f"{'observado':<{ANCHO_ETIQUETA}}: {observado}")
 
-    coincide, detalle = _comparar(caso, observado, bloque, detalle_del_error)
+    coincide, detalle = _comparar(
+        caso,
+        observado,
+        bloque,
+        caso.bloque_esperado(estado) if escrito and caso.bloque_esperado else None,
+        detalle_del_error,
+    )
     marca = "coincide" if coincide else "no coincide"
     salida.linea(f"{'veredicto':<{ANCHO_ETIQUETA}}: {marca} ({detalle})")
 
@@ -1151,7 +1223,7 @@ def _instrucciones_de_resembrado(salida: Salida) -> None:
     salida.linea("   <venv> -m src.bootstrap")
     salida.linea("4. levante la aplicación y mire la verificación:")
     salida.linea("   <venv> -m src.web")
-    salida.linea(f"   {VERIFICACION} tiene que decir: La cadena es válida")
+    salida.linea(f"   {direccion_de_verificacion()} tiene que decir: La cadena es válida")
 
 
 class Sabotaje:

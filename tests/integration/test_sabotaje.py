@@ -16,18 +16,26 @@ import pathlib
 import re
 import subprocess
 import sys
+from uuid import uuid4
 
 import pytest
 
 from src.sabotaje import (
+    CADENA_INVALIDA,
     CASOS,
+    COLUMNAS_CON_TABLA,
     MOTOR_RECHAZA,
+    SQL_TRANSACCION_CON_BLOQUE,
+    EstadoCaso,
+    _comparar,
     abrir,
     caso_de,
     casos_no_detectados,
     codigo_de_salida,
     descripcion_del_error,
+    direccion_de_verificacion,
     esperado_de,
+    probar_web,
 )
 
 
@@ -91,6 +99,97 @@ def test_los_destructivos_estan_marcados_y_son_tres():
     assert destructivos == {"borrar-genesis", "truncar-cola", "borrar-transaccion"}
 
 
+def test_el_bloque_esperado_no_esta_fijado_en_el_catalogo():
+    """El bloque que se espera sale del objeto que el caso altera, no del catálogo.
+
+    `alterar-monto` y `alterar-hash` saben cuál es su bloque recién al aplicarse —el
+    de la transacción que tocan, el del hash que cambian—. Declarar el índice 1 en el
+    catálogo ataba los dos casos a la forma del sembrado de demostración: sobre otra
+    forma, el caso habría coincidido con un bloque que no era el suyo o habría
+    desacordado sin que nada estuviera roto.
+    """
+    for clave in ("alterar-monto", "alterar-hash"):
+        caso = caso_de(clave)
+        assert callable(caso.bloque_esperado), f"{clave} fija el bloque esperado en el catálogo"
+
+
+def test_la_comparacion_usa_el_bloque_que_el_caso_capturo():
+    """La comparación mira el bloque capturado, no un número declarado de antemano.
+
+    Se le pasa a la comparación el valor que el caso derive de lo que alteró: con el
+    índice señalado igual al capturado, el caso coincide; con otro, el detalle dice
+    cuál se esperaba. Es la mitad que el catálogo no puede aportar solo.
+    """
+    caso = caso_de("alterar-monto")
+    estado = EstadoCaso(valores={"bloque_esperado": 7})
+    esperado = caso.bloque_esperado(estado)
+
+    coincide, _ = _comparar(caso, CADENA_INVALIDA, 7, esperado)
+    assert coincide is True
+
+    desacuerdo, detalle = _comparar(caso, CADENA_INVALIDA, 3, esperado)
+    assert desacuerdo is False
+    assert "3" in detalle and "7" in detalle
+
+
+def test_el_caso_del_monto_coincide_aunque_la_transaccion_viva_en_otro_bloque(
+    base_limpia, conexion, con_sabotaje, web_simulada, monkeypatch
+):
+    """La forma del sembrado puede cambiar: el caso sigue coincidiendo con su bloque.
+
+    El caso altera la primera transacción confirmada, que en la demostración vive en
+    el bloque 1. Se lo apunta a una confirmada de un bloque posterior —la forma que el
+    sembrado podría tener mañana— y el bloque señalado tiene que ser el de esa
+    transacción, no el 1 escrito en el catálogo.
+    """
+
+    def una_confirmada_del_ultimo_bloque(herramienta):
+        """La confirmada del bloque más alto, para el sembrado de otra forma."""
+        return herramienta.uno(
+            SQL_TRANSACCION_CON_BLOQUE.format(columnas=COLUMNAS_CON_TABLA)
+            + " WHERE t.status = 'confirmed' ORDER BY b.block_index DESC, t.id LIMIT 1"
+        )
+
+    with con_sabotaje as sabotaje:
+        destino = conexion.execute(
+            "SELECT b.block_index FROM transactions t JOIN blocks b ON b.id = t.block_id "
+            "WHERE t.status = 'confirmed' ORDER BY b.block_index DESC LIMIT 1"
+        ).fetchone()[0]
+        assert destino != 1, "la demostración tiene que ofrecer un bloque distinto del 1"
+
+        monkeypatch.setattr("src.sabotaje._una_confirmada", una_confirmada_del_ultimo_bloque)
+        recorrido = sabotaje.recorrido(
+            web=web_simulada, claves=["alterar-monto"], pausas=False
+        )
+
+    resultado = recorrido.resultados[0]
+    assert resultado.coincide is True, resultado.detalle
+    assert resultado.bloque_observado == destino
+
+
+def test_la_sonda_usa_la_direccion_de_siempre_cuando_no_hay_variable(monkeypatch):
+    """Sin nada en el entorno, la herramienta mira la aplicación donde la levanta el README."""
+    monkeypatch.delenv("SABOTAJE_APLICACION", raising=False)
+    assert direccion_de_verificacion() == "http://127.0.0.1:5000/verificar"
+
+
+def test_la_sonda_usa_la_direccion_que_fija_el_entorno_y_la_dice_al_fallar(monkeypatch):
+    """El puerto de la sonda no puede estar escrito: se fija por variable de entorno.
+
+    El 5000 no sirve en todas partes —puede estar tomado, y un servidor de prueba
+    puede escuchar en otro puerto—, así que la dirección de la aplicación se puede
+    cambiar desde el entorno. Cuando la sonda falla, el mensaje dice cuál se intentó:
+    es lo único que permite darse cuenta de que se está mirando donde no es.
+    """
+    monkeypatch.setenv("SABOTAJE_APLICACION", "http://127.0.0.1:9")
+    assert direccion_de_verificacion() == "http://127.0.0.1:9/verificar"
+
+    responde, detalle = probar_web(tiempo_de_espera=0.5)
+
+    assert responde is False
+    assert "http://127.0.0.1:9/verificar" in detalle
+
+
 def test_la_comprobacion_previa_impide_empezar_sobre_una_cadena_alterada(
     base_limpia, conexion, con_sabotaje, web_simulada
 ):
@@ -124,6 +223,7 @@ def test_el_recorrido_headless_recorre_los_casos_no_destructivos(
     puede volver atrás.
     """
     with con_sabotaje as sabotaje:
+        antes = _conteos(conexion)
         recorrido = sabotaje.recorrido(web=web_simulada)
 
     assert recorrido.detenido_por_la_comprobacion_previa is False
@@ -137,9 +237,10 @@ def test_el_recorrido_headless_recorre_los_casos_no_destructivos(
 
     # La comprobación de cada caso ya verifica la cadena después de restaurar; esto la
     # vuelve a mirar con la conexión de la prueba, que es una conexión distinta a la
-    # del recorrido.
-    assert conexion.execute("SELECT count(*) FROM blocks").fetchone()[0] == 4
-    assert conexion.execute("SELECT count(*) FROM transactions").fetchone()[0] == 10
+    # del recorrido. Se compara contra las filas que había antes y no contra los
+    # números del sembrado: lo que se exige es que no falte ni sobre nada, con
+    # cualquier forma de ledger.
+    assert _conteos(conexion) == antes
 
 
 def test_el_recorrido_headless_tambien_recorre_los_destructivos(
@@ -153,6 +254,7 @@ def test_el_recorrido_headless_tambien_recorre_los_destructivos(
     que borró y la cadena tiene que volver a verificar como válida.
     """
     with con_sabotaje as sabotaje:
+        antes = _conteos(conexion)
         recorrido = sabotaje.recorrido(web=web_simulada, con_destructivos=True)
 
     assert recorrido.detenido_por_la_comprobacion_previa is False
@@ -161,11 +263,46 @@ def test_el_recorrido_headless_tambien_recorre_los_destructivos(
         assert resultado.coincide is True, f"{resultado.clave}: {resultado.detalle}"
         assert resultado.restaurado is True, f"{resultado.clave} no restauró"
 
-    assert conexion.execute("SELECT count(*) FROM blocks").fetchone()[0] == 4
-    assert conexion.execute("SELECT count(*) FROM transactions").fetchone()[0] == 10
+    assert _conteos(conexion) == antes
     # El contenido también vuelve: la restauración repone los valores, no solo las filas.
     with abrir() as sabotaje:
         assert sabotaje.cadena_valida() is True
+
+
+def _conteos(conexion) -> dict[str, int]:
+    """Las tres tablas con su conteo: la forma del ledger sin números escritos a mano."""
+    return {
+        tabla: conexion.execute(f"SELECT count(*) FROM {tabla}").fetchone()[0]
+        for tabla in ("wallets", "blocks", "transactions")
+    }
+
+
+def test_el_recorrido_no_depende_de_la_forma_del_sembrado(
+    base_limpia, conexion, con_sabotaje, web_simulada
+):
+    """Los conteos se comparan contra los de antes, no contra los del sembrado.
+
+    Una transacción pendiente de más no cambia ningún hash —el pool no está dentro de
+    ningún bloque—, así que ese ledger sigue siendo válido y el recorrido tiene que
+    poder correr sobre él. Con los conteos fijados a 4 y 10, la prueba habría fallado
+    por la forma del sembrado y no porque el recorrido hubiera perdido algo.
+    """
+    with con_sabotaje as sabotaje:
+        sembrado = _conteos(conexion)
+        emisor, receptor = conexion.execute(
+            "SELECT id FROM wallets ORDER BY id LIMIT 2"
+        ).fetchall()
+        conexion.execute(
+            "INSERT INTO transactions (id, sender_id, receiver_id, amount, status, signature) "
+            "VALUES (%s, %s, %s, 1, 'pending', %s)",
+            (uuid4(), emisor[0], receptor[0], "0" * 128),
+        )
+        antes = _conteos(conexion)
+        assert antes["transactions"] == sembrado["transactions"] + 1
+        recorrido = sabotaje.recorrido(web=web_simulada)
+
+    assert recorrido.desacuerdos == 0
+    assert _conteos(conexion) == antes
 
 
 def test_la_herramienta_no_esta_en_el_camino_de_la_presentacion():
