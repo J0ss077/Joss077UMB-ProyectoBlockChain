@@ -11,6 +11,7 @@ import pathlib
 import pytest
 
 from src.persistence import factory
+from src.web import app as aplicacion_web
 
 SECRETO = "secreto-de-sesion-de-prueba"
 CONTRASENA = "contrasena-del-administrador-de-prueba"
@@ -83,6 +84,28 @@ def test_req_37_la_contrasena_de_plantilla_se_rechaza(monkeypatch):
     assert factory.VARIABLE_DE_LA_CONTRASENA_DEL_ADMINISTRADOR in str(error.value)
     assert "plantilla" in str(error.value)
     assert "reemplácela" in str(error.value)
+
+
+def test_req_37_el_respaldo_de_la_aplicacion_rechaza_el_secreto_de_plantilla(
+    monkeypatch,
+):
+    """REQ-37: el respaldo de `create_app` rechaza la misma clave pública.
+
+    La aplicación real recibe el secreto del lector de la configuración, pero el
+    respaldo también puede leerlo del entorno: si aceptara la clave de ceros, armar
+    la aplicación sin `secret_key` dejaría la cookie firmada con un valor del
+    repositorio.
+    """
+    assert (
+        aplicacion_web.SECRETO_DE_SESION_DE_LA_PLANTILLA
+        == factory.SECRETO_DE_SESION_DE_LA_PLANTILLA
+    )
+    monkeypatch.setenv(
+        factory.VARIABLE_DEL_SECRETO_DE_SESION,
+        factory.SECRETO_DE_SESION_DE_LA_PLANTILLA,
+    )
+    with pytest.raises(RuntimeError, match="plantilla"):
+        aplicacion_web.create_app(lambda: None, lambda: None)
 
 
 def test_req_37_los_valores_que_se_rechazan_son_los_de_la_plantilla():

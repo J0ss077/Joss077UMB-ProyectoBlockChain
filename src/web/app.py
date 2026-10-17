@@ -60,6 +60,12 @@ from src.web.user import crear_blueprint_del_usuario
 # porque el respaldo y su mensaje de error tienen que nombrar la misma variable.
 VARIABLE_DEL_SECRETO_DE_SESION = "SESSION_SECRET"
 
+# La clave de ejemplo que trae `.env.example`. El respaldo de la aplicación la
+# rechaza igual que el lector de la configuración: armar la aplicación con el valor
+# público dejaría que cualquiera firme una cookie de sesión. La prueba de REQ-37
+# exige que sea la misma que la del lector, para que las dos no se separen.
+SECRETO_DE_SESION_DE_LA_PLANTILLA = "0" * 64
+
 FabricaDeCadenas = Callable[[], AbstractContextManager[Blockchain]]
 FabricaDeCuentas = Callable[[], AbstractContextManager[Cuentas]]
 
@@ -405,6 +411,11 @@ def _secreto_de_sesion() -> str:
         raise RuntimeError(
             f"Falta {VARIABLE_DEL_SECRETO_DE_SESION} en el entorno: la aplicación "
             "no puede firmar la cookie de sesión sin esa clave."
+        )
+    if valor == SECRETO_DE_SESION_DE_LA_PLANTILLA:
+        raise RuntimeError(
+            f"{VARIABLE_DEL_SECRETO_DE_SESION} sigue siendo el valor de la plantilla "
+            "`.env.example`: reemplácela por una clave propia."
         )
     return valor
 
