@@ -369,11 +369,16 @@ def _restaurar_alterar_monto(herramienta: Herramienta, estado: EstadoCaso) -> st
 
 
 def _aplicar_alterar_hash(herramienta: Herramienta, estado: EstadoCaso) -> str:
-    """Escribe sesenta y cuatro ceros como hash de un bloque."""
+    """Escribe sesenta y cuatro ceros como hash del segundo bloque de la demostración.
+
+    El objetivo es el segundo bloque, no «el bloque de índice 1»: la comprobación de
+    forma garantiza que hay al menos dos, y el índice que se espera sale de la fila que
+    se altera y no de una constante.
+    """
     bloque = herramienta.todos(SQL_BLOQUES)[1]
     estado.valores["bloque"] = bloque
-    # El índice esperado es el del bloque que se altera, no el 1: si el caso cambiara
-    # de eslabón, la comparación tiene que seguir apuntando al que tocó.
+    # El índice esperado es el del bloque que se altera, no el de una constante: si el
+    # caso cambiara de eslabón, la comparación tiene que seguir apuntando al que tocó.
     estado.valores["bloque_esperado"] = bloque[1]
     herramienta.ejecutar("UPDATE blocks SET hash = %s WHERE id = %s", ("0" * 64, bloque[0]))
     return f"el hash del bloque {bloque[1]} pasó a sesenta y cuatro ceros"
@@ -1385,8 +1390,8 @@ class Sabotaje:
         salida.linea(f"{'aplicacion':<{ANCHO_ETIQUETA}}: {detalle}")
         if not responde:
             salida.linea(
-                "la aplicación no responde en /verificar: levántela con "
-                "`python -m src.web` en otra terminal y vuelva a correr esto."
+                f"la aplicación no responde en {direccion_de_verificacion()}: levántela "
+                "con `python -m src.web` en otra terminal y vuelva a correr esto."
             )
             return False
         return True
