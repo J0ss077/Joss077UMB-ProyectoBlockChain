@@ -1,5 +1,26 @@
-{% extends "base.html" %} {% from "_macros.html" import dato, copiar %} {% from "_transacciones.html" import tabla %} {% block titulo %}Mi historial{% endblock %} {% block encabezado %}Mi historial{% endblock %} {% block contenido %}
+{% extends "base.html" %} {% from "_macros.html" import dato, copiar %} {% from "_transacciones.html" import tabla %} {% block titulo %}Mi historial{% endblock %} {% block encabezado %}Mi historial{% endblock %} {% block contenido %} {# El dictamen va
+arriba porque es lo que decide si el historial de abajo está respaldado; las filas se listan igual aunque la cadena no verifique. #} {% if dictamen.valid %}
+<div class="exito">
+    <p>La cadena es válida: su historial está respaldado.</p>
+</div>
+{% else %}
+<div class="motivo">
+    <p>No se puede verificar su historial: la cadena no es válida.</p>
+    <p>El primer bloque que no encaja es el de índice <code>{{ dictamen.altered_block_index }}</code>.</p>
+</div>
+{% endif %}
+
+<form method="get" action="/mi-historial">
+    <button type="submit">Verificar de nuevo</button>
+</form>
+
 <p><strong>Mi wallet:</strong> {{ dato(wallet_id) }} {{ copiar(wallet_id, "el identificador de mi wallet") }}</p>
-{{ tabla(transacciones, vacio="Su wallet todavía no tiene transacciones.") }}
+
+<h2>Mis transacciones</h2>
+{% if dictamen.valid %}
+<p>Todas las transacciones de su wallet, con su estado. Las confirmadas muestran el índice del bloque que las agrupa.</p>
+{% else %}
+<p>El ledger las tiene registradas, pero su integridad no se pudo comprobar mientras la cadena no sea válida.</p>
+{% endif %} {{ tabla(transacciones, indices_de_bloque=indices_de_bloque, vacio="Su wallet todavía no tiene transacciones.") }}
 <p><a href="/mi-tablero">Volver a mi tablero</a></p>
 {% endblock %}

@@ -1,5 +1,6 @@
-{# La tabla de transacciones que comparten el tablero, el historial y la verificación del usuario común. `motivo_por_transaccion` llega sólo en la respuesta del envío que acaba de rechazar una fila: la base guarda el estado pero no el motivo, así que
-fuera de ese momento la columna queda vacía. #} {% from "_macros.html" import dato %} {% macro tabla(transacciones, motivo_por_transaccion=None, vacio="No hay transacciones.") -%} {%- set motivos = motivo_por_transaccion or {} -%}
+{# La tabla de transacciones que comparten el tablero y el historial del usuario común. `motivo_por_transaccion` llega sólo en la respuesta del envío que acaba de rechazar una fila: la base guarda el estado pero no el motivo, así que fuera de ese momento
+la columna queda vacía. `indices_de_bloque` llega en el historial unificado: traduce el identificador del bloque al índice que la persona puede comparar con la cadena. Cuando no llega, la columna muestra el identificador como antes. #} {% from
+"_macros.html" import dato %} {% macro tabla(transacciones, motivo_por_transaccion=None, vacio="No hay transacciones.", indices_de_bloque=None) -%} {%- set motivos = motivo_por_transaccion or {} -%}
 <table>
     <thead>
         <tr>
@@ -20,7 +21,10 @@ fuera de ese momento la columna queda vacía. #} {% from "_macros.html" import d
             <td>{{ dato(transaction.receiver_id) }}</td>
             <td><code>{{ "%.8f"|format(transaction.amount) }}</code></td>
             <td><code>{{ transaction.status }}</code></td>
-            <td>{% if transaction.block_id %}{{ dato(transaction.block_id) }}{% else %}—{% endif %}</td>
+            <td>
+                {% if transaction.block_id and indices_de_bloque and transaction.block_id in indices_de_bloque %}<code>{{ indices_de_bloque[transaction.block_id] }}</code>{% elif transaction.block_id %}{{ dato(transaction.block_id) }}{% else %}—{% endif
+                %}
+            </td>
             <td>{{ motivos.get(transaction.id, "—") }}</td>
         </tr>
         {% else %}

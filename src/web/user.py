@@ -1,10 +1,15 @@
 """El tablero del usuario común: envío, historial y verificación propios.
 
-Cuatro rutas con una sola regla de alcance (REQ-34, REQ-35, REQ-39): el emisor de
-un envío sale de la sesión y nunca del formulario, el historial y la verificación
-se filtran por la wallet de la sesión, y el administrador que entra acá vuelve a
-su portada. El destinatario se resuelve primero como nombre de usuario y después
-como identificador de wallet, que es el orden que fija el diseño (decisión 4).
+Tres rutas con una sola regla de alcance (REQ-34, REQ-35, REQ-39): el emisor de un
+envío sale de la sesión y nunca del formulario, el historial y la verificación se
+filtran por la wallet de la sesión, y el administrador que entra acá vuelve a su
+portada. El destinatario se resuelve primero como nombre de usuario y después como
+identificador de wallet, que es el orden que fija el diseño (decisión 4).
+
+La verificación y el historial comparten una sola página, `/mi-historial`: arriba
+va el dictamen de la cadena y debajo todas las transacciones de la sesión con su
+estado, y las confirmadas con el índice del bloque que las agrupa. `/mi-verificacion`
+sobrevive como redirección para no romper un enlace guardado.
 
 La resolución usa el servicio de cuentas y no el repositorio: la presentación no
 consulta la base (REQ-29). La validez del envío —saldo, firma, formato— la sigue
@@ -21,11 +26,10 @@ from collections.abc import Callable
 from contextlib import AbstractContextManager
 from uuid import UUID
 
-from flask import Blueprint, abort, g, render_template, request
+from flask import Blueprint, Response, abort, g, redirect, render_template, request, url_for
 
 from src.accounts.service import Cuentas
 from src.domain.blockchain import Blockchain, TransactionResult
-from src.domain.transaction import TransactionStatus
 from src.web.auth import requiere_usuario_comun
 from src.web.forms import a_monto, a_uuid
 
@@ -88,38 +92,33 @@ def crear_blueprint_del_usuario(
     @tablero.get("/mi-historial")
     @requiere_usuario_comun
     def mi_historial() -> str:
-        """REQ-35: sólo las transacciones de la wallet de la sesión."""
+        """REQ-35 y REQ-39: el dictamen de la cadena y todo el historial propio.
+
+        El dictamen es global —la cadena completa se verifica— pero la lista se
+        filtra por la wallet de la sesión: de otros no se muestra ni el
+        identificador de su transacción. Las confirmadas llevan el índice del
+        bloque que las agrupa, que es lo que las vuelve verificables; con la cadena
+        alterada la página lo dice aunque las filas sigan listadas.
+        """
         wallet_id = _wallet_de_la_sesion()
         with abrir_cadena() as chain:
             return render_template(
                 "mi_historial.html",
-                wallet_id=wallet_id,
+                dictamen=chain.verify_chain(),
                 transacciones=chain.wallet_history(wallet_id),
+                indices_de_bloque=_indices_de_bloque(chain),
+                wallet_id=wallet_id,
             )
 
     @tablero.get("/mi-verificacion")
     @requiere_usuario_comun
-    def mi_verificacion() -> str:
-        """REQ-39: el dictamen de la cadena y sólo las confirmadas de la sesión.
+    def mi_verificacion() -> Response:
+        """La página se unificó en `/mi-historial` y el enlace guardado no se rompe.
 
-        La cadena completa se verifica porque el dictamen es global, pero la lista
-        se filtra por la wallet de la sesión: de otros no se muestra ni el
-        identificador de su transacción. Con la cadena alterada la página lo dice
-        y no presenta las confirmadas como si estuvieran respaldadas.
+        Se devuelve una redirección 302 y no un alias de la misma vista: el
+        historial es una sola página y un enlace viejo tiene que llegar a ella.
         """
-        wallet_id = _wallet_de_la_sesion()
-        with abrir_cadena() as chain:
-            confirmadas = [
-                transaction
-                for transaction in chain.wallet_history(wallet_id)
-                if transaction.status is TransactionStatus.CONFIRMED
-            ]
-            return render_template(
-                "mi_verificacion.html",
-                dictamen=chain.verify_chain(),
-                transacciones=confirmadas,
-                wallet_id=wallet_id,
-            )
+        return redirect(url_for("usuario.mi_historial"), code=302)
 
     return tablero
 
@@ -135,6 +134,16 @@ def _wallet_de_la_sesion() -> UUID:
     if wallet_id is None:
         abort(403)
     return wallet_id
+
+
+def _indices_de_bloque(chain: Blockchain) -> dict[UUID, int]:
+    """El índice de cada bloque, por identificador, para la tabla del historial.
+
+    La transacción guarda el identificador del bloque y no su índice; el índice es
+    el dato que la persona puede comparar con la cadena. Se arma con la lista de la
+    fachada, que ya viene ordenada del génesis al último bloque (REQ-07).
+    """
+    return {block.id: block.block_index for block in chain.blocks.list()}
 
 
 def _wallet_del_destinatario(cuentas: Cuentas, destinatario: str) -> UUID | None:

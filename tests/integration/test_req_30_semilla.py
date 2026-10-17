@@ -217,13 +217,17 @@ def test_req_33_el_recorrido_de_demostracion_completo(
     )
     assert ingreso.status_code == 302
 
-    # 7. La persona ve el envío confirmado en su historial y en su verificación.
+    # 7. La persona ve el envío confirmado y el dictamen en la página unificada.
     historial = cliente.get("/mi-historial").get_data(as_text=True)
     assert str(envio_id) in historial
     assert "confirmed" in historial
-    verificacion = cliente.get("/mi-verificacion").get_data(as_text=True)
-    assert "respaldado" in verificacion
-    assert str(envio_id) in verificacion
+    # El enlace viejo de la verificación lleva a la misma página.
+    redireccion = cliente.get("/mi-verificacion")
+    assert redireccion.status_code == 302
+    assert redireccion.headers["Location"] == "/mi-historial"
+    historial = cliente.get("/mi-historial").get_data(as_text=True)
+    assert "respaldado" in historial
+    assert str(envio_id) in historial
 
     with transaction() as actual:
         confirmada = actual.ledger.transactions.get(envio_id)

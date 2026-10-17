@@ -40,8 +40,8 @@
 
 <h2>Más</h2>
 <ul>
-    <li><a href="/mi-historial">Mi historial</a></li>
-    <li><a href="/mi-verificacion">Verificar mi historial</a></li>
+    {# Una sola página reúne el historial y el dictamen de la verificación; por eso una sola entrada. #}
+    <li><a href="/mi-historial">Mi historial y la verificación</a></li>
 </ul>
 {# La barra ya tiene el botón de salida; acá queda el enlace del final del tablero. #}
 <form method="post" action="{{ url_for('salir') }}">

@@ -339,14 +339,15 @@ Con la base sembrada y la aplicación corriendo en `http://127.0.0.1:5000`:
    saldo, por ejemplo `125.00000000`. El envío queda pendiente y el saldo disponible
    baja a `875.00000000`.
 5. **La persona ve el envío en su historial.** «Mi historial» lista la transacción con
-   estado `pending` y sin bloque.
+   estado `pending` y sin bloque, debajo del dictamen de la cadena.
 6. **El administrador agrupa el bloque.** Cierre la sesión de la persona, ingrese como
    `admin`, abra «Cerrar bloque» y agrupe el pool. El envío queda confirmado en un
    eslabón nuevo, junto con las pendientes que ya tenía la semilla.
 7. **La persona vuelve a entrar** y en «Mi historial» ve la misma transacción con
-   estado `confirmed` y su bloque.
-8. **Verifica su historial.** «Mi verificación» dice «La cadena es válida: su historial
-   está respaldado» y lista sólo las transacciones confirmadas de su wallet (REQ-39).
+   estado `confirmed` y el índice del bloque que la agrupa.
+8. **Verifica su historial en la misma página.** Arriba del historial, el dictamen
+   dice «La cadena es válida: su historial está respaldado» y la tabla lista todas sus
+   transacciones (REQ-39). El enlace viejo «Mi verificación» redirige a esta página.
 9. **Opcional: el administrador verifica la cadena completa** en «Verificar cadena».
    El dictamen es el mismo, pero sobre todo el ledger.
 
