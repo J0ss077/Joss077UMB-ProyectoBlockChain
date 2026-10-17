@@ -137,6 +137,13 @@ CREATE TABLE users (
         CHECK ((estado = 'aprobado') = (wallet_id IS NOT NULL))
 );
 
+-- El `UNIQUE` de `username` distingue mayúsculas. La aplicación normaliza a
+-- minúsculas (REQ-30), pero la base también tiene que impedir que dos cuentas se
+-- diferencien sólo por la caja cuando alguien escribe por fuera del repositorio:
+-- con este índice único, `ana` y `ANA` son la misma cuenta para el motor. Además
+-- es el índice que resuelve `get_by_username`, que compara sobre `lower(username)`.
+CREATE UNIQUE INDEX users_username_minusculas ON users (lower(username));
+
 COMMENT ON COLUMN users.username IS
     'Nombre único con el que se ingresa, normalizado a minúsculas por la aplicación (REQ-30).';
 COMMENT ON COLUMN users.password_hash IS

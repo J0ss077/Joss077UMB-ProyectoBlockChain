@@ -106,6 +106,7 @@ def test_req_30_el_esquema_tiene_la_tabla_de_usuarios(conexion):
                              "motivo_rechazo", "wallet_id", "creado_en", "aprobado_en"}
     assert indices_y_restricciones(conexion, "users") >= {
         "users_username_key",
+        "users_username_minusculas",
         "users_wallet_id_key",
         "users_role_check",
         "users_estado_check",

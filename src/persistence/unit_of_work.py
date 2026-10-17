@@ -13,6 +13,7 @@ from types import TracebackType
 
 import psycopg
 
+from src.accounts.postgres import PostgresAccountsRepository
 from src.persistence.postgres import (
     PostgresBlockRepository,
     PostgresTransactionRepository,
@@ -21,13 +22,23 @@ from src.persistence.postgres import (
 
 
 class PostgresUnitOfWork:
-    """Los tres repositorios sobre una conexión transaccional propia (REQ-18)."""
+    """Los repositorios del ledger y el de cuentas sobre una conexión propia (REQ-18)."""
 
     def __init__(self, connection: psycopg.Connection) -> None:
         self._connection = connection
         self.wallets = PostgresWalletRepository(connection)
         self.blocks = PostgresBlockRepository(connection)
         self.transactions = PostgresTransactionRepository(connection)
+        self.usuarios = PostgresAccountsRepository(connection)
+
+    @property
+    def connection(self) -> psycopg.Connection:
+        """La conexión viva de la unidad de trabajo.
+
+        La comparte el ledger cuando la aprobación compone wallet, crédito y
+        cambio de estado sobre la misma transacción de base (REQ-18, REQ-33).
+        """
+        return self._connection
 
     @classmethod
     def open(cls, database_url: str) -> PostgresUnitOfWork:
