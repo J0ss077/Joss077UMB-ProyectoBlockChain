@@ -85,8 +85,9 @@ ejemplo, no la use):
 
 Revise también las otras dos variables del entorno: `SESSION_SECRET` firma la cookie
 de sesión (REQ-37) y `ADMIN_PASSWORD` es la contraseña del administrador que siembra
-el arranque. La plantilla trae valores de ejemplo; reemplácelos. Sin cualquiera de
-las dos, la aplicación o el arranque fallan nombrando la variable que falta.
+el arranque. La plantilla trae valores de ejemplo y los lectores los rechazan: sin
+cambiarlos, la aplicación o el arranque fallan en cuanto leen el valor de plantilla.
+Sin cualquiera de las dos, también fallan, nombrando la variable que falta.
 
 Revise que `POSTGRES_PORT` y el puerto de `DATABASE_URL` sean el mismo: el primero es
 el puerto que se publica en el equipo y el segundo es el que usa la aplicación para

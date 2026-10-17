@@ -46,6 +46,13 @@ VARIABLE_DE_LA_CADENA_DE_CONEXION = "DATABASE_URL"
 VARIABLE_DEL_SECRETO_DE_SESION = "SESSION_SECRET"
 VARIABLE_DE_LA_CONTRASENA_DEL_ADMINISTRADOR = "ADMIN_PASSWORD"
 
+# Los valores de ejemplo de `.env.example`. Son públicos —viajan en el repositorio—,
+# así que aceptarlos deja la aplicación abierta: con la clave de ceros cualquiera
+# firma una cookie de sesión y con la contraseña de plantilla cualquiera entra como
+# administrador. Los lectores los rechazan nombrando la variable y qué hacer.
+SECRETO_DE_SESION_DE_LA_PLANTILLA = "0" * 64
+CONTRASENA_DEL_ADMINISTRADOR_DE_LA_PLANTILLA = "cambie-esta-contrasena"
+
 
 def _env_value(name: str) -> str | None:
     """Valor de una variable del entorno o, si no está, del `.env` local.
@@ -127,6 +134,12 @@ def session_secret() -> bytes:
     """
     value = _env_value(VARIABLE_DEL_SECRETO_DE_SESION)
     if value:
+        if value == SECRETO_DE_SESION_DE_LA_PLANTILLA:
+            raise RuntimeError(
+                f"{VARIABLE_DEL_SECRETO_DE_SESION} sigue siendo el valor de la "
+                "plantilla `.env.example`: reemplácela por una clave propia con "
+                '`.venv/bin/python -c "import secrets; print(secrets.token_hex(32))"`.'
+            )
         return value.encode("utf-8")
     raise RuntimeError(
         f"Falta {VARIABLE_DEL_SECRETO_DE_SESION} en el entorno y en `.env`: agregue "
@@ -139,6 +152,12 @@ def admin_password() -> str:
     """Contraseña de la cuenta de administrador que siembra el arranque (decisión 4)."""
     value = _env_value(VARIABLE_DE_LA_CONTRASENA_DEL_ADMINISTRADOR)
     if value:
+        if value == CONTRASENA_DEL_ADMINISTRADOR_DE_LA_PLANTILLA:
+            raise RuntimeError(
+                f"{VARIABLE_DE_LA_CONTRASENA_DEL_ADMINISTRADOR} sigue siendo el valor "
+                "de la plantilla `.env.example`: reemplácela por una contraseña propia "
+                "en su `.env` antes de sembrar."
+            )
         return value
     raise RuntimeError(
         f"Falta {VARIABLE_DE_LA_CONTRASENA_DEL_ADMINISTRADOR} en el entorno y en "

@@ -6,6 +6,8 @@ cuando falta. Los nombres de las variables se importan de `factory` en vez de
 repetirlos como literales, igual que el guard de REQ-17 exige para la cadena de
 conexión.
 """
+import pathlib
+
 import pytest
 
 from src.persistence import factory
@@ -51,6 +53,59 @@ def test_req_37_la_contrasena_del_administrador_falta_y_lo_dice(monkeypatch, tmp
     mensaje = str(error.value)
     assert factory.VARIABLE_DE_LA_CONTRASENA_DEL_ADMINISTRADOR in mensaje
     assert "agregue" in mensaje and "`.env`" in mensaje
+
+
+def test_req_37_el_secreto_de_sesion_de_plantilla_se_rechaza(monkeypatch):
+    """REQ-37: la clave de ceros de `.env.example` no firma la cookie de nadie.
+
+    Es un valor público: aceptarlo dejaría que cualquiera fabricara una cookie con
+    la clave que está en el repositorio.
+    """
+    monkeypatch.setenv(
+        factory.VARIABLE_DEL_SECRETO_DE_SESION,
+        factory.SECRETO_DE_SESION_DE_LA_PLANTILLA,
+    )
+    with pytest.raises(RuntimeError) as error:
+        factory.session_secret()
+    assert factory.VARIABLE_DEL_SECRETO_DE_SESION in str(error.value)
+    assert "plantilla" in str(error.value)
+    assert "reemplácela" in str(error.value)
+
+
+def test_req_37_la_contrasena_de_plantilla_se_rechaza(monkeypatch):
+    """REQ-37: la contraseña de ejemplo del administrador no se acepta en silencio."""
+    monkeypatch.setenv(
+        factory.VARIABLE_DE_LA_CONTRASENA_DEL_ADMINISTRADOR,
+        factory.CONTRASENA_DEL_ADMINISTRADOR_DE_LA_PLANTILLA,
+    )
+    with pytest.raises(RuntimeError) as error:
+        factory.admin_password()
+    assert factory.VARIABLE_DE_LA_CONTRASENA_DEL_ADMINISTRADOR in str(error.value)
+    assert "plantilla" in str(error.value)
+    assert "reemplácela" in str(error.value)
+
+
+def test_req_37_los_valores_que_se_rechazan_son_los_de_la_plantilla():
+    """REQ-37: los valores rechazados son exactamente los que trae `.env.example`.
+
+    Si la plantilla cambiara y las constantes no, el rechazo dejaría pasar el valor
+    público; atar los dos evita esa deriva.
+    """
+    valores = {}
+    for linea in pathlib.Path(".env.example").read_text(encoding="utf-8").splitlines():
+        if not linea.strip() or linea.lstrip().startswith("#"):
+            continue
+        clave, separador, valor = linea.partition("=")
+        if separador:
+            valores[clave.strip()] = valor.strip().strip("'\"")
+    assert (
+        valores[factory.VARIABLE_DEL_SECRETO_DE_SESION]
+        == factory.SECRETO_DE_SESION_DE_LA_PLANTILLA
+    )
+    assert (
+        valores[factory.VARIABLE_DE_LA_CONTRASENA_DEL_ADMINISTRADOR]
+        == factory.CONTRASENA_DEL_ADMINISTRADOR_DE_LA_PLANTILLA
+    )
 
 
 def test_req_37_los_dos_lectores_toman_los_valores_de_env(monkeypatch, tmp_path):
