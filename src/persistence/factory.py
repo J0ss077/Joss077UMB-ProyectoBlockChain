@@ -102,8 +102,9 @@ def database_url() -> str:
         return normalizar_cadena(url)
     raise RuntimeError(
         f"Falta {VARIABLE_DE_LA_CADENA_DE_CONEXION} en el entorno y en `.env`: levante "
-        "la base con `docker compose up -d` (o `podman compose up -d`) y copie "
-        "`.env.example` a `.env`."
+        "la base con `docker compose up -d` (o `podman compose up -d`) y agregue "
+        f"{VARIABLE_DE_LA_CADENA_DE_CONEXION} a su `.env` (la plantilla `.env.example` "
+        "la trae)."
     )
 
 
@@ -112,7 +113,10 @@ def master_key() -> bytes:
     value = _env_value("MASTER_KEY")
     if value:
         return value.encode("ascii")
-    raise RuntimeError("Falta MASTER_KEY en el entorno y en `.env`: copie `.env.example` a `.env`.")
+    raise RuntimeError(
+        "Falta MASTER_KEY en el entorno y en `.env`: agregue MASTER_KEY a su `.env` y "
+        "genere una clave propia con el comando que explica `.env.example`."
+    )
 
 
 def session_secret() -> bytes:
@@ -125,8 +129,8 @@ def session_secret() -> bytes:
     if value:
         return value.encode("utf-8")
     raise RuntimeError(
-        f"Falta {VARIABLE_DEL_SECRETO_DE_SESION} en el entorno y en `.env`: copie "
-        "`.env.example` a `.env` y genere la clave con "
+        f"Falta {VARIABLE_DEL_SECRETO_DE_SESION} en el entorno y en `.env`: agregue "
+        f"{VARIABLE_DEL_SECRETO_DE_SESION} a su `.env` y genere la clave con "
         '`.venv/bin/python -c "import secrets; print(secrets.token_hex(32))"`.'
     )
 
@@ -138,7 +142,8 @@ def admin_password() -> str:
         return value
     raise RuntimeError(
         f"Falta {VARIABLE_DE_LA_CONTRASENA_DEL_ADMINISTRADOR} en el entorno y en "
-        "`.env`: copie `.env.example` a `.env` y fije la contraseña del administrador."
+        f"`.env`: agregue {VARIABLE_DE_LA_CONTRASENA_DEL_ADMINISTRADOR} a su `.env` y "
+        "fije la contraseña del administrador."
     )
 
 

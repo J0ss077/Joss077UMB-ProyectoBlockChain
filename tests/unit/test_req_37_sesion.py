@@ -34,7 +34,7 @@ def test_req_37_el_secreto_de_sesion_falta_y_lo_dice(monkeypatch, tmp_path):
         factory.session_secret()
     mensaje = str(error.value)
     assert factory.VARIABLE_DEL_SECRETO_DE_SESION in mensaje
-    assert "`.env.example`" in mensaje
+    assert "agregue" in mensaje and "`.env`" in mensaje
 
 
 def test_req_37_la_contrasena_del_administrador_se_lee_del_entorno(monkeypatch):
@@ -50,7 +50,7 @@ def test_req_37_la_contrasena_del_administrador_falta_y_lo_dice(monkeypatch, tmp
         factory.admin_password()
     mensaje = str(error.value)
     assert factory.VARIABLE_DE_LA_CONTRASENA_DEL_ADMINISTRADOR in mensaje
-    assert "`.env.example`" in mensaje
+    assert "agregue" in mensaje and "`.env`" in mensaje
 
 
 def test_req_37_los_dos_lectores_toman_los_valores_de_env(monkeypatch, tmp_path):

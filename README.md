@@ -365,9 +365,10 @@ corren con el contenedor apagado y con `DATABASE_URL` sin definir en el entorno:
 <venv> -m pytest tests/unit -v
 ```
 
-**Toda la suite.** Necesita el contenedor levantado y el `.env` con `DATABASE_URL`;
-las de integración fallan con un mensaje claro si falta, en vez de omitirse en
-silencio:
+**Toda la suite.** Necesita el contenedor levantado y tres variables con valores
+propios: `DATABASE_URL` apuntando a la base de pruebas, `SESSION_SECRET` y
+`ADMIN_PASSWORD`. Las de integración fallan con un mensaje claro si falta alguna, en
+vez de omitirse en silencio:
 
 ```text
 <venv> -m pytest tests -v
