@@ -407,13 +407,10 @@ tiene `psql` instalado, el equivalente es
 `psql "$DATABASE_URL" -c "WITH objetivo AS (...) UPDATE ...;"` (en PowerShell,
 `psql $env:DATABASE_URL -c "..."`).
 
-2. Pedir la verificación y buscar el dictamen:
-
-```text
-curl -s http://127.0.0.1:5000/verificar
-```
-
-En Windows use `curl.exe`, o abra `http://127.0.0.1:5000/verificar` en el navegador.
+2. Inicie sesión como administrador y abra `http://127.0.0.1:5000/verificar` en el
+   navegador. La ruta exige administrador (REQ-38): sin sesión redirige al ingreso, así
+   que un `curl` anónimo no sirve para esta comprobación. La cuenta `admin` y su
+   contraseña están en «Las cuentas de demostración».
 
 **Resultado esperado.** La página dice "La cadena no es válida" y muestra el índice
 del primer bloque que no encaja: el bloque donde está la transacción alterada. La
@@ -434,9 +431,12 @@ mostrar en una sola corrida lo que las pruebas afirman por separado, incluidos l
 límites.
 
 **Antes de empezar**, la aplicación tiene que estar corriendo en otra terminal
-(`<venv> -m src.web`) y la cadena tiene que estar válida. La herramienta lo comprueba
-primero: si la cadena ya viene alterada, o si `/verificar` no responde, lo dice y no
-corre ningún caso, porque el veredicto de cada caso dejaría de significar algo.
+(`<venv> -m src.web`), la cadena tiene que estar válida y el navegador tiene que tener
+una sesión de administrador abierta, porque `/verificar` exige administrador (REQ-38).
+La herramienta lo comprueba primero: sondea `/ingresar`, que es pública y no sigue
+redirecciones; si la aplicación no responde —o contesta una redirección o un 401/403—
+lo dice y no corre ningún caso, porque el veredicto de cada caso dejaría de significar
+algo.
 
 **Los dos modos.**
 
@@ -446,7 +446,8 @@ corre ningún caso, porque el veredicto de cada caso dejaría de significar algo
 
 Es el modo interactivo, el que se usa para una demostración en vivo. Por caso: imprime el
 encabezado, **aplica** la alteración, **espera un Enter** —ahí es donde la persona mira
-`http://127.0.0.1:5000/verificar` y ve la cadena en rojo—, informa el veredicto,
+`http://127.0.0.1:5000/verificar` con la sesión de administrador abierta y ve la cadena
+en rojo—, informa el veredicto,
 **restaura**, **comprueba** que volvió y **espera un segundo Enter** —ahí es donde mira
 que la cadena volvió a ser válida— antes de seguir con el caso siguiente. La alteración
 queda escrita en la base entre las dos pausas, que es lo que hace que haya algo para ver;
@@ -505,8 +506,8 @@ Con Podman, `podman compose down -v` y `podman compose up -d` con el mismo resto
 primera línea baja los contenedores **borrando el volumen** (sin `-v` los datos
 siguen ahí), la segunda los vuelve a levantar —`db/init.sql` se aplica solo al crear
 el volumen de nuevo—, la tercera siembra los datos de demostración y la cuarta levanta
-la aplicación. Al final, `http://127.0.0.1:5000/verificar` tiene que decir "La cadena
-es válida".
+la aplicación. Al final, con la sesión de administrador abierta,
+`http://127.0.0.1:5000/verificar` tiene que decir "La cadena es válida".
 
 ## Apagar y limpiar
 

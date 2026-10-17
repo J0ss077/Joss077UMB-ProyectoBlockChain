@@ -14,7 +14,9 @@ persona que mira el navegador y para una corrida sin nadie enfrente.
 Uso: `python -m src.sabotaje` (interactivo), `--sin-pausas` (sin esperar a nadie),
 `--destructivos` (agrega los tres casos que borran datos). La aplicación se mira en
 `http://127.0.0.1:5000` salvo que la variable `SABOTAJE_APLICACION` diga otra
-dirección.
+dirección. La sonda de la comprobación previa pide `/ingresar`, que es pública y no
+sigue redirecciones: para mirar `/verificar` hay que tener una sesión de
+administrador abierta en el navegador.
 """
 from __future__ import annotations
 
@@ -923,38 +925,108 @@ class Salida:
 
 
 def direccion_de_verificacion() -> str:
-    """La dirección de `/verificar` que la sonda pide y que se le muestra a la persona.
+    """La dirección de `/verificar` que se le muestra a la persona.
 
     Sale de la variable del entorno y, si no está, de la dirección por defecto. Se
     resuelve en cada llamada y no al importar el módulo: el valor puede fijarse
-    después, y la dirección que se muestra tiene que ser la que se sondeó.
+    después, y la dirección que se muestra tiene que ser la que se va a mirar.
+    Mirar esa página exige una sesión de administrador abierta en el navegador
+    (REQ-38); la sonda, en cambio, pide `/ingresar`, que es pública.
     """
     base = os.environ.get(VARIABLE_DE_LA_APLICACION) or APLICACION_POR_DEFECTO
     return f"{base.rstrip('/')}/verificar"
 
 
+def direccion_de_ingreso() -> str:
+    """La dirección pública que sondea `probar_web`: la página de ingreso.
+
+    `/verificar` quedó detrás de la puerta del administrador (REQ-38), así que un
+    pedido anónimo ya no dice si la aplicación está en pie: redirige al ingreso.
+    `/ingresar` responde 200 sin sesión y es la señal correcta de que hay algo
+    corriendo que mirar.
+    """
+    base = os.environ.get(VARIABLE_DE_LA_APLICACION) or APLICACION_POR_DEFECTO
+    return f"{base.rstrip('/')}/ingresar"
+
+
+class _SinRedirecciones(urllib.request.HTTPRedirectHandler):
+    """Convierte una redirección en el error que es, en vez de seguirla.
+
+    `urlopen` sigue los 302 por su cuenta y termina devolviendo el 200 de la página
+    de ingreso como si la ruta sondeada hubiera respondido: con la puerta de sesión
+    eso convertía un `/verificar` protegido en un falso éxito. Devolver `None` de
+    `redirect_request` hace que la librería levante el `HTTPError` del código, que
+    es lo que la sonda necesita para informarlo como lo que es.
+    """
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+# Los códigos con los que la aplicación dice «pasa por el ingreso»: una redirección
+# o una negativa por credenciales. Ninguno es un éxito de la sonda, y confundirlos
+# con uno hacía que la comprobación previa dejara sabotear sin nada que mirar.
+CODIGOS_QUE_PIDEN_SESION = frozenset({301, 302, 303, 307, 308, 401, 403})
+
+
+@dataclass(frozen=True, slots=True)
+class Sonda:
+    """Lo que devolvió pedirle una página a la aplicación, con su significado.
+
+    `pide_sesion` distingue la redirección o la negativa por credenciales de un
+    fallo de conexión: los dos desenlaces impiden empezar, pero no son lo mismo y
+    el mensaje tiene que decir cuál fue.
+    """
+
+    responde: bool
+    detalle: str
+    pide_sesion: bool
+
+
+def _sondear(url: str, tiempo_de_espera: float) -> Sonda:
+    """Pide `url` sin seguir redirecciones y traduce la respuesta a una `Sonda`."""
+    try:
+        with urllib.request.build_opener(_SinRedirecciones()).open(
+            url, timeout=tiempo_de_espera
+        ) as respuesta:
+            if respuesta.status == 200:
+                return Sonda(True, f"la aplicación respondió HTTP 200 en {url}", False)
+            return Sonda(
+                False, f"la aplicación respondió HTTP {respuesta.status} en {url}", False
+            )
+    except urllib.error.HTTPError as error:
+        if error.code in CODIGOS_QUE_PIDEN_SESION:
+            return Sonda(
+                False,
+                f"la aplicación respondió HTTP {error.code} en {url}: no es un éxito, "
+                "la respuesta manda al ingreso o pide credenciales",
+                True,
+            )
+        return Sonda(False, f"la aplicación respondió HTTP {error.code} en {url}", False)
+    except (urllib.error.URLError, OSError) as error:
+        return Sonda(False, f"la aplicación no respondió en {url}: {error}", False)
+
+
 def probar_web(
     url: str | None = None, tiempo_de_espera: float = 3.0
 ) -> tuple[bool, str]:
-    """Pide `/verificar` y devuelve si respondió HTTP 200, con la descripción del desenlace.
+    """Pide `/ingresar` y devuelve si respondió HTTP 200, con la descripción del desenlace.
 
     Es la comprobación de que hay algo que mirar: la pausa de cada caso existe para
     que alguien vea el dictamen en el navegador, así que sin aplicación corriendo la
     herramienta se detiene y dice cómo levantarla, en vez de sabotear a ciegas.
 
+    La sonda pide la página de ingreso y **no sigue redirecciones**: un 302, un 401
+    o un 403 se informan como lo que son y nunca como éxito. Para mirar `/verificar`
+    hace falta tener una sesión de administrador abierta en el navegador; esta
+    sonda sólo comprueba que la aplicación esté en pie.
+
     Todos los fracasos nombran la dirección que se intentó: si la sonda mira un puerto
     donde no hay nada, el mensaje tiene que decir cuál fue, no solo que no respondió.
     """
-    url = direccion_de_verificacion() if url is None else url
-    try:
-        with urllib.request.urlopen(url, timeout=tiempo_de_espera) as respuesta:
-            if respuesta.status == 200:
-                return True, f"la aplicación respondió HTTP 200 en {url}"
-            return False, f"la aplicación respondió HTTP {respuesta.status} en {url}"
-    except urllib.error.HTTPError as error:
-        return False, f"la aplicación respondió HTTP {error.code} en {url}"
-    except (urllib.error.URLError, OSError) as error:
-        return False, f"la aplicación no respondió en {url}: {error}"
+    url = direccion_de_ingreso() if url is None else url
+    sonda = _sondear(url, tiempo_de_espera)
+    return sonda.responde, sonda.detalle
 
 
 def _texto_del_esperado(caso: Caso) -> str:
@@ -977,8 +1049,13 @@ def _mostrar_caso(caso: Caso, indice: int, total: int, salida: Salida) -> None:
     salida.linea(f"{'que hace':<{ANCHO_ETIQUETA}}: {caso.que_hace}")
     # La dirección de la verificación solo se agrega cuando el caso pide mirarla: los
     # casos que rechaza el motor se ven en esta misma consola y nombrar la página
-    # mandaría a mirar donde no pasa nada.
-    donde = f" en {direccion_de_verificacion()}" if caso.esperado != MOTOR_RECHAZA else ""
+    # mandaría a mirar donde no pasa nada. La sesión se nombra porque `/verificar`
+    # quedó detrás de la puerta del administrador (REQ-38).
+    donde = (
+        f" en {direccion_de_verificacion()} (con sesión de administrador abierta)"
+        if caso.esperado != MOTOR_RECHAZA
+        else ""
+    )
     salida.linea(f"{'que mirar':<{ANCHO_ETIQUETA}}: {caso.que_mirar}{donde}")
     salida.linea(f"{'se espera':<{ANCHO_ETIQUETA}}: {_texto_del_esperado(caso)}")
     if caso.limite is not None:
@@ -1276,10 +1353,11 @@ class Sabotaje:
         """Corre los casos pedidos, con o sin pausas, y devuelve lo que pasó.
 
         `web` responde por la aplicación —la sonda real pide HTTP 200 en
-        `/verificar`— y `entrada` es de dónde se lee el Enter: las pruebas inyectan
-        las dos para correr sin servidor y sin terminal. La comprobación previa va
-        primero: sobre una cadena ya alterada o sin aplicación que responda no se
-        corre ningún caso, porque el veredicto de cada uno dejaría de significar algo.
+        `/ingresar`, que es pública, sin seguir redirecciones— y `entrada` es de
+        dónde se lee el Enter: las pruebas inyectan las dos para correr sin servidor
+        y sin terminal. La comprobación previa va primero: sobre una cadena ya
+        alterada o sin aplicación que responda no se corre ningún caso, porque el
+        veredicto de cada uno dejaría de significar algo.
         """
         destino = Salida(salida)
         if not self._comprobar(destino, web):
@@ -1384,16 +1462,37 @@ class Sabotaje:
         salida.linea("la cadena verifica como válida")
 
         if web is None:
-            responde, detalle = probar_web()
+            sonda = _sondear(direccion_de_ingreso(), 3.0)
+            responde, detalle, pide_sesion = (
+                sonda.responde,
+                sonda.detalle,
+                sonda.pide_sesion,
+            )
         else:
             responde, detalle = web(), "la prueba respondió por la aplicación"
+            pide_sesion = False
         salida.linea(f"{'aplicacion':<{ANCHO_ETIQUETA}}: {detalle}")
         if not responde:
-            salida.linea(
-                f"la aplicación no responde en {direccion_de_verificacion()}: levántela "
-                "con `python -m src.web` en otra terminal y vuelva a correr esto."
-            )
+            if pide_sesion:
+                salida.linea(
+                    f"la aplicación responde en {direccion_de_ingreso()}, pero /verificar "
+                    "exige una sesión de administrador: abra el navegador, ingrese con una "
+                    "cuenta administradora y vuelva a correr esto."
+                )
+            else:
+                salida.linea(
+                    f"la aplicación no responde en {direccion_de_ingreso()}: levántela con "
+                    f"`python -m src.web` en otra terminal, abra {direccion_de_verificacion()} "
+                    "con una sesión de administrador abierta y vuelva a correr esto."
+                )
             return False
+        # El aviso va aunque la sonda haya dado bien: `/ingresar` responde sin sesión,
+        # pero el dictamen que cada pausa pide mirar vive detrás de la puerta del
+        # administrador (REQ-38), y sin esa sesión no hay nada que ver.
+        salida.linea(
+            "para mirar /verificar en cada pausa, tenga una sesión de administrador "
+            "abierta en el navegador"
+        )
         return True
 
 

@@ -16,6 +16,8 @@ import pathlib
 import re
 import subprocess
 import sys
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from threading import Thread
 from uuid import uuid4
 
 import pytest
@@ -235,7 +237,44 @@ def test_la_sonda_usa_la_direccion_que_fija_el_entorno_y_la_dice_al_fallar(monke
     responde, detalle = probar_web(tiempo_de_espera=0.5)
 
     assert responde is False
-    assert "http://127.0.0.1:9/verificar" in detalle
+    # La sonda pide `/ingresar`, que es pública: la dirección que nombra el fallo es
+    # la que de verdad se intentó, no la de `/verificar` que se le muestra a la persona.
+    assert "http://127.0.0.1:9/ingresar" in detalle
+
+
+class _RedirigiendoALIngreso(BaseHTTPRequestHandler):
+    """Servidor mínimo que responde 302 a cualquier pedido, como la puerta de sesión."""
+
+    def do_GET(self) -> None:
+        self.send_response(302)
+        self.send_header("Location", "/ingresar")
+        self.end_headers()
+
+    def log_message(self, format: str, *args: object) -> None:
+        """Silencia el registro del servidor de prueba en la salida de pytest."""
+
+
+def test_la_sonda_informa_la_redireccion_y_no_la_cuenta_como_exito():
+    """Un 302 no es un 200: la sonda lo informa como sesión, nunca como que responde.
+
+    `urlopen` seguía la redirección y devolvía el 200 de la página de ingreso como si
+    `/verificar` hubiera contestado; así la comprobación previa pasaba en falso y la
+    herramienta saboteba sin nada que mirar en el navegador.
+    """
+    servidor = ThreadingHTTPServer(("127.0.0.1", 0), _RedirigiendoALIngreso)
+    hilo = Thread(target=servidor.serve_forever, daemon=True)
+    hilo.start()
+    try:
+        direccion = f"http://127.0.0.1:{servidor.server_address[1]}/ingresar"
+        responde, detalle = probar_web(url=direccion, tiempo_de_espera=1.0)
+    finally:
+        servidor.shutdown()
+        servidor.server_close()
+        hilo.join(timeout=2)
+
+    assert responde is False
+    assert "HTTP 302" in detalle
+    assert "no es un éxito" in detalle
 
 
 def test_la_comprobacion_previa_dice_la_direccion_que_intento(
@@ -747,9 +786,10 @@ def con_sabotaje(base_limpia, master_key):
 def web_simulada():
     """La comprobación previa de la aplicación, sin servidor: para el recorrido headless.
 
-    La sonda real pide HTTP 200 en `/verificar`; en la suite no hay aplicación
-    levantada y lo que se prueba es el recorrido, no el sondeo. La sonda real tiene
-    su propia prueba negativa, que es donde se comprueba que su veredicto manda.
+    La sonda real pide HTTP 200 en `/ingresar`, que es pública; en la suite no hay
+    aplicación levantada y lo que se prueba es el recorrido, no el sondeo. La sonda
+    real tiene su propia prueba negativa, que es donde se comprueba que su veredicto
+    manda.
     """
     return lambda: True
 
@@ -757,7 +797,7 @@ def web_simulada():
 def test_la_comprobacion_previa_avisa_cuando_la_aplicacion_no_responde(
     base_limpia, con_sabotaje
 ):
-    """Sin aplicación que responda en `/verificar`, la herramienta no corre ningún caso.
+    """Sin aplicación que responda en `/ingresar`, la herramienta no corre ningún caso.
 
     La pausa de cada caso existe para que alguien mire el navegador: sin aplicación
     no hay nada que mirar, así que la comprobación previa lo dice y se detiene. La
