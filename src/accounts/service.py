@@ -195,6 +195,17 @@ class Cuentas:
         with self._transaction() as actual:
             return actual.usuarios.get(id)
 
+    def por_username(self, username: str) -> Usuario | None:
+        """La cuenta con ese nombre, o `None` si no existe (REQ-34).
+
+        Es la lectura con la que el envío del usuario común resuelve el
+        destinatario por nombre de usuario antes de probar con el identificador
+        de wallet. El repositorio normaliza, así que «Ana» y «ana» son la misma
+        cuenta. No escribe, igual que `por_id`.
+        """
+        with self._transaction() as actual:
+            return actual.usuarios.get_by_username(username)
+
     def aprobar(self, id: UUID) -> Usuario:
         """Abre la cuenta: wallet, saldo de bienvenida y estado en una sola transacción.
 

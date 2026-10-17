@@ -1,0 +1,33 @@
+{# La tabla de transacciones que comparten el tablero, el historial y la verificación del usuario común. `motivo_por_transaccion` llega sólo en la respuesta del envío que acaba de rechazar una fila: la base guarda el estado pero no el motivo, así que
+fuera de ese momento la columna queda vacía. #} {% from "_macros.html" import dato %} {% macro tabla(transacciones, motivo_por_transaccion=None, vacio="No hay transacciones.") -%} {%- set motivos = motivo_por_transaccion or {} -%}
+<table>
+    <thead>
+        <tr>
+            <th>Identificador</th>
+            <th>Emisor</th>
+            <th>Receptor</th>
+            <th>Monto</th>
+            <th>Estado</th>
+            <th>Bloque</th>
+            <th>Motivo del rechazo</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for transaction in transacciones %}
+        <tr>
+            <td>{{ dato(transaction.id) }}</td>
+            <td>{{ dato(transaction.sender_id) }}</td>
+            <td>{{ dato(transaction.receiver_id) }}</td>
+            <td><code>{{ "%.8f"|format(transaction.amount) }}</code></td>
+            <td><code>{{ transaction.status }}</code></td>
+            <td>{% if transaction.block_id %}{{ dato(transaction.block_id) }}{% else %}—{% endif %}</td>
+            <td>{{ motivos.get(transaction.id, "—") }}</td>
+        </tr>
+        {% else %}
+        <tr>
+            <td colspan="7">{{ vacio }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{%- endmacro %}

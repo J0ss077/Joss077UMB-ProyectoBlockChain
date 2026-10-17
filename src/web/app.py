@@ -9,8 +9,9 @@ fábrica de cuentas, y habla con `Blockchain`, con `Wallet` y con `Cuentas`.
 La sesión guarda sólo el identificador de la cuenta y se recarga de la base en
 cada petición (REQ-37). Las puertas de `auth.py` deciden quién puede llamar: las
 rutas del eje quedan del lado del administrador y el usuario común tiene su
-tablero (REQ-38). El motivo del rechazo se muestra porque el CU-02 lo pide: quien
-propone una transacción tiene que saber por qué no entró al pool.
+tablero, que vive en `user.py` (REQ-34, REQ-35, REQ-39). El motivo del rechazo se
+muestra porque el CU-02 lo pide: quien propone una transacción tiene que saber por
+qué no entró al pool.
 
 Uso: `python -m src.web`.
 """
@@ -19,7 +20,6 @@ from __future__ import annotations
 import os
 from collections.abc import Callable, Iterator
 from contextlib import AbstractContextManager, contextmanager
-from decimal import Decimal, InvalidOperation
 from uuid import UUID
 
 from flask import (
@@ -51,15 +51,12 @@ from src.web.auth import (
     sesion_vigente,
     usuario_de_la_sesion,
 )
+from src.web.forms import a_monto, a_uuid
+from src.web.user import crear_blueprint_del_usuario
 
 # Nombre de la variable que firma la cookie. Es una constante y no un literal
 # porque el respaldo y su mensaje de error tienen que nombrar la misma variable.
 VARIABLE_DEL_SECRETO_DE_SESION = "SESSION_SECRET"
-
-# El tablero del usuario común se monta en esta ruta con su propia pantalla. Se
-# escribe como literal y no con `url_for` porque esa ruta todavía no existe: un
-# `url_for` sobre un endpoint ausente haría fallar el ingreso del usuario común.
-RUTA_DEL_TABLERO = "/mi-tablero"
 
 FabricaDeCadenas = Callable[[], AbstractContextManager[Blockchain]]
 FabricaDeCuentas = Callable[[], AbstractContextManager[Cuentas]]
@@ -107,6 +104,10 @@ def create_app(
         """Abre el servicio de cuentas que entrega la fábrica inyectada."""
         with cuentas_factory() as cuentas:
             yield cuentas
+
+    # Las rutas del usuario común se registran con las mismas fábricas: el
+    # blueprint no arma el ledger ni las cuentas por su cuenta (REQ-29).
+    app.register_blueprint(crear_blueprint_del_usuario(abrir_cadena, abrir_cuentas))
 
     @app.context_processor
     def valores_de_los_formularios() -> dict[str, object]:
@@ -193,7 +194,7 @@ def create_app(
         abrir_sesion(usuario)
         if usuario.role == ADMINISTRADOR:
             return redirect(url_for("portada"))
-        return redirect(RUTA_DEL_TABLERO)
+        return redirect(url_for("usuario.mi_tablero"))
 
     @app.post("/salir")
     def salir():
@@ -212,7 +213,7 @@ def create_app(
         if g.user is None:
             return redirect(url_for("ingresar"))
         if g.user.role != ADMINISTRADOR:
-            return redirect(RUTA_DEL_TABLERO)
+            return redirect(url_for("usuario.mi_tablero"))
         with abrir_cadena() as chain:
             return render_template(
                 "index.html",
@@ -260,8 +261,8 @@ def create_app(
                     error_formulario=None,
                 )
         with abrir_cadena() as chain:
-            sender_id = _uuid(request.form.get("sender_id"))
-            receiver_id = _uuid(request.form.get("receiver_id"))
+            sender_id = a_uuid(request.form.get("sender_id"))
+            receiver_id = a_uuid(request.form.get("receiver_id"))
             if sender_id is None or receiver_id is None:
                 # Un identificador ausente o mal escrito no llega a la fachada: se
                 # informa en la misma página, que es el resultado del caso de uso.
@@ -274,7 +275,7 @@ def create_app(
             resultado = chain.create_transaction(
                 sender_id=sender_id,
                 receiver_id=receiver_id,
-                amount=_monto(request.form.get("amount")),
+                amount=a_monto(request.form.get("amount")),
             )
             return render_template(
                 "transaccion.html",
@@ -399,27 +400,3 @@ def _secreto_de_sesion() -> str:
 def _formulario_de_registro(error: str | None = None, usuario: str = ""):
     """Pinta el formulario de registro, con el motivo y el nombre si hubo error."""
     return render_template("registro.html", creado=None, error=error, usuario=usuario)
-
-
-def _uuid(value: str | None) -> UUID | None:
-    """Convierte el identificador del formulario; `None` si no es un UUID.
-
-    Se devuelve `None` y no se levanta el error: un identificador mal escrito es un
-    dato que el caso de uso tiene que rechazar con su motivo, no una caída.
-    """
-    try:
-        return UUID(value) if value else None
-    except ValueError:
-        return None
-
-
-def _monto(value: str | None) -> Decimal:
-    """Convierte el monto del formulario; un valor ilegible se convierte en cero.
-
-    Cero es un monto que el dominio rechaza con su motivo (REQ-04), así que un
-    formulario mal escrito sigue el camino del rechazo y no el de la excepción.
-    """
-    try:
-        return Decimal(value) if value else Decimal(0)
-    except InvalidOperation:
-        return Decimal(0)

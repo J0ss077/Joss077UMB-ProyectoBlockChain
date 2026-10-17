@@ -105,3 +105,23 @@ def requiere_administrador(vista: Vista) -> Vista:
         return vista(*args, **kwargs)
 
     return cast(Vista, envuelta)
+
+
+def requiere_usuario_comun(vista: Vista) -> Vista:
+    """Exige una sesión de usuario común para las rutas de su tablero (REQ-35).
+
+    Es `requiere_sesion` más el rol: sin sesión el camino es el mismo que el de
+    cualquier ruta de trabajo —al ingreso—, y con una sesión de administrador se
+    lo devuelve a su portada en vez de negarle el paso. Entrar al tablero ajeno no
+    es un error del administrador, pero tampoco es su pantalla: se elige la
+    redirección y no el 403 para no romper el recorrido de quien ya está dentro.
+    """
+
+    @wraps(vista)
+    def solo_comun(*args: Any, **kwargs: Any) -> Any:
+        # `requiere_sesion` corre primero y garantiza que `g.user` no sea nulo.
+        if g.user.role == ADMINISTRADOR:
+            return redirect(url_for("portada"))
+        return vista(*args, **kwargs)
+
+    return requiere_sesion(cast(Vista, solo_comun))

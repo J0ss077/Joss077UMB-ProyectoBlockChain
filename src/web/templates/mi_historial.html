@@ -1,0 +1,5 @@
+{% extends "base.html" %} {% from "_macros.html" import dato, copiar %} {% from "_transacciones.html" import tabla %} {% block titulo %}Mi historial{% endblock %} {% block encabezado %}Mi historial{% endblock %} {% block contenido %}
+<p><strong>Mi wallet:</strong> {{ dato(wallet_id) }} {{ copiar(wallet_id, "el identificador de mi wallet") }}</p>
+{{ tabla(transacciones, vacio="Su wallet todavía no tiene transacciones.") }}
+<p><a href="/mi-tablero">Volver a mi tablero</a></p>
+{% endblock %}

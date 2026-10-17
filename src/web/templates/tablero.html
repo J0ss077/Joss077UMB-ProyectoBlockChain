@@ -1,0 +1,50 @@
+{% extends "base.html" %} {% from "_macros.html" import dato, copiar %} {% from "_transacciones.html" import tabla %} {% block titulo %}Mi tablero{% endblock %} {% block encabezado %}Mi tablero{% endblock %} {% block contenido %}
+<p><strong>Cuenta:</strong> {{ g.user.username }}</p>
+<p><strong>Mi wallet:</strong> {{ dato(wallet_id) }} {{ copiar(wallet_id, "el identificador de mi wallet") }}</p>
+<p><strong>Saldo disponible:</strong> <code>{{ "%.8f"|format(saldo) }}</code></p>
+
+<h2>Enviar</h2>
+<form method="post" action="/mi-envio">
+    {# El emisor no está en el formulario: sale de la sesión (REQ-34). #}
+    <p>
+        <label>Destinatario <input name="destinatario" autocomplete="off" spellcheck="false" required /></label>
+    </p>
+    <p class="ayuda">El nombre de usuario del destinatario o, si lo tiene a mano, el identificador de su wallet.</p>
+    <p>
+        <label>Monto <input name="amount" value="10.00000000" /></label>
+    </p>
+    <button type="submit">Enviar</button>
+</form>
+
+{% if error_formulario %}
+<div class="motivo">
+    <p><strong>motivo:</strong> {{ error_formulario }}</p>
+</div>
+{% endif %} {% if resultado %} {% if resultado.accepted %}
+<div class="exito">
+    <p>El envío entró al pool y espera que el administrador lo agrupe en un bloque.</p>
+    {% if resultado.stored %}
+    <p><strong>identificador:</strong> {{ dato(resultado.stored.id) }} {{ copiar(resultado.stored.id, "el identificador") }}</p>
+    <p><strong>estado:</strong> <code>{{ resultado.stored.status }}</code></p>
+    {% endif %}
+</div>
+{% else %}
+<div class="motivo">
+    <p>El envío no entró al pool.</p>
+    <p><strong>motivo:</strong> {{ resultado.reason }}</p>
+</div>
+{% endif %} {% endif %}
+
+<h2>Mis transacciones</h2>
+{{ tabla(transacciones, motivo_por_transaccion, "Su wallet todavía no tiene transacciones.") }}
+
+<h2>Más</h2>
+<ul>
+    <li><a href="/mi-historial">Mi historial</a></li>
+    <li><a href="/mi-verificacion">Verificar mi historial</a></li>
+</ul>
+{# La barra ya tiene el botón de salida; acá queda el enlace del final del tablero. #}
+<form method="post" action="{{ url_for('salir') }}">
+    <button type="submit">Salir</button>
+</form>
+{% endblock %}
