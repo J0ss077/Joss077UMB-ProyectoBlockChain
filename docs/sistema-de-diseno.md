@@ -32,7 +32,7 @@ Los componentes usan siempre los **alias semánticos** (`--color-superficie`, `-
 
 ## Contenido y tono
 
-- **Idioma:** español neutro. La interfaz tutea, también en los dictámenes y en los mensajes de error («Entra con la cuenta que aprobó un administrador», «Haz tu primer envío», «No se puede verificar tu historial»). Los documentos y los comentarios van en impersonal, sin «tú», sin «vos» y sin «usted».
+- **Idioma:** español neutro. La interfaz tutea, también en los dictámenes y en los mensajes de error («Entra con la cuenta que aprobó un administrador», «Haz tu primer envío», «No se puede verificar tu historial»). Los documentos y los comentarios van en impersonal.
 - **Mensajes del dominio:** el motivo de un rechazo se muestra sin traducir ni adornar, en minúsculas como lo devuelve el dominio («el saldo disponible no alcanza»).
 - **Estados en pantalla:** «En el pool», «Confirmada», «Rechazada». El valor técnico (`pending`, `confirmed`, `rejected`) queda en el HTML que leen las pruebas.
 - **Cifras:** los montos llevan siempre ocho decimales (`300.00000000`) en Geist Mono.
