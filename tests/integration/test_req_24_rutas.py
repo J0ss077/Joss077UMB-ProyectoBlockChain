@@ -306,6 +306,33 @@ def test_req_28_rf5_la_pagina_de_error_no_depende_del_ledger(administrador):
     assert cliente.get("/no-existe").status_code == 404
 
 
+def test_req_28_rf5_la_pagina_de_error_no_depende_de_las_cuentas():
+    """REQ-28 (RF-5): la página de error se pinta sin abrir las cuentas.
+
+    El dueño de cada wallet lo resuelve `nombre_de_wallet`, un procesador de
+    contexto que abre las cuentas de forma perezosa porque el panel lo pide desde
+    la plantilla. Si el procesador abriera la base al publicarse —el patrón que el
+    proyecto ya prohibió para el ledger—, la página de error pagaría la consulta y
+    un 404 se volvería un 500 con la base caída. La fábrica de cuentas de esta
+    prueba falla siempre y la de la cadena tampoco sirve: pedir una ruta que no
+    existe tiene que seguir siendo un 404 con su explicación en español.
+    """
+
+    @contextmanager
+    def fabrica_rota():
+        raise RuntimeError("las cuentas no abren")
+        yield  # pragma: no cover
+
+    cliente = crear_app_de_prueba(
+        lambda: None, cuentas_factory=fabrica_rota
+    ).test_client()
+
+    respuesta = cliente.get("/no-existe")
+
+    assert respuesta.status_code == 404
+    assert "No se encontró lo que buscaba" in respuesta.get_data(as_text=True)
+
+
 def test_req_29_la_interfaz_no_explica_el_proyecto(cliente):
     """REQ-29: la interfaz no explica el proyecto. Sin «CU-0X» ni prosa sobre el eje."""
     for ruta in ("/", "/wallets", "/transacciones", "/bloques", "/verificar"):

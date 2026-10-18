@@ -52,22 +52,25 @@ CONTRASENA_DE_PRUEBA = "secreta1"
 CONTRASENA_DEL_ADMINISTRADOR = "clave-del-administrador-de-prueba"
 
 
-def crear_app_de_prueba(chain_factory, *, secret_key=None) -> Flask:
+def crear_app_de_prueba(chain_factory, *, cuentas_factory=None, secret_key=None) -> Flask:
     """Arma la aplicación con la fábrica del ledger y la del servicio de cuentas.
 
     La fábrica de cuentas se compone acá, con `transaction()` real, para que las
     rutas de entrada y la recarga del usuario por petición usen la misma base que
     el resto de la suite. La clave de la sesión sale del entorno por el mismo
     lector que usa el arranque, así la prueba firma con la clave de verdad.
-    """
 
+    `cuentas_factory` deja que una prueba inyecte una fábrica propia —la que falla
+    siempre— sin tocar la composición real: es el camino para exigir que una
+    página que no muestra cuentas no las abra aunque la base esté caída.
+    """
     @contextmanager
-    def fabrica_de_cuentas():
+    def fabrica_real():
         yield Cuentas(transaction)
 
     return create_app(
         chain_factory,
-        fabrica_de_cuentas,
+        fabrica_real if cuentas_factory is None else cuentas_factory,
         secret_key=session_secret() if secret_key is None else secret_key,
     )
 
