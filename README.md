@@ -185,6 +185,26 @@ motor en vez de esperar lo que decida el sistema operativo. El tiempo de espera 
 `database_url()` cuando la cadena no lo trae; si usted pasa su propia cadena con otro
 `connect_timeout`, ese manda.
 
+## La interfaz
+
+La interfaz es un bento geométrico en cobalto con un solo acento lima, tema claro y
+oscuro y los datos que se comparan en monoespaciada. El sistema de diseño completo
+—tokens, componentes, accesibilidad y los contratos que las pruebas respetan— vive en
+[`docs/sistema-de-diseno.md`](docs/sistema-de-diseno.md), que es documentación viva del
+equipo y no un documento del proceso de desarrollo.
+
+Las dos tipografías viajan con el repositorio en `src/web/static/fonts/`, cada una con
+su licencia al lado:
+
+- **Bricolage Grotesque** (The Bricolage Grotesque Project Authors, 2022), variable,
+  para todo el texto y los títulos.
+- **Geist Mono** (The Geist Project Authors, 2024), variable, para claves,
+  identificadores, hashes y montos, que se comparan carácter a carácter.
+
+Las dos se distribuyen bajo la SIL Open Font License 1.1, con el texto completo de la
+licencia en `src/web/static/fonts/OFL-bricolage-grotesque.txt` y en
+`src/web/static/fonts/OFL-geist-mono.txt`.
+
 ## Las cinco rutas
 
 | Ruta                      | Caso de uso | Qué hace                                                           | Rol que exige |
@@ -561,12 +581,12 @@ sobre una base desechable.
 **Qué se puede borrar sin miedo.** Nada de esto está versionado (`.gitignore`), así que
 borrarlo no ensucia el repositorio:
 
-| Ruta               | Qué es                                                            | Si la borra                                                                                               |
-| ------------------ | ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| `.venv/`           | El entorno virtual con las dependencias fijadas                   | Se recrea con `python -m venv .venv` y la instalación de `requirements.txt`.                              |
-| `.reference/`      | El extracto del documento del eje y el material de consulta       | No rompe nada: no lo importan el código ni las pruebas. Se pierde la copia local del extracto del eje.    |
-| `.legacy-project/` | El prototipo anterior, que solo se conserva como referencia       | No rompe nada: no lo importa nadie. Se pierde el prototipo anterior, que no es el entregable.             |
-| `.env`             | Los secretos locales: `DATABASE_URL`, `POSTGRES_*` y `MASTER_KEY` | Obliga a copiar `.env.example` otra vez y a generar una `MASTER_KEY` nueva; lea la advertencia de abajo.  |
+| Ruta               | Qué es                                                            | Si la borra                                                                                              |
+| ------------------ | ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `.venv/`           | El entorno virtual con las dependencias fijadas                   | Se recrea con `python -m venv .venv` y la instalación de `requirements.txt`.                             |
+| `.reference/`      | El extracto del documento del eje y el material de consulta       | No rompe nada: no lo importan el código ni las pruebas. Se pierde la copia local del extracto del eje.   |
+| `.legacy-project/` | El prototipo anterior, que solo se conserva como referencia       | No rompe nada: no lo importa nadie. Se pierde el prototipo anterior, que no es el entregable.            |
+| `.env`             | Los secretos locales: `DATABASE_URL`, `POSTGRES_*` y `MASTER_KEY` | Obliga a copiar `.env.example` otra vez y a generar una `MASTER_KEY` nueva; lea la advertencia de abajo. |
 
 **Antes de borrar `.env`.** `.env` guarda la `MASTER_KEY` con la que se cifra el material
 privado de las wallets (decisión 3 del diseño). Con otra clave, las wallets ya guardadas
