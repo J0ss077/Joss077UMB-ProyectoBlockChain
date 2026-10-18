@@ -116,9 +116,9 @@ def database_url() -> str:
     if url:
         return normalizar_cadena(url)
     raise RuntimeError(
-        f"Falta {VARIABLE_DE_LA_CADENA_DE_CONEXION} en el entorno y en `.env`: levante "
-        "la base con `docker compose up -d` (o `podman compose up -d`) y agregue "
-        f"{VARIABLE_DE_LA_CADENA_DE_CONEXION} a su `.env` (la plantilla `.env.example` "
+        f"Falta {VARIABLE_DE_LA_CADENA_DE_CONEXION} en el entorno y en `.env`: levanta "
+        "la base con `docker compose up -d` (o `podman compose up -d`) y agrega "
+        f"{VARIABLE_DE_LA_CADENA_DE_CONEXION} a tu `.env` (la plantilla `.env.example` "
         "la trae)."
     )
 
@@ -135,14 +135,14 @@ def master_key() -> bytes:
         if value == CLAVE_MAESTRA_DE_LA_PLANTILLA:
             raise RuntimeError(
                 f"{VARIABLE_DE_LA_CLAVE_MAESTRA} sigue siendo el valor de relleno de "
-                "la plantilla `.env.example`: genere una clave propia con "
+                "la plantilla `.env.example`: genera una clave propia con "
                 '`python -c "from cryptography.fernet import Fernet; '
-                'print(Fernet.generate_key().decode())"` y reemplácela en su `.env`.'
+                'print(Fernet.generate_key().decode())"` y reemplázala en tu `.env`.'
             )
         return value.encode("ascii")
     raise RuntimeError(
-        f"Falta {VARIABLE_DE_LA_CLAVE_MAESTRA} en el entorno y en `.env`: agregue "
-        f"{VARIABLE_DE_LA_CLAVE_MAESTRA} a su `.env` y genere una clave propia con "
+        f"Falta {VARIABLE_DE_LA_CLAVE_MAESTRA} en el entorno y en `.env`: agrega "
+        f"{VARIABLE_DE_LA_CLAVE_MAESTRA} a tu `.env` y genera una clave propia con "
         '`python -c "from cryptography.fernet import Fernet; '
         'print(Fernet.generate_key().decode())"`; la plantilla `.env.example` la trae '
         "de relleno y el lector la rechaza."
@@ -160,13 +160,13 @@ def session_secret() -> bytes:
         if value == SECRETO_DE_SESION_DE_LA_PLANTILLA:
             raise RuntimeError(
                 f"{VARIABLE_DEL_SECRETO_DE_SESION} sigue siendo el valor de la "
-                "plantilla `.env.example`: reemplácela por una clave propia con "
+                "plantilla `.env.example`: reemplázala por una clave propia con "
                 '`.venv/bin/python -c "import secrets; print(secrets.token_hex(32))"`.'
             )
         return value.encode("utf-8")
     raise RuntimeError(
-        f"Falta {VARIABLE_DEL_SECRETO_DE_SESION} en el entorno y en `.env`: agregue "
-        f"{VARIABLE_DEL_SECRETO_DE_SESION} a su `.env` y genere la clave con "
+        f"Falta {VARIABLE_DEL_SECRETO_DE_SESION} en el entorno y en `.env`: agrega "
+        f"{VARIABLE_DEL_SECRETO_DE_SESION} a tu `.env` y genera la clave con "
         '`.venv/bin/python -c "import secrets; print(secrets.token_hex(32))"`.'
     )
 
@@ -178,14 +178,14 @@ def admin_password() -> str:
         if value == CONTRASENA_DEL_ADMINISTRADOR_DE_LA_PLANTILLA:
             raise RuntimeError(
                 f"{VARIABLE_DE_LA_CONTRASENA_DEL_ADMINISTRADOR} sigue siendo el valor "
-                "de la plantilla `.env.example`: reemplácela por una contraseña propia "
-                "en su `.env` antes de sembrar."
+                "de la plantilla `.env.example`: reemplázala por una contraseña propia "
+                "en tu `.env` antes de sembrar."
             )
         return value
     raise RuntimeError(
         f"Falta {VARIABLE_DE_LA_CONTRASENA_DEL_ADMINISTRADOR} en el entorno y en "
-        f"`.env`: agregue {VARIABLE_DE_LA_CONTRASENA_DEL_ADMINISTRADOR} a su `.env` y "
-        "fije la contraseña del administrador."
+        f"`.env`: agrega {VARIABLE_DE_LA_CONTRASENA_DEL_ADMINISTRADOR} a tu `.env` y "
+        "fija la contraseña del administrador."
     )
 
 

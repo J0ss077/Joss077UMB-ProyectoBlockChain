@@ -1107,10 +1107,10 @@ def _texto_de_la_primera_pausa(observado: str, escrito: bool) -> str:
     salir— y un fallo de la herramienta no se demuestra, solo se informa.
     """
     if observado == MOTOR_RECHAZA:
-        return "pulse Enter cuando haya visto el rechazo del motor"
+        return "pulsa Enter cuando hayas visto el rechazo del motor"
     if not escrito:
-        return "pulse Enter para seguir"
-    return "pulse Enter cuando haya mirado el daño"
+        return "pulsa Enter para seguir"
+    return "pulsa Enter cuando hayas mirado el daño"
 
 
 def _detectar_veredicto(herramienta: Herramienta) -> tuple[str, int | None]:
@@ -1231,7 +1231,7 @@ def _siguiente(
     restaurado = _comprobar_restauracion(herramienta, estado, caso, salida)
     if escrito:
         _esperar_enter(
-            pausa, "pulse Enter cuando haya visto que volvió a la normalidad", entrada, salida
+            pausa, "pulsa Enter cuando hayas visto que volvió a la normalidad", entrada, salida
         )
     return ResultadoCaso(
         clave=caso.clave,
@@ -1295,15 +1295,15 @@ def _instrucciones_de_resembrado(salida: Salida) -> None:
     """Cómo volver a los datos de demostración, en orden, y qué tiene que decir la pantalla."""
     salida.linea("")
     salida.linea("para volver a los datos de demostración (resembrado)")
-    salida.linea("1. baje los contenedores borrando el volumen de datos:")
+    salida.linea("1. baja los contenedores borrando el volumen de datos:")
     salida.linea("   docker compose down -v")
     salida.linea("   con Podman: podman compose down -v")
-    salida.linea("2. vuelva a levantar los contenedores:")
+    salida.linea("2. vuelve a levantar los contenedores:")
     salida.linea("   docker compose up -d")
     salida.linea("   con Podman: podman compose up -d")
-    salida.linea("3. siembre la demostración con el arranque del proyecto:")
+    salida.linea("3. siembra la demostración con el arranque del proyecto:")
     salida.linea("   <venv> -m src.bootstrap")
-    salida.linea("4. levante la aplicación y mire la verificación:")
+    salida.linea("4. levanta la aplicación y mira la verificación:")
     salida.linea("   <venv> -m src.web")
     salida.linea(f"   {direccion_de_verificacion()} tiene que decir: La cadena es válida")
 
@@ -1390,8 +1390,8 @@ class Sabotaje:
         except LookupError as error:
             destino.linea(f"la demostración no tiene la forma esperada: {error}")
             destino.linea(
-                "siembre la demostración con `python -m src.bootstrap` sobre una base "
-                "vacía y vuelva a correr esto."
+                "siembra la demostración con `python -m src.bootstrap` sobre una base "
+                "vacía y vuelve a correr esto."
             )
             _instrucciones_de_resembrado(destino)
             return Recorrido(True, (), 0, 0, 0)
@@ -1446,8 +1446,8 @@ class Sabotaje:
             # aplicada a medias.
             salida.linea(f"la base de datos no responde: {error}")
             salida.linea(
-                "levante PostgreSQL (`docker compose up -d` o `podman compose up -d`) y "
-                "vuelva a correr esto."
+                "levanta PostgreSQL (`docker compose up -d` o `podman compose up -d`) y "
+                "vuelve a correr esto."
             )
             return False
         salida.linea(f"{'capturas':<{ANCHO_ETIQUETA}}: {capturas}")
@@ -1455,7 +1455,7 @@ class Sabotaje:
         if not reporte.valid:
             salida.linea(
                 "la cadena ya viene alterada: el bloque señalado es el "
-                f"{reporte.altered_block_index}. Restaure o resiembre antes de sabotear; "
+                f"{reporte.altered_block_index}. Restaura o resiembra antes de sabotear; "
                 "las instrucciones de resembrado están abajo."
             )
             return False
@@ -1476,21 +1476,21 @@ class Sabotaje:
             if pide_sesion:
                 salida.linea(
                     f"la aplicación responde en {direccion_de_ingreso()}, pero /verificar "
-                    "exige una sesión de administrador: abra el navegador, ingrese con una "
-                    "cuenta administradora y vuelva a correr esto."
+                    "exige una sesión de administrador: abre el navegador, ingresa con una "
+                    "cuenta administradora y vuelve a correr esto."
                 )
             else:
                 salida.linea(
-                    f"la aplicación no responde en {direccion_de_ingreso()}: levántela con "
-                    f"`python -m src.web` en otra terminal, abra {direccion_de_verificacion()} "
-                    "con una sesión de administrador abierta y vuelva a correr esto."
+                    f"la aplicación no responde en {direccion_de_ingreso()}: levántala con "
+                    f"`python -m src.web` en otra terminal, abre {direccion_de_verificacion()} "
+                    "con una sesión de administrador abierta y vuelve a correr esto."
                 )
             return False
         # El aviso va aunque la sonda haya dado bien: `/ingresar` responde sin sesión,
         # pero el dictamen que cada pausa pide mirar vive detrás de la puerta del
         # administrador (REQ-38), y sin esa sesión no hay nada que ver.
         salida.linea(
-            "para mirar /verificar en cada pausa, tenga una sesión de administrador "
+            "para mirar /verificar en cada pausa, ten una sesión de administrador "
             "abierta en el navegador"
         )
         return True
@@ -1533,8 +1533,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         # sabotear ni que verificar, y el rastro de la librería no dice qué hacer.
         print(f"la base de datos no responde: {error}", file=sys.stderr)
         print(
-            "levante PostgreSQL (`docker compose up -d` o `podman compose up -d`), "
-            "revise DATABASE_URL y vuelva a correr esto.",
+            "levanta PostgreSQL (`docker compose up -d` o `podman compose up -d`), "
+            "revisa DATABASE_URL y vuelve a correr esto.",
             file=sys.stderr,
         )
         return 2

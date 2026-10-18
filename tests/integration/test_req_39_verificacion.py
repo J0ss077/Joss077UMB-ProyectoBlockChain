@@ -98,7 +98,7 @@ def test_req_39_con_la_cadena_alterada_mi_historial_dice_que_no_puede_verificar(
 
     assert respuesta.status_code == 200
     cuerpo = respuesta.get_data(as_text=True)
-    assert "No se puede verificar su historial" in cuerpo
+    assert "No se puede verificar tu historial" in cuerpo
     assert "La cadena es válida" not in cuerpo
     assert str(ajena.id) not in cuerpo
     assert "77.00000000" not in cuerpo

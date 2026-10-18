@@ -121,7 +121,7 @@ def test_req_21_la_clave_maestra_de_relleno_se_rechaza(monkeypatch):
     mensaje = str(error.value)
     assert factory.VARIABLE_DE_LA_CLAVE_MAESTRA in mensaje
     assert "plantilla" in mensaje
-    assert "genere una clave propia" in mensaje
+    assert "genera una clave propia" in mensaje
     assert "Fernet.generate_key()" in mensaje
 
 

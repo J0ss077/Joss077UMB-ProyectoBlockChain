@@ -82,7 +82,7 @@ NOMBRES_DE_DEMOSTRACION = (
 # exactos porque el error del motor no le dice a la persona qué hacer.
 MENSAJE_DE_VOLUMEN_VIEJO = (
     "La base no tiene la tabla `users`: el volumen es anterior a las cuentas y "
-    "este proyecto no tiene migraciones. Recreá el volumen y volvé a sembrar: "
+    "este proyecto no tiene migraciones. Recrea el volumen y vuelve a sembrar: "
     "`docker compose down -v`, `docker compose up -d` y `python -m src.bootstrap` "
     "(con Podman, los mismos comandos con `podman compose`)."
 )
@@ -320,9 +320,9 @@ def _mensaje_de_admin_ocupado(usuario: Usuario) -> str:
     return (
         f"El nombre `{USERNAME_DEL_ADMINISTRADOR}` ya está tomado por una cuenta con "
         f"rol `{usuario.role}` y estado `{usuario.estado}`, que no es un administrador "
-        "aprobado: la semilla no la puede convertir. Recreá el volumen "
-        "(`docker compose down -v`, `docker compose up -d`) y volvé a sembrar, o "
-        "borrá esa cuenta de `users` y volvé a correr el arranque."
+        "aprobado: la semilla no la puede convertir. Recrea el volumen "
+        "(`docker compose down -v`, `docker compose up -d`) y vuelve a sembrar, o "
+        "borra esa cuenta de `users` y vuelve a correr el arranque."
     )
 
 

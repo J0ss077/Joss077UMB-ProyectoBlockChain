@@ -110,7 +110,7 @@ def test_req_30_el_arranque_falla_si_el_nombre_admin_ya_es_otra_cuenta(
     assert "rol `usuario`" in proceso.stderr
     assert "estado `pendiente`" in proceso.stderr
     assert "no es un administrador aprobado" in proceso.stderr
-    assert "Recreá el volumen" in proceso.stderr
+    assert "Recrea el volumen" in proceso.stderr
     assert "Traceback" not in proceso.stderr
 
 

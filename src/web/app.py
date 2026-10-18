@@ -422,8 +422,8 @@ def create_app(
             render_template(
                 "error.html",
                 titulo="Sin permiso",
-                encabezado="No tiene permiso para esta operación",
-                detalle="Su cuenta no tiene el rol que esta página exige.",
+                encabezado="No tienes permiso para esta operación",
+                detalle="Tu cuenta no tiene el rol que esta página exige.",
             ),
             403,
         )
@@ -448,7 +448,7 @@ def _secreto_de_sesion() -> str:
     if valor == SECRETO_DE_SESION_DE_LA_PLANTILLA:
         raise RuntimeError(
             f"{VARIABLE_DEL_SECRETO_DE_SESION} sigue siendo el valor de la plantilla "
-            "`.env.example`: reemplácela por una clave propia."
+            "`.env.example`: reemplázala por una clave propia."
         )
     return valor
 

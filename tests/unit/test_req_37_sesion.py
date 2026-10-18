@@ -37,7 +37,7 @@ def test_req_37_el_secreto_de_sesion_falta_y_lo_dice(monkeypatch, tmp_path):
         factory.session_secret()
     mensaje = str(error.value)
     assert factory.VARIABLE_DEL_SECRETO_DE_SESION in mensaje
-    assert "agregue" in mensaje and "`.env`" in mensaje
+    assert "agrega" in mensaje and "`.env`" in mensaje
 
 
 def test_req_37_la_contrasena_del_administrador_se_lee_del_entorno(monkeypatch):
@@ -53,7 +53,7 @@ def test_req_37_la_contrasena_del_administrador_falta_y_lo_dice(monkeypatch, tmp
         factory.admin_password()
     mensaje = str(error.value)
     assert factory.VARIABLE_DE_LA_CONTRASENA_DEL_ADMINISTRADOR in mensaje
-    assert "agregue" in mensaje and "`.env`" in mensaje
+    assert "agrega" in mensaje and "`.env`" in mensaje
 
 
 def test_req_37_el_secreto_de_sesion_de_plantilla_se_rechaza(monkeypatch):
@@ -70,7 +70,7 @@ def test_req_37_el_secreto_de_sesion_de_plantilla_se_rechaza(monkeypatch):
         factory.session_secret()
     assert factory.VARIABLE_DEL_SECRETO_DE_SESION in str(error.value)
     assert "plantilla" in str(error.value)
-    assert "reemplácela" in str(error.value)
+    assert "reemplázala" in str(error.value)
 
 
 def test_req_37_la_contrasena_de_plantilla_se_rechaza(monkeypatch):
@@ -83,7 +83,7 @@ def test_req_37_la_contrasena_de_plantilla_se_rechaza(monkeypatch):
         factory.admin_password()
     assert factory.VARIABLE_DE_LA_CONTRASENA_DEL_ADMINISTRADOR in str(error.value)
     assert "plantilla" in str(error.value)
-    assert "reemplácela" in str(error.value)
+    assert "reemplázala" in str(error.value)
 
 
 def test_req_37_el_respaldo_de_la_aplicacion_rechaza_el_secreto_de_plantilla(
