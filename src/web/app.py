@@ -263,7 +263,8 @@ def create_app(
                 bloques=bloques,
                 # Sólo se cuentan los cinco eslabones que dibuja la portada.
                 transacciones_por_bloque={
-                    bloque.id: len(chain.transactions.of_block(bloque.id)) for bloque in bloques[-5:]
+                    bloque.id: len(chain.transactions.of_block(bloque.id))
+                    for bloque in bloques[-5:]
                 },
                 en_el_pool=len(chain.transactions.pending()),
                 dictamen=chain.verify_chain(),

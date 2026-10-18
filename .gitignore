@@ -18,3 +18,6 @@ __pycache__/
 # Restos de intentar darle a `podman` un runtime escribible, que en este entorno
 # no sirve: `podman` necesita su almacén y sus espacios de nombres.
 .tmp-podman/
+
+# Artefactos del proceso de desarrollo (no del producto)
+.superpowers/
