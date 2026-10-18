@@ -17,15 +17,8 @@
             <span class="veredicto-icono" aria-hidden="true"><svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M8 16.5l5 5L24 11" /></svg></span>
             <div>
                 <p class="veredicto-titulo">La cadena es válida.</p>
-                <p>Cada hash coincide con su contenido y con el del bloque anterior.</p>
             </div>
         </section>
-        <h2 class="titulo-bloque">Qué se comprueba</h2>
-        <ol class="datos-clave">
-            <li><b>1 · El hash de cada bloque</b>Se vuelve a calcular con sus transacciones y debe ser igual al guardado.</li>
-            <li><b>2 · El hash previo</b>Cada bloque debe apuntar al hash del bloque anterior.</li>
-            <li><b>3 · El génesis</b>La cadena empieza en el índice cero, que apunta a sesenta y cuatro ceros.</li>
-        </ol>
         {% else %}
         <section class="veredicto veredicto-invalido" role="alert">
             <span class="veredicto-icono" aria-hidden="true"><svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M10 10l12 12M22 10L10 22" /></svg></span>
@@ -34,9 +27,8 @@
                 <p>El primer bloque que no encaja es el de índice <code>{{ dictamen.altered_block_index }}</code>.</p>
             </div>
         </section>
-        <div class="datos-clave datos-clave-dos">
-            <p><b>Qué significa</b>El bloque #{{ dictamen.altered_block_index }} ya no corresponde a su contenido o a su eslabón. Los que vienen después apuntan a un eslabón alterado, así que tampoco quedan respaldados.</p>
-            <p><b>Qué hacer</b>Las transacciones siguen listadas en los historiales, pero su integridad no se puede comprobar hasta restaurar la base desde un respaldo confiable.</p>
+        <div class="datos-clave">
+            <p><b>Qué hacer</b>Restaura la base desde un respaldo confiable.</p>
         </div>
         {% endif %}
     </main>

@@ -8,7 +8,7 @@
             <div>
                 <p class="antetitulo">Agrupar el pool</p>
                 <h1 class="titulo-pagina">Cerrar bloque</h1>
-                <p class="entradilla">Las transacciones del pool que siguen siendo válidas se confirman en un bloque nuevo, encadenado al hash del último.</p>
+                <p class="entradilla">Las transacciones pendientes se confirman en un bloque nuevo.</p>
             </div>
             <form method="post" action="/bloques">
                 <button class="boton boton-grande boton-primario" type="submit">Cerrar bloque</button>
@@ -51,11 +51,6 @@
             <p>Nadie propuso transacciones desde el último cierre.</p>
         </div>
         {% endif %}
-        <ol class="datos-clave">
-            <li><b>1 · Se revalida el pool</b>Cada transacción pendiente se vuelve a comprobar antes de entrar al bloque.</li>
-            <li><b>2 · Se calcula el hash</b>El hash del bloque nuevo cubre sus transacciones y el hash del anterior.</li>
-            <li><b>3 · Quedan confirmadas</b>Las transacciones del bloque pasan a confirmadas y cuentan en el saldo.</li>
-        </ol>
     </main>
     {% include "_panel_wallets.html" %}
 </div>

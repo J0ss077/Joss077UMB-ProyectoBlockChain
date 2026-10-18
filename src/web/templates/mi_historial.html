@@ -12,7 +12,6 @@
             <span class="veredicto-icono" aria-hidden="true"><svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M7 14.5l4.5 4.5L21 9.5" /></svg></span>
             <div>
                 <p class="veredicto-titulo">La cadena es válida: tu historial está respaldado.</p>
-                <p>Se recalculó la cadena completa y cada bloque coincide.</p>
             </div>
             <form method="get" action="/mi-historial"><button class="boton boton-tinta" type="submit">Verificar de nuevo</button></form>
         </div>
@@ -34,11 +33,7 @@
     </section>
     <section class="mosaico movimientos" aria-labelledby="titulo-mis-transacciones">
         <h2 class="titulo-bloque" id="titulo-mis-transacciones">Mis transacciones <span class="contador">{{ transacciones|length }}</span></h2>
-        {% if dictamen.valid %}
         <p class="ayuda">Todas las transacciones de tu wallet, con su estado. Las confirmadas muestran el índice del bloque que las agrupa.</p>
-        {% else %}
-        <p class="ayuda">El ledger las tiene registradas, pero su integridad no se pudo comprobar mientras la cadena no sea válida.</p>
-        {% endif %}
         {{ tabla(transacciones, wallet_id, indices_de_bloque=indices_de_bloque, vacio="Tu wallet todavía no tiene transacciones.") }}
     </section>
 </main>

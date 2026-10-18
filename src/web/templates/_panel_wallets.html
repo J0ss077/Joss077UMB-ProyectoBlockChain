@@ -3,9 +3,6 @@
 {% set con_nombres = con_nombres if con_nombres is defined else true %}
 <aside class="mosaico panel-wallets" aria-labelledby="titulo-wallets">
     <h2 class="titulo-bloque" id="titulo-wallets">Wallets <span class="contador">{{ wallets_del_panel|length }}</span></h2>
-    {% if not con_nombres %}
-    <p class="ayuda">En esta página el panel muestra sólo las claves: los nombres de las cuentas aprobadas no se listan junto a la cola.</p>
-    {% endif %}
     {% if wallets_del_panel %}
     <ul class="lista-wallets">
         {% for registrada in wallets_del_panel %}
