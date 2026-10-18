@@ -4,22 +4,22 @@ Guía de la interfaz del ledger transaccional. La dirección de arte es «Bloque
 
 ## Dónde vive
 
-| Archivo | Contenido |
-|---|---|
-| `src/web/static/css/tokens.css` | Punto de entrada: sólo `@import` de los archivos de tokens |
-| `src/web/static/css/tokens/fuentes.css` | `@font-face` de las fuentes alojadas |
-| `src/web/static/css/tokens/colores.css` | Paleta base, alias semánticos y tema oscuro |
-| `src/web/static/css/tokens/tipografia.css` | Familias, escala, pesos, interlineado y tracking |
-| `src/web/static/css/tokens/espacio.css` | Espaciado y medidas de layout |
-| `src/web/static/css/tokens/forma.css` | Radios, sombras y anillo de foco |
-| `src/web/static/css/tokens/movimiento.css` | Duraciones, curvas y fundido del cambio de tema |
-| `src/web/static/css/app.css` | Componentes y pantallas |
-| `src/web/static/css/animaciones.css` | Animaciones vistosas, todas dentro de `prefers-reduced-motion: no-preference` |
-| `src/web/static/js/tema.js` | Botón de tema claro/oscuro (revelado circular con View Transitions) |
-| `src/web/static/js/codigos.js` | Ventana con el código completo, códigos completos donde caben y montos sin ceros de más |
-| `src/web/static/js/animaciones.js` | Barra de carga, botones ocupados, cifras que cuentan, escaneo de la cadena, confeti |
-| `src/web/static/js/transaccion.js` | Emisor y receptor escritos por nombre o ID |
-| `src/web/static/fonts/` | Bricolage Grotesque y Geist Mono (woff2 variables) con su licencia OFL |
+| Archivo                                    | Contenido                                                                               |
+| ------------------------------------------ | --------------------------------------------------------------------------------------- |
+| `src/web/static/css/tokens.css`            | Punto de entrada: sólo `@import` de los archivos de tokens                              |
+| `src/web/static/css/tokens/fuentes.css`    | `@font-face` de las fuentes alojadas                                                    |
+| `src/web/static/css/tokens/colores.css`    | Paleta base, alias semánticos y tema oscuro                                             |
+| `src/web/static/css/tokens/tipografia.css` | Familias, escala, pesos, interlineado y tracking                                        |
+| `src/web/static/css/tokens/espacio.css`    | Espaciado y medidas de layout                                                           |
+| `src/web/static/css/tokens/forma.css`      | Radios, sombras y anillo de foco                                                        |
+| `src/web/static/css/tokens/movimiento.css` | Duraciones, curvas y fundido del cambio de tema                                         |
+| `src/web/static/css/app.css`               | Componentes y pantallas                                                                 |
+| `src/web/static/css/animaciones.css`       | Animaciones vistosas, todas dentro de `prefers-reduced-motion: no-preference`           |
+| `src/web/static/js/tema.js`                | Botón de tema claro/oscuro (revelado circular con View Transitions)                     |
+| `src/web/static/js/codigos.js`             | Ventana con el código completo, códigos completos donde caben y montos sin ceros de más |
+| `src/web/static/js/animaciones.js`         | Barra de carga, botones ocupados, cifras que cuentan, escaneo de la cadena, confeti     |
+| `src/web/static/js/transaccion.js`         | Emisor y receptor escritos por nombre o ID                                              |
+| `src/web/static/fonts/`                    | Bricolage Grotesque y Geist Mono (woff2 variables) con su licencia OFL                  |
 
 Los componentes usan siempre los **alias semánticos** (`--color-superficie`, `--color-texto-suave`…), nunca la paleta base, para que el tema oscuro funcione sin tocar cada regla.
 
@@ -32,7 +32,7 @@ Los componentes usan siempre los **alias semánticos** (`--color-superficie`, `-
 
 ## Contenido y tono
 
-- **Idioma:** español neutro. En el texto nuevo se tutea («Entra con la cuenta que aprobó un administrador», «Haz tu primer envío»). Los textos que fijan las pruebas o el servicio se respetan tal cual aunque usen «usted» («No se puede verificar su historial»).
+- **Idioma:** español neutro. La interfaz tutea, también en los dictámenes y en los mensajes de error («Entra con la cuenta que aprobó un administrador», «Haz tu primer envío», «No se puede verificar tu historial»). Los documentos y los comentarios van en impersonal, sin «tú», sin «vos» y sin «usted».
 - **Mensajes del dominio:** el motivo de un rechazo se muestra sin traducir ni adornar, en minúsculas como lo devuelve el dominio («el saldo disponible no alcanza»).
 - **Estados en pantalla:** «En el pool», «Confirmada», «Rechazada». El valor técnico (`pending`, `confirmed`, `rejected`) queda en el HTML que leen las pruebas.
 - **Cifras:** los montos llevan siempre ocho decimales (`300.00000000`) en Geist Mono.

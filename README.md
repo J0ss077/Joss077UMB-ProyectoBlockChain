@@ -56,8 +56,8 @@ macOS y Linux:
 .venv/bin/python -m pip install -r requirements.txt
 ```
 
-Si su instalación de Python no dejó `pip` dentro del entorno virtual, ejecute una vez
-`<venv> -m ensurepip --upgrade` y repita la instalación.
+Si la instalación de Python no dejó `pip` dentro del entorno virtual, se ejecuta
+una vez `<venv> -m ensurepip --upgrade` y se repite la instalación.
 
 ### 2. Crear el archivo `.env`
 
@@ -76,24 +76,24 @@ macOS y Linux:
 cp .env.example .env
 ```
 
-Genere una clave `MASTER_KEY` y reemplácela en `.env`: la de la plantilla es de
-relleno (32 bytes en cero con la forma válida de Fernet) y el lector la rechaza,
-así que sin cambiarla la aplicación falla al arrancar en vez de cifrar las llaves
-privadas con una clave publicada en el repositorio.
+Se genera una `MASTER_KEY` propia y se escribe en `.env` en lugar de la de la
+plantilla: la de la plantilla es de relleno (32 bytes en cero con la forma válida de
+Fernet) y el lector la rechaza, así que sin cambiarla la aplicación falla al arrancar
+en vez de cifrar las llaves privadas con una clave publicada en el repositorio.
 
 ```text
 <venv> -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 ```
 
-Revise también las otras dos variables del entorno: `SESSION_SECRET` firma la cookie
-de sesión (REQ-37) y `ADMIN_PASSWORD` es la contraseña del administrador que siembra
-el arranque. La plantilla trae valores de ejemplo y los lectores los rechazan: sin
-cambiarlos, la aplicación o el arranque fallan en cuanto leen el valor de plantilla.
-Sin cualquiera de las dos, también fallan, nombrando la variable que falta.
+Conviene revisar también las otras dos variables del entorno: `SESSION_SECRET` firma
+la cookie de sesión (REQ-37) y `ADMIN_PASSWORD` es la contraseña del administrador que
+siembra el arranque. La plantilla trae valores de ejemplo y los lectores los rechazan:
+sin cambiarlos, la aplicación o el arranque fallan en cuanto leen el valor de
+plantilla. Sin cualquiera de las dos, también fallan, nombrando la variable que falta.
 
-Revise que `POSTGRES_PORT` y el puerto de `DATABASE_URL` sean el mismo: el primero es
-el puerto que se publica en el equipo y el segundo es el que usa la aplicación para
-conectarse. Los valores de la plantilla funcionan tal cual.
+Conviene comprobar que `POSTGRES_PORT` y el puerto de `DATABASE_URL` sean el mismo: el
+primero es el puerto que se publica en el equipo y el segundo es el que usa la
+aplicación para conectarse. Los valores de la plantilla funcionan tal cual.
 
 El host de `DATABASE_URL` es `127.0.0.1` y no `localhost`, y no es un detalle: en
 Windows `localhost` puede resolverse primero a IPv6 (`::1`) mientras el contenedor
@@ -102,7 +102,7 @@ interfaces).
 
 Si después cambia `POSTGRES_PORT`, **hay que recrear el contenedor** para que publique
 el puerto nuevo: editar `.env` no lo recrea, el contenedor que ya está corriendo sigue
-con el puerto viejo. Vuelva a levantarlo con `docker compose up -d` (o `podman compose
+con el puerto viejo. Se levanta de nuevo con `docker compose up -d` (o `podman compose
 up -d`): Compose detecta que cambió la definición del servicio y lo recrea. El paso
 siguiente es el que levanta el contenedor por primera vez.
 
@@ -134,12 +134,12 @@ Para comprobar que el contenedor está sano:
 docker compose ps
 ```
 
-Si el contenedor no llega a estar sano, revise que `db/init.sql` sea legible por el
-usuario `postgres` del contenedor: el punto de entrada lee el guion con ese usuario y,
-si el archivo quedó con permisos `600` (un `git checkout` bajo un `umask` restrictivo
-los reproduce), falla con `psql: error: /docker-entrypoint-initdb.d/01_init.sql:
-Permission denied` y la base nunca arranca. En Linux o Podman se corrige con
-`chmod 644 db/init.sql`.
+Si el contenedor no llega a estar sano, conviene comprobar que `db/init.sql` sea
+legible por el usuario `postgres` del contenedor: el punto de entrada lee el guion con
+ese usuario y, si el archivo quedó con permisos `600` (un `git checkout` bajo un
+`umask` restrictivo los reproduce), falla con `psql: error:
+/docker-entrypoint-initdb.d/01_init.sql: Permission denied` y la base nunca arranca.
+En Linux o Podman se corrige con `chmod 644 db/init.sql`.
 
 ### 4. Crear el génesis y cargar los datos de demostración
 
@@ -164,7 +164,7 @@ volver a sembrar.
 <venv> -m src.web
 ```
 
-Abra `http://127.0.0.1:5000`. La portada muestra los conteos del ledger —wallets,
+Se abre `http://127.0.0.1:5000`. La portada muestra los conteos del ledger —wallets,
 bloques y transacciones— y, junto a cada wallet del panel lateral, su saldo disponible.
 La barra superior con los enlaces del administrador y el panel con las wallets están a
 la vista en todas las páginas de trabajo; el saldo solo se consulta en la portada. La
@@ -174,16 +174,16 @@ con `FLASK_DEBUG=1` en el entorno, solo para desarrollo local.
 ## Problemas conocidos
 
 **La aplicación parece quedarse pensando.** El arranque imprime al final, así que una
-conexión que espera se ve igual que un cuelgue. Si el arranque se queda callado, revise
-el host de `DATABASE_URL`: use `127.0.0.1` en lugar de `localhost`. En Windows
-`localhost` puede resolverse primero a IPv6 (`::1`) mientras el contenedor publica en
-IPv4 (el `compose.yaml` publica el puerto en `127.0.0.1`), y la conexión se queda
-esperando una dirección donde nadie escucha.
+conexión que espera se ve igual que un cuelgue. Si el arranque se queda callado, el
+primer sospechoso es el host de `DATABASE_URL`: conviene `127.0.0.1` en lugar de
+`localhost`. En Windows `localhost` puede resolverse primero a IPv6 (`::1`) mientras el
+contenedor publica en IPv4 (el `compose.yaml` publica el puerto en `127.0.0.1`), y la
+conexión se queda esperando una dirección donde nadie escucha.
 
 Desde esta versión, una conexión imposible falla en cinco segundos con el mensaje del
 motor en vez de esperar lo que decida el sistema operativo. El tiempo de espera lo pone
-`database_url()` cuando la cadena no lo trae; si usted pasa su propia cadena con otro
-`connect_timeout`, ese manda.
+`database_url()` cuando la cadena no lo trae; una cadena propia con otro
+`connect_timeout` manda sobre ese valor.
 
 ## La interfaz
 
@@ -320,7 +320,7 @@ de las wallets de la semilla.
 
 | Usuario         | Rol             | Wallet que maneja    | Contraseña                          |
 | --------------- | --------------- | -------------------- | ----------------------------------- |
-| `admin`         | `administrador` | ninguna              | la de `ADMIN_PASSWORD` en su `.env` |
+| `admin`         | `administrador` | ninguna              | la de `ADMIN_PASSWORD` en el `.env` |
 | `constituyente` | `usuario`       | la del constituyente | `demostracion`                      |
 | `fondo`         | `usuario`       | la del fondo         | `demostracion`                      |
 | `asociado1`     | `usuario`       | un asociado          | `demostracion`                      |
@@ -345,28 +345,29 @@ demostración tienen saldo disponible positivo.
 
 Con la base sembrada y la aplicación corriendo en `http://127.0.0.1:5000`:
 
-1. **La persona se registra.** Abra «Registrarme», elija un usuario que no exista (por
-   ejemplo `persona-demo`) y una contraseña de al menos ocho caracteres. La pantalla
-   dice que la cuenta está esperando aprobación y no abre sesión (REQ-30).
-2. **El administrador la aprueba.** Abra «Ingresar», entre con el usuario `admin` y la
-   contraseña de `ADMIN_PASSWORD`, y vaya a «Pendientes». La cuenta registrada
-   aparece con su usuario y su fecha; pulse «Aprobar». La aprobación crea su wallet y
-   le acredita el saldo de bienvenida de 1000 en un bloque nuevo (REQ-33).
+1. **La persona se registra.** Se abre «Registrarme», se elige un usuario que no
+   exista (por ejemplo `persona-demo`) y una contraseña de al menos ocho caracteres.
+   La pantalla dice que la cuenta está esperando aprobación y no abre sesión (REQ-30).
+2. **El administrador la aprueba.** Se abre «Ingresar», se entra con el usuario
+   `admin` y la contraseña de `ADMIN_PASSWORD`, y se va a «Pendientes». La cuenta
+   registrada aparece con su usuario y su fecha; se pulsa «Aprobar». La aprobación
+   crea su wallet y le acredita el saldo de bienvenida de 1000 en un bloque nuevo
+   (REQ-33).
 3. **La persona ingresa** con el usuario y la contraseña del registro. Su tablero
    muestra el saldo de bienvenida (`1000.00000000`) y el crédito confirmado.
-4. **Manda un envío.** En el formulario del tablero escriba como destinatario el
+4. **Manda un envío.** En el formulario del tablero se escribe como destinatario el
    usuario de una cuenta de demostración, por ejemplo `fondo`, y un monto menor que su
    saldo, por ejemplo `125.00000000`. El envío queda pendiente y el saldo disponible
    baja a `875.00000000`.
 5. **La persona ve el envío en su historial.** «Mi historial» lista la transacción con
    estado `pending` y sin bloque, debajo del dictamen de la cadena.
-6. **El administrador agrupa el bloque.** Cierre la sesión de la persona, ingrese como
-   `admin`, abra «Cerrar bloque» y agrupe el pool. El envío queda confirmado en un
-   eslabón nuevo, junto con las pendientes que ya tenía la semilla.
+6. **El administrador agrupa el bloque.** Se cierra la sesión de la persona, se
+   ingresa como `admin`, se abre «Cerrar bloque» y se agrupa el pool. El envío queda
+   confirmado en un eslabón nuevo, junto con las pendientes que ya tenía la semilla.
 7. **La persona vuelve a entrar** y en «Mi historial» ve la misma transacción con
    estado `confirmed` y el índice del bloque que la agrupa.
 8. **Verifica su historial en la misma página.** Arriba del historial, el dictamen
-   dice «La cadena es válida: su historial está respaldado» y la tabla lista todas sus
+   dice «La cadena es válida: tu historial está respaldado» y la tabla lista todas sus
    transacciones (REQ-39). El enlace viejo «Mi verificación» redirige a esta página.
 9. **Opcional: el administrador verifica la cadena completa** en «Verificar cadena».
    El dictamen es el mismo, pero sobre todo el ledger.
@@ -411,7 +412,7 @@ La suite incluye las pruebas de reglas, las de integración contra PostgreSQL y
 que cada uno de los 39 requerimientos tiene una prueba `test_req_NN_` (REQ-17, REQ-20
 y REQ-23 incluidos).
 
-Si prefiere correr solo la integración:
+Para correr solo la integración:
 
 ```text
 <venv> -m pytest tests/integration -v
@@ -444,13 +445,13 @@ docker compose exec postgres psql -U blockchain_user -d blockchain_db -c "WITH o
 ```
 
 Con Podman, `podman compose exec postgres psql ...` con el mismo resto del comando. Si
-tiene `psql` instalado, el equivalente es
+`psql` está instalado, el equivalente es
 `psql "$DATABASE_URL" -c "WITH objetivo AS (...) UPDATE ...;"` (en PowerShell,
 `psql $env:DATABASE_URL -c "..."`).
 
-2. Inicie sesión como administrador y abra `http://127.0.0.1:5000/verificar` en el
-   navegador. La ruta exige administrador (REQ-38): sin sesión redirige al ingreso, así
-   que un `curl` anónimo no sirve para esta comprobación. La cuenta `admin` y su
+2. Se inicia sesión como administrador y se abre `http://127.0.0.1:5000/verificar` en
+   el navegador. La ruta exige administrador (REQ-38): sin sesión redirige al ingreso,
+   así que un `curl` anónimo no sirve para esta comprobación. La cuenta `admin` y su
    contraseña están en «Las cuentas de demostración».
 
 **Resultado esperado.** La página dice "La cadena no es válida" y muestra el índice
@@ -459,7 +460,7 @@ verificación recalcula el hash de cada bloque con sus transacciones y lo compar
 el guardado (REQ-10), y no escribe nada (REQ-22).
 
 La alteración deja la base modificada a propósito. Para volver a los datos de
-demostración, borre el volumen y vuelva a sembrar: `docker compose down -v`,
+demostración se borra el volumen y se vuelve a sembrar: `docker compose down -v`,
 `docker compose up -d` (o con Podman) y `<venv> -m src.bootstrap`.
 
 ## Sabotaje guiado
@@ -571,22 +572,22 @@ docker compose up -d
 <venv> -m src.bootstrap
 ```
 
-**Deshacer la alteración de la demostración.** La alteración a mano del apartado anterior
-cambia una fila sin pasar por la cadena, y la aplicación no tiene una operación que la
-deshaga: el camino de vuelta es el reinicio limpio de arriba —borrar el volumen, `up` y
-`<venv> -m src.bootstrap`—. Si lo que quiere es ver el dictamen sin ensuciar la
-demostración, `tests/integration/test_req_10_alteracion.py` hace la misma alteración
-sobre una base desechable.
+**Deshacer la alteración de la demostración.** La alteración a mano del apartado
+anterior cambia una fila sin pasar por la cadena, y la aplicación no tiene una operación
+que la deshaga: el camino de vuelta es el reinicio limpio de arriba —borrar el volumen,
+`up` y `<venv> -m src.bootstrap`—. Para ver el dictamen sin ensuciar la demostración,
+`tests/integration/test_req_10_alteracion.py` hace la misma alteración sobre una base
+desechable.
 
 **Qué se puede borrar sin miedo.** Nada de esto está versionado (`.gitignore`), así que
 borrarlo no ensucia el repositorio:
 
-| Ruta               | Qué es                                                            | Si la borra                                                                                              |
-| ------------------ | ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| `.venv/`           | El entorno virtual con las dependencias fijadas                   | Se recrea con `python -m venv .venv` y la instalación de `requirements.txt`.                             |
-| `.reference/`      | El extracto del documento del eje y el material de consulta       | No rompe nada: no lo importan el código ni las pruebas. Se pierde la copia local del extracto del eje.   |
-| `.legacy-project/` | El prototipo anterior, que solo se conserva como referencia       | No rompe nada: no lo importa nadie. Se pierde el prototipo anterior, que no es el entregable.            |
-| `.env`             | Los secretos locales: `DATABASE_URL`, `POSTGRES_*` y `MASTER_KEY` | Obliga a copiar `.env.example` otra vez y a generar una `MASTER_KEY` nueva; lea la advertencia de abajo. |
+| Ruta               | Qué es                                                            | Si se borra                                                                                                        |
+| ------------------ | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `.venv/`           | El entorno virtual con las dependencias fijadas                   | Se recrea con `python -m venv .venv` y la instalación de `requirements.txt`.                                       |
+| `.reference/`      | El extracto del documento del eje y el material de consulta       | No rompe nada: no lo importan el código ni las pruebas. Se pierde la copia local del extracto del eje.             |
+| `.legacy-project/` | El prototipo anterior, que solo se conserva como referencia       | No rompe nada: no lo importa nadie. Se pierde el prototipo anterior, que no es el entregable.                      |
+| `.env`             | Los secretos locales: `DATABASE_URL`, `POSTGRES_*` y `MASTER_KEY` | Obliga a copiar `.env.example` otra vez y a generar una `MASTER_KEY` nueva; conviene leer la advertencia de abajo. |
 
 **Antes de borrar `.env`.** `.env` guarda la `MASTER_KEY` con la que se cifra el material
 privado de las wallets (decisión 3 del diseño). Con otra clave, las wallets ya guardadas
