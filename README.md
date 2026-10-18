@@ -19,8 +19,8 @@ está implementado y probado"; este repositorio es la evidencia de ese párrafo.
 
 Toda decisión que el eje no fija (curva, cifrado, contenido del hash, datos de
 demostración) está declarada y numerada en
-`docs/superpowers/specs/2026-10-10-blockchain-transaccional-design.md`, y el orden en
-que se construyó, en `docs/superpowers/plans/2026-10-10-blockchain-transaccional-plan.md`.
+`docs/specs/2026-10-10-blockchain-transaccional-design.md`, y el orden en
+que se construyó, en `docs/plans/2026-10-10-blockchain-transaccional-plan.md`.
 La explicación de cómo se ejecuta cada caso de uso está en
 `docs/recorrido-de-casos-de-uso.md`.
 
@@ -565,7 +565,6 @@ borrarlo no ensucia el repositorio:
 | ------------------ | ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
 | `.venv/`           | El entorno virtual con las dependencias fijadas                   | Se recrea con `python -m venv .venv` y la instalación de `requirements.txt`.                              |
 | `.reference/`      | El extracto del documento del eje y el material de consulta       | No rompe nada: no lo importan el código ni las pruebas. Se pierde la copia local del extracto del eje.    |
-| `.superpowers/`    | Los planes y los informes de las tareas, sin versionar            | No rompe nada: no lo importa nadie. Se pierden los planes y los informes, que no están en el repositorio. |
 | `.legacy-project/` | El prototipo anterior, que solo se conserva como referencia       | No rompe nada: no lo importa nadie. Se pierde el prototipo anterior, que no es el entregable.             |
 | `.env`             | Los secretos locales: `DATABASE_URL`, `POSTGRES_*` y `MASTER_KEY` | Obliga a copiar `.env.example` otra vez y a generar una `MASTER_KEY` nueva; lea la advertencia de abajo.  |
 

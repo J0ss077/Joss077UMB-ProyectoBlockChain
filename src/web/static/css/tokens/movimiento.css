@@ -1,0 +1,33 @@
+/* Movimiento: duraciones y curvas compartidas. Con `prefers-reduced-motion` las
+   duraciones pasan a casi cero, así que cualquier transición escrita con estos tokens
+   respeta la preferencia sin código adicional. */
+
+:root {
+    --duracion-instante: 120ms; /* hover, foco */
+    --duracion-corta: 200ms; /* botones, píldoras, tema */
+    --duracion-media: 320ms; /* paneles, avisos */
+    --duracion-larga: 500ms; /* entrada de vistas, cadena */
+
+    --curva-salida: cubic-bezier(0.2, 0.8, 0.2, 1);
+    --curva-entrada-salida: cubic-bezier(0.65, 0, 0.35, 1);
+    --curva-resorte: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    :root {
+        --duracion-instante: 1ms;
+        --duracion-corta: 1ms;
+        --duracion-media: 1ms;
+        --duracion-larga: 1ms;
+    }
+}
+
+/* El cambio de tema funde los colores en vez de saltar. La clase la pone tema.js
+   sólo durante el cambio, para no ralentizar ningún otro repintado. */
+:root.cambiando-tema,
+:root.cambiando-tema * {
+    transition:
+        background-color var(--duracion-corta) var(--curva-salida),
+        border-color var(--duracion-corta) var(--curva-salida),
+        color var(--duracion-corta) var(--curva-salida) !important;
+}

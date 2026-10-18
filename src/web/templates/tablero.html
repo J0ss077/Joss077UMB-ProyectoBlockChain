@@ -1,50 +1,75 @@
-{% extends "base.html" %} {% from "_macros.html" import dato, copiar %} {% from "_transacciones.html" import tabla %} {% block titulo %}Mi tablero{% endblock %} {% block encabezado %}Mi tablero{% endblock %} {% block contenido %}
-<p><strong>Cuenta:</strong> {{ g.user.username }}</p>
-<p><strong>Mi wallet:</strong> {{ dato(wallet_id) }} {{ copiar(wallet_id, "el identificador de mi wallet") }}</p>
-<p><strong>Saldo disponible:</strong> <code>{{ "%.8f"|format(saldo) }}</code></p>
-
-<h2>Enviar</h2>
-<form method="post" action="/mi-envio">
-    {# El emisor no está en el formulario: sale de la sesión (REQ-34). #}
-    <p>
-        <label>Destinatario <input name="destinatario" autocomplete="off" spellcheck="false" required /></label>
-    </p>
-    <p class="ayuda">El nombre de usuario del destinatario o, si lo tiene a mano, el identificador de su wallet.</p>
-    <p>
-        <label>Monto <input name="amount" value="10.00000000" /></label>
-    </p>
-    <button type="submit">Enviar</button>
-</form>
-
-{% if error_formulario %}
-<div class="motivo">
-    <p><strong>motivo:</strong> {{ error_formulario }}</p>
-</div>
-{% endif %} {% if resultado %} {% if resultado.accepted %}
-<div class="exito">
-    <p>El envío entró al pool y espera que el administrador lo agrupe en un bloque.</p>
-    {% if resultado.stored %}
-    <p><strong>identificador:</strong> {{ dato(resultado.stored.id) }} {{ copiar(resultado.stored.id, "el identificador") }}</p>
-    <p><strong>estado:</strong> <code>{{ resultado.stored.status }}</code></p>
-    {% endif %}
-</div>
-{% else %}
-<div class="motivo">
-    <p>El envío no entró al pool.</p>
-    <p><strong>motivo:</strong> {{ resultado.reason }}</p>
-</div>
-{% endif %} {% endif %}
-
-<h2>Mis transacciones</h2>
-{{ tabla(transacciones, motivo_por_transaccion, "Su wallet todavía no tiene transacciones.") }}
-
-<h2>Más</h2>
-<ul>
-    {# Una sola página reúne el historial y el dictamen de la verificación; por eso una sola entrada. #}
-    <li><a href="/mi-historial">Mi historial y la verificación</a></li>
-</ul>
-{# La barra ya tiene el botón de salida; acá queda el enlace del final del tablero. #}
-<form method="post" action="{{ url_for('salir') }}">
-    <button type="submit">Salir</button>
-</form>
+{% extends "base.html" %}
+{% from "_macros.html" import dato, copiar, identidad, cantidad %}
+{% from "_transacciones.html" import tabla with context %}
+{% from "_estado.html" import estado as pildora %}
+{% block titulo %}Mi tablero{% endblock %}
+{% block cuerpo %}
+{# Lo que está en el pool a favor y en contra, sumado de las mismas filas de la tabla: el saldo disponible ya descuenta lo que la wallet envió y todavía no se confirma. #}
+{% set pendientes = transacciones|selectattr("status", "equalto", "pending")|list %}
+{% set por_confirmar = pendientes|selectattr("receiver_id", "equalto", wallet_id)|map(attribute="amount")|sum %}
+{% set reservado = pendientes|selectattr("sender_id", "equalto", wallet_id)|map(attribute="amount")|sum %}
+<main id="contenido" tabindex="-1" class="rejilla-tablero">
+    <section class="mosaico saldo-principal" aria-labelledby="titulo-saldo">
+        <div>
+            <p class="saludo">Hola, {{ g.user.username }}</p>
+            <p class="saldo-etiqueta" id="titulo-saldo">Saldo disponible</p>
+            <p class="saldo-cifra">{{ cantidad(saldo) }}</p>
+            {% if reservado %}<p class="saldo-nota">−{{ cantidad(reservado) }} reservado por tus envíos en el pool</p>{% endif %}
+        </div>
+        {% if por_confirmar %}<span class="chip-lima">+{{ cantidad(por_confirmar) }} por confirmar</span>{% endif %}
+        <div class="mi-wallet">
+            <span class="saldo-etiqueta">Mi wallet</span>
+            <span class="codigo">{{ dato(wallet_id) }}{{ copiar(wallet_id, "el identificador de mi wallet") }}</span>
+        </div>
+    </section>
+    <section class="mosaico envio" aria-labelledby="titulo-envio">
+        <h1 class="titulo-bloque" id="titulo-envio">Enviar</h1>
+        {% if error_formulario %}
+        <div class="motivo" role="alert">
+            <p><strong>motivo:</strong> {{ error_formulario }}</p>
+        </div>
+        {% endif %}
+        {% if resultado %}
+        {% if resultado.accepted %}
+        <div class="exito resultado" role="status">
+            <p>El envío entró al pool y espera que el administrador lo agrupe en un bloque.</p>
+            {% if resultado.stored %}
+            <dl class="ficha">
+                <dt>Para</dt>
+                <dd>{{ identidad(resultado.stored.receiver_id, nombre_de_wallet(resultado.stored.receiver_id), "el identificador del destinatario") }}</dd>
+                <dt>Transacción</dt>
+                <dd><span class="codigo">{{ dato(resultado.stored.id) }}{{ copiar(resultado.stored.id, "el identificador de la transacción") }}</span></dd>
+                <dt>Estado</dt>
+                <dd>{{ pildora(resultado.stored.status) }}</dd>
+            </dl>
+            {% endif %}
+        </div>
+        {% else %}
+        <div class="motivo resultado" role="alert">
+            <p>El envío no entró al pool.</p>
+            <p><strong>motivo:</strong> {{ resultado.reason }}</p>
+        </div>
+        {% endif %}
+        {% endif %}
+        <form class="formulario" method="post" action="/mi-envio">
+            {# El emisor no está en el formulario: sale de la sesión (REQ-34). #}
+            <div class="campo">
+                <label for="destinatario">Destinatario</label>
+                <input id="destinatario" name="destinatario" autocomplete="off" spellcheck="false" aria-describedby="ayuda-destinatario" required />
+                <p class="ayuda" id="ayuda-destinatario">El nombre de usuario o, si lo tienes a mano, el identificador de su wallet.</p>
+            </div>
+            <div class="campo">
+                <label for="monto">Monto</label>
+                <input id="monto" name="amount" value="10" inputmode="decimal" aria-describedby="ayuda-monto" />
+                <p class="ayuda" id="ayuda-monto">Tienes {{ cantidad(saldo) }} disponibles.</p>
+            </div>
+            <button class="boton boton-grande boton-primario" type="submit">Enviar</button>
+        </form>
+    </section>
+    <section class="mosaico movimientos" aria-labelledby="titulo-movimientos">
+        <h2 class="titulo-bloque" id="titulo-movimientos">Mis transacciones <span class="contador">{{ transacciones|length }}</span></h2>
+        {{ tabla(transacciones, wallet_id, motivo_por_transaccion, "Su wallet todavía no tiene transacciones.") }}
+    </section>
+</main>
+{# Mi historial —que reúne el historial y el dictamen de la verificación— tiene su única entrada en la navegación de la barra. #}
 {% endblock %}

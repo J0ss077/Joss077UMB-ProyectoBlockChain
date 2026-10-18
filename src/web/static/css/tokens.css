@@ -1,0 +1,7 @@
+/* Punto de entrada de los tokens del sistema de diseño: sólo importaciones. */
+@import url("tokens/fuentes.css");
+@import url("tokens/colores.css");
+@import url("tokens/tipografia.css");
+@import url("tokens/espacio.css");
+@import url("tokens/forma.css");
+@import url("tokens/movimiento.css");

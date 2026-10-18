@@ -5,7 +5,7 @@ el servicio depende de estos nombres —y no de `psycopg`—, y el adaptador que
 cumple vive en `postgres.py`. La lista de pendientes se devuelve como `Sequence`,
 igual que las listas de los repositorios del ledger.
 """
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from typing import Protocol
 from uuid import UUID
 
@@ -24,6 +24,8 @@ class RepositorioDeUsuarios(Protocol):
     def get(self, id: UUID) -> Usuario | None: ...
 
     def list_pendientes(self) -> Sequence[Usuario]: ...
+
+    def nombres_por_wallet(self) -> Mapping[UUID, str]: ...
 
     def aprobar(self, id: UUID, wallet_id: UUID) -> Usuario | None: ...
 

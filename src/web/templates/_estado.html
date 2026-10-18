@@ -1,0 +1,6 @@
+{# Píldora del estado de una transacción, con el texto en español. Sólo para las tablas cuyo marcado no fijan las pruebas: en las que sí, la celda queda `<td><code>pending</code></td>` y la píldora la dibuja el CSS. #}
+{% macro estado(valor) -%}
+{%- set clave = valor|string -%}
+{%- set textos = {"pending": "En el pool", "confirmed": "Confirmada", "rejected": "Rechazada"} -%}
+<span class="pildora pildora-{{ clave }}">{{ textos.get(clave, clave) }}</span>
+{%- endmacro %}

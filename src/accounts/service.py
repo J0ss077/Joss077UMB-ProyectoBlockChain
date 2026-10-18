@@ -12,7 +12,7 @@ contraseña equivocada da el mismo mensaje exista o no el usuario (REQ-32).
 """
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from contextlib import AbstractContextManager
 from datetime import UTC, datetime
 from typing import Protocol
@@ -205,6 +205,16 @@ class Cuentas:
         """
         with self._transaction() as actual:
             return actual.usuarios.get_by_username(username)
+
+    def nombres_por_wallet(self) -> Mapping[UUID, str]:
+        """El nombre de usuario de cada wallet con dueño, para mostrarlo junto al código.
+
+        Es una lectura de presentación: no escribe y la transacción se cierra sin
+        confirmar, igual que `por_id`. Quien la use decide qué nombres mostrar; el
+        tablero del usuario común filtra a sus contrapartes (REQ-35).
+        """
+        with self._transaction() as actual:
+            return actual.usuarios.nombres_por_wallet()
 
     def aprobar(self, id: UUID) -> Usuario:
         """Abre la cuenta: wallet, saldo de bienvenida y estado en una sola transacción.

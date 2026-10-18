@@ -1,0 +1,19 @@
+/* Fuentes alojadas en el repositorio (licencia SIL OFL 1.1, ver static/fonts/OFL-*.txt).
+   Son variables: un solo archivo cubre todos los pesos que usa la interfaz, y
+   `font-display: swap` deja leer el texto con la fuente del sistema mientras cargan. */
+
+@font-face {
+    font-family: "Bricolage Grotesque";
+    src: url("../../fonts/bricolage-grotesque-variable.woff2") format("woff2");
+    font-weight: 200 800;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Geist Mono";
+    src: url("../../fonts/geist-mono-variable.woff2") format("woff2");
+    font-weight: 100 900;
+    font-style: normal;
+    font-display: swap;
+}

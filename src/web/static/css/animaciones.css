@@ -1,0 +1,776 @@
+/* Animaciones vistosas. Todo lo de este archivo vive dentro de
+   `prefers-reduced-motion: no-preference`: con movimiento reducido la interfaz es la
+   misma, quieta. Lo que necesita JavaScript (contadores, escaneo, confeti, ripple,
+   inclinación, revelado del tema) lo arma animaciones.js, que también se calla con
+   la preferencia. Sólo se anima transform, opacity, filter, clip-path y fondos. */
+
+@media (prefers-reduced-motion: no-preference) {
+    /* ── Entradas más amplias ─────────────────────────────────────────── */
+    @keyframes aparecer {
+        from {
+            opacity: 0;
+            transform: translateY(28px) scale(0.97);
+            filter: blur(6px);
+        }
+    }
+    @keyframes encender {
+        0% {
+            opacity: 0;
+            transform: scale(0.6) translateY(16px);
+            filter: blur(4px);
+        }
+        60% {
+            opacity: 1;
+            transform: scale(1.06);
+            filter: none;
+        }
+    }
+    @keyframes sellar {
+        0% {
+            opacity: 0;
+            transform: scale(0.2) rotate(-40deg);
+        }
+        60% {
+            opacity: 1;
+            transform: scale(1.18) rotate(6deg);
+        }
+        80% {
+            transform: scale(0.94) rotate(-2deg);
+        }
+    }
+
+    /* ── Fondo vivo: dos auroras de la marca que derivan detrás de las tarjetas ── */
+    body::before {
+        content: "";
+        position: fixed;
+        inset: -25%;
+        z-index: -1;
+        pointer-events: none;
+        background:
+            radial-gradient(38% 32% at 18% 22%, color-mix(in srgb, var(--color-acento) 16%, transparent), transparent 70%),
+            radial-gradient(30% 28% at 82% 70%, color-mix(in srgb, var(--color-lima) 22%, transparent), transparent 70%),
+            radial-gradient(26% 24% at 60% 12%, color-mix(in srgb, var(--color-cadena-2) 12%, transparent), transparent 70%);
+        animation: deriva 28s var(--curva-entrada-salida) infinite alternate;
+    }
+    @keyframes deriva {
+        33% {
+            transform: translate(6%, 4%) rotate(8deg) scale(1.05);
+        }
+        66% {
+            transform: translate(-5%, 7%) rotate(-6deg) scale(0.96);
+        }
+        100% {
+            transform: translate(3%, -6%) rotate(4deg) scale(1.08);
+        }
+    }
+
+    /* ── Transición entre páginas (View Transitions entre documentos) ─────── */
+    @view-transition {
+        navigation: auto;
+    }
+    .barra-superior {
+        view-transition-name: barra;
+    }
+    .navegacion a[aria-current="page"] {
+        view-transition-name: pestana-activa;
+    }
+    ::view-transition-old(root) {
+        animation: vt-salir 260ms var(--curva-entrada-salida) both;
+    }
+    ::view-transition-new(root) {
+        animation: vt-entrar 560ms var(--curva-salida) both;
+    }
+    ::view-transition-group(pestana-activa) {
+        animation-duration: 520ms;
+        animation-timing-function: var(--curva-resorte);
+    }
+    @keyframes vt-salir {
+        to {
+            opacity: 0;
+            transform: translateY(-14px) scale(0.98);
+            filter: blur(8px);
+        }
+    }
+    @keyframes vt-entrar {
+        from {
+            opacity: 0;
+            transform: translateY(32px) scale(1.015);
+            filter: blur(10px);
+        }
+    }
+    /* El cambio de tema se revela en un círculo que crece desde el botón; mientras
+       dura, nada más tiene nombre para que la página entera cambie de una vez. */
+    :root.revelando-tema .barra-superior,
+    :root.revelando-tema .navegacion a {
+        view-transition-name: none;
+    }
+    :root.revelando-tema::view-transition-old(root) {
+        animation: none;
+    }
+    :root.revelando-tema::view-transition-new(root) {
+        animation: revelar-tema 720ms var(--curva-entrada-salida) both;
+    }
+    @keyframes revelar-tema {
+        from {
+            clip-path: circle(0 at var(--revelar-x, 50%) var(--revelar-y, 0));
+        }
+        to {
+            clip-path: circle(var(--revelar-r, 150vmax) at var(--revelar-x, 50%) var(--revelar-y, 0));
+        }
+    }
+    .alternar-tema svg {
+        transition: transform 600ms var(--curva-resorte);
+    }
+    .alternar-tema:hover svg {
+        transform: rotate(-25deg) scale(1.12);
+    }
+    .alternar-tema.girando svg {
+        animation: girar-icono 700ms var(--curva-resorte);
+    }
+    @keyframes girar-icono {
+        from {
+            transform: rotate(-200deg) scale(0.3);
+        }
+    }
+
+    /* ── Barra de carga arriba de la página ─────────────────────────────── */
+    .barra-carga {
+        position: fixed;
+        inset: 0 0 auto;
+        z-index: 100;
+        height: 3px;
+        pointer-events: none;
+        transform: scaleX(0);
+        transform-origin: left;
+        background: linear-gradient(90deg, var(--color-acento), var(--color-lima), var(--color-acento));
+        background-size: 200% 100%;
+        box-shadow: 0 0 12px var(--color-lima);
+        opacity: 0;
+    }
+    .barra-carga.activa {
+        opacity: 1;
+        animation:
+            cargar 2.4s cubic-bezier(0.1, 0.7, 0.2, 1) forwards,
+            fluir 900ms linear infinite;
+    }
+    @keyframes cargar {
+        to {
+            transform: scaleX(0.88);
+        }
+    }
+    @keyframes fluir {
+        to {
+            background-position: -200% 0;
+        }
+    }
+
+    /* ── Títulos que suben palabra por palabra ─────────────────────────── */
+    .palabra {
+        display: inline-block;
+        overflow: clip;
+        overflow-clip-margin: 0.2em;
+        vertical-align: bottom;
+        padding-bottom: 0.06em;
+    }
+    .palabra > span {
+        display: inline-block;
+        animation: subir-palabra 760ms var(--curva-salida) both;
+        animation-delay: calc(var(--i) * 70ms + 80ms);
+    }
+    @keyframes subir-palabra {
+        from {
+            transform: translateY(110%) rotate(6deg);
+            opacity: 0;
+        }
+    }
+
+    /* ── Tarjetas: foco de luz que sigue al puntero ────────────────────── */
+    .con-luz {
+        --luz: color-mix(in srgb, var(--color-acento) 10%, transparent);
+        background-image: radial-gradient(
+            520px circle at var(--mx, -999px) var(--my, -999px),
+            var(--luz),
+            transparent 55%
+        );
+    }
+    .metrica-acento.con-luz,
+    .metrica-lima.con-luz,
+    .saldo-principal.con-luz,
+    .eslabon-cadena.es-ultimo.con-luz {
+        --luz: color-mix(in srgb, var(--reflejo) 80%, transparent);
+    }
+
+    /* Inclinación 3D (la pone animaciones.js con --rx/--ry). */
+    .inclinable {
+        transform: perspective(900px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)) translateZ(0);
+        transition: transform 500ms var(--curva-salida);
+        will-change: transform;
+    }
+    .inclinable.siguiendo {
+        transition: transform 80ms linear;
+    }
+
+    /* ── Botones: brillo al pasar, imán, onda al presionar y ocupado ─────── */
+    .boton {
+        position: relative;
+        overflow: hidden;
+        isolation: isolate;
+        transition:
+            translate 400ms var(--curva-resorte),
+            transform var(--duracion-corta) var(--curva-salida),
+            background-color var(--duracion-corta) var(--curva-salida),
+            box-shadow var(--duracion-media) var(--curva-salida);
+    }
+    .boton-primario::before,
+    .boton-lima::before,
+    .boton-tinta::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        background: linear-gradient(110deg, transparent 30%, var(--reflejo) 50%, transparent 70%);
+        transform: translateX(-120%);
+        transition: transform 700ms var(--curva-salida);
+    }
+    .boton-primario:hover::before,
+    .boton-lima:hover::before,
+    .boton-tinta:hover::before {
+        transform: translateX(120%);
+    }
+    .boton-primario:hover {
+        box-shadow: 0 10px 28px -8px color-mix(in srgb, var(--color-acento) 70%, transparent);
+    }
+    .boton-lima:hover {
+        box-shadow: 0 10px 28px -8px color-mix(in srgb, var(--color-lima) 90%, transparent);
+    }
+    .onda {
+        position: absolute;
+        z-index: -1;
+        width: 12px;
+        height: 12px;
+        margin: -6px 0 0 -6px;
+        border-radius: 50%;
+        background: currentColor;
+        opacity: 0.35;
+        pointer-events: none;
+        animation: onda 650ms var(--curva-salida) forwards;
+    }
+    @keyframes onda {
+        to {
+            transform: scale(40);
+            opacity: 0;
+        }
+    }
+    .boton.ocupado {
+        cursor: progress;
+        background-image: repeating-linear-gradient(
+            -45deg,
+            color-mix(in srgb, var(--reflejo) 45%, transparent) 0 10px,
+            transparent 10px 20px
+        );
+        background-size: 28px 28px;
+        animation: rayas 600ms linear infinite;
+    }
+    .boton.ocupado::after {
+        content: "";
+        width: 16px;
+        height: 16px;
+        margin-left: var(--espacio-1);
+        border: 2.5px solid currentColor;
+        border-right-color: transparent;
+        border-radius: 50%;
+        animation: girar 650ms linear infinite;
+    }
+    @keyframes rayas {
+        to {
+            background-position: 28px 0;
+        }
+    }
+    @keyframes girar {
+        to {
+            transform: rotate(1turn);
+        }
+    }
+    /* "Minando": mientras se cierra el bloque, el texto del botón baraja hexadecimales. */
+    .boton.minando {
+        font-family: var(--fuente-mono);
+        letter-spacing: 0.02em;
+    }
+
+    /* ── Cadena de la portada: datos que viajan por el cable, pool que marcha ── */
+    .union-cadena {
+        background:
+            linear-gradient(90deg, transparent 0 40%, var(--color-lima) 50%, transparent 60% 100%) 0 0 / 300% 100% no-repeat,
+            linear-gradient(90deg, var(--color-cadena-1), var(--color-cadena-2));
+        animation: paquete 1.8s linear infinite;
+    }
+    .union-cadena:nth-child(4) { animation-delay: -0.3s; }
+    .union-cadena:nth-child(6) { animation-delay: -0.6s; }
+    .union-cadena:nth-child(8) { animation-delay: -0.9s; }
+    .union-cadena:nth-child(10) { animation-delay: -1.2s; }
+    @keyframes paquete {
+        from {
+            background-position: 150% 0, 0 0;
+        }
+        to {
+            background-position: -50% 0, 0 0;
+        }
+    }
+    .eslabon-cadena.es-ultimo {
+        animation:
+            encender var(--duracion-larga) var(--curva-salida) both,
+            respirar 2.8s var(--curva-entrada-salida) 600ms infinite;
+    }
+    @keyframes respirar {
+        50% {
+            box-shadow:
+                0 0 0 6px color-mix(in srgb, var(--color-lima) 35%, transparent),
+                0 12px 36px -6px var(--color-lima);
+        }
+    }
+    .pool-cadena:not(.vacio-pool) {
+        border-color: transparent;
+        background:
+            linear-gradient(var(--color-superficie), var(--color-superficie)) padding-box,
+            repeating-linear-gradient(90deg, var(--color-pendiente) 0 8px, transparent 8px 14px) border-box;
+        background-size: auto, 28px 100%;
+        animation: marchar 1s linear infinite;
+    }
+    .pool-cadena:not(.vacio-pool) b {
+        animation: latido-numero 1.6s var(--curva-entrada-salida) infinite;
+    }
+    @keyframes marchar {
+        to {
+            background-position: 0 0, 28px 0;
+        }
+    }
+    @keyframes latido-numero {
+        50% {
+            transform: scale(1.18);
+        }
+    }
+
+    /* La cadena decorativa del ingreso: una luz recorre los eslabones sin parar. */
+    .cadena-decorativa .eslabon {
+        animation:
+            encender var(--duracion-larga) var(--curva-salida) both,
+            flotar 4s var(--curva-entrada-salida) infinite;
+    }
+    .cadena-decorativa .eslabon:nth-of-type(2) { animation-delay: 120ms, -1s; }
+    .cadena-decorativa .eslabon:nth-of-type(3) { animation-delay: 240ms, -2s; }
+    .cadena-decorativa .eslabon:last-of-type { animation-delay: 360ms, -3s; }
+    .cadena-decorativa .union {
+        background:
+            linear-gradient(90deg, transparent 0 35%, var(--color-lima) 50%, transparent 65%) 0 0 / 300% 100% no-repeat,
+            color-mix(in srgb, currentColor 45%, transparent);
+        animation: paquete 1.4s linear infinite;
+    }
+    @keyframes flotar {
+        50% {
+            transform: translateY(-10px) rotate(-2deg);
+        }
+    }
+    .acceso-arte h2,
+    .error-arte {
+        transition: transform 600ms var(--curva-salida);
+    }
+
+    /* ── Píldoras de estado ─────────────────────────────────────────────── */
+    .pildora-pending {
+        background-image: linear-gradient(100deg, transparent 20%, color-mix(in srgb, var(--reflejo), white 30%) 50%, transparent 80%);
+        background-size: 250% 100%;
+        animation: brillo 2.2s linear infinite;
+    }
+    @keyframes brillo {
+        from {
+            background-position: 150% 0;
+        }
+        to {
+            background-position: -100% 0;
+        }
+    }
+    .insignia-valida .punto,
+    .pildora-confirmed::before {
+        animation: radar 2s var(--curva-salida) infinite;
+    }
+    @keyframes radar {
+        0% {
+            box-shadow: 0 0 0 0 color-mix(in srgb, currentColor 60%, transparent);
+        }
+        100% {
+            box-shadow: 0 0 0 8px transparent;
+        }
+    }
+
+    /* ── Filas y listas que entran en cascada ───────────────────────────── */
+    .tabla tbody tr,
+    .fila-wallet,
+    .pendiente {
+        animation: fila-entrar 620ms var(--curva-salida) 150ms backwards;
+    }
+    :is(.tabla tbody tr, .fila-wallet, .pendiente):nth-child(2) { animation-delay: 205ms; }
+    :is(.tabla tbody tr, .fila-wallet, .pendiente):nth-child(3) { animation-delay: 260ms; }
+    :is(.tabla tbody tr, .fila-wallet, .pendiente):nth-child(4) { animation-delay: 315ms; }
+    :is(.tabla tbody tr, .fila-wallet, .pendiente):nth-child(5) { animation-delay: 370ms; }
+    :is(.tabla tbody tr, .fila-wallet, .pendiente):nth-child(6) { animation-delay: 425ms; }
+    :is(.tabla tbody tr, .fila-wallet, .pendiente):nth-child(7) { animation-delay: 480ms; }
+    :is(.tabla tbody tr, .fila-wallet, .pendiente):nth-child(8) { animation-delay: 535ms; }
+    :is(.tabla tbody tr, .fila-wallet, .pendiente):nth-child(n + 9) { animation-delay: 590ms; }
+    @keyframes fila-entrar {
+        from {
+            opacity: 0;
+            transform: translateX(-24px) scale(0.98);
+            filter: blur(4px);
+        }
+    }
+    .tabla tbody tr {
+        transition: transform var(--duracion-corta) var(--curva-salida);
+    }
+    .tabla tbody tr:hover {
+        transform: translateX(4px);
+    }
+    .fila-wallet {
+        transition:
+            transform var(--duracion-media) var(--curva-resorte),
+            box-shadow var(--duracion-media) var(--curva-salida);
+    }
+    .fila-wallet:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 14px 30px -18px color-mix(in srgb, var(--color-acento) 80%, transparent);
+    }
+    .identicono {
+        transition: transform 500ms var(--curva-resorte);
+    }
+    .fila-wallet:hover .identicono {
+        transform: rotate(90deg) scale(1.1);
+    }
+
+    /* La transacción que se acaba de proponer se enciende en la tabla. */
+    .fila-nueva td {
+        animation: fila-nueva 2.6s var(--curva-salida) 400ms both;
+    }
+    @keyframes fila-nueva {
+        0%,
+        30% {
+            background-color: var(--color-lima);
+            color: var(--color-sobre-lima);
+        }
+    }
+    .fila-nueva {
+        position: relative;
+    }
+
+    /* ── Copiar: el botón salta y suelta un anillo ───────────────────────── */
+    .copiar.copiado {
+        animation: copiado 600ms var(--curva-resorte);
+    }
+    @keyframes copiado {
+        30% {
+            transform: scale(1.35) rotate(-12deg);
+            background: var(--color-lima);
+            color: var(--color-sobre-lima);
+            box-shadow: 0 0 0 8px color-mix(in srgb, var(--color-lima) 30%, transparent);
+        }
+    }
+
+    /* ── Cifras que cuentan: destello al terminar ───────────────────────── */
+    .contada {
+        display: inline-block;
+        animation: destello 700ms var(--curva-resorte);
+    }
+    @keyframes destello {
+        40% {
+            transform: scale(1.12);
+            text-shadow: 0 0 24px currentColor;
+        }
+    }
+
+    /* ── Confeti de bloques (lo lanza animaciones.js) ───────────────────── */
+    .confeti {
+        position: fixed;
+        z-index: 90;
+        top: 0;
+        left: 0;
+        border-radius: 3px;
+        pointer-events: none;
+    }
+
+    /* ── Cerrar bloque: el eslabón nuevo cae, se sella y suelta una onda ──── */
+    /* Son sólo dos eslabones: sin desplazamiento, la caída no se recorta. */
+    .cadena-resultado {
+        overflow: visible;
+    }
+    .cadena-resultado .eslabon-cadena:first-child {
+        animation: llegar-izquierda 700ms var(--curva-salida) both;
+    }
+    .cadena-resultado .union-cadena {
+        transform-origin: left;
+        animation:
+            tender 500ms var(--curva-salida) 500ms both,
+            paquete 1.6s linear 1s infinite;
+    }
+    .cadena-resultado .eslabon-cadena.es-ultimo {
+        position: relative;
+        animation:
+            caer-y-sellar 1100ms var(--curva-resorte) 800ms both,
+            respirar 2.8s var(--curva-entrada-salida) 2s infinite;
+    }
+    .cadena-resultado .eslabon-cadena.es-ultimo::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        box-shadow: 0 0 0 3px var(--color-lima);
+        opacity: 0;
+        pointer-events: none;
+        animation: onda-sello 900ms var(--curva-salida) 1500ms;
+    }
+    @keyframes llegar-izquierda {
+        from {
+            opacity: 0;
+            transform: translateX(-60px);
+        }
+    }
+    @keyframes tender {
+        from {
+            transform: scaleX(0);
+        }
+    }
+    @keyframes caer-y-sellar {
+        0% {
+            opacity: 0;
+            transform: translateY(-140px) rotate(-18deg) scale(0.7);
+        }
+        55% {
+            opacity: 1;
+            transform: translateY(8px) rotate(3deg) scale(1.08);
+        }
+        75% {
+            transform: translateY(-4px) rotate(-1deg) scale(0.98);
+        }
+    }
+    @keyframes onda-sello {
+        from {
+            opacity: 1;
+            transform: scale(1);
+        }
+        to {
+            opacity: 0;
+            transform: scale(1.6);
+        }
+    }
+    .exito.resultado,
+    .motivo.resultado {
+        animation: resultado-entrar 800ms var(--curva-resorte) both;
+    }
+    @keyframes resultado-entrar {
+        0% {
+            opacity: 0;
+            transform: translateY(-20px) scale(0.92);
+            filter: blur(6px);
+        }
+        60% {
+            opacity: 1;
+            transform: translateY(4px) scale(1.01);
+            filter: none;
+        }
+    }
+    .motivo.resultado,
+    .motivo[role="alert"] {
+        animation:
+            resultado-entrar 800ms var(--curva-resorte) both,
+            sacudir 500ms var(--curva-entrada-salida) 650ms;
+    }
+
+    /* ── Verificación: escaneo de la cadena antes del dictamen ──────────── */
+    .escaneo {
+        display: flex;
+        flex-direction: column;
+        gap: var(--espacio-4);
+        padding: var(--espacio-6);
+        border-radius: var(--radio-3xl);
+        background: var(--color-superficie-2);
+        overflow: hidden;
+        animation: aparecer 400ms var(--curva-salida) both;
+    }
+    .escaneo.terminando {
+        animation: escaneo-salir 380ms var(--curva-entrada-salida) forwards;
+    }
+    @keyframes escaneo-salir {
+        to {
+            opacity: 0;
+            transform: scale(0.96);
+            filter: blur(6px);
+        }
+    }
+    .escaneo-titulo {
+        margin: 0;
+        font: var(--peso-semi) var(--texto-sm) var(--fuente-mono);
+        color: var(--color-texto-suave);
+    }
+    .escaneo-nodos {
+        display: flex;
+        align-items: center;
+        gap: 0;
+    }
+    .escaneo-nodo {
+        flex: none;
+        display: grid;
+        place-items: center;
+        width: 46px;
+        height: 38px;
+        border-radius: var(--radio-lg);
+        background: var(--color-superficie);
+        box-shadow: inset 0 0 0 1.5px var(--color-borde-fuerte);
+        color: var(--color-texto-suave);
+        font: var(--peso-medio) var(--texto-xs) var(--fuente-mono);
+        transition:
+            background-color 200ms,
+            color 200ms,
+            transform 300ms var(--curva-resorte),
+            box-shadow 200ms;
+    }
+    .escaneo-union {
+        flex: 1 1 10px;
+        max-width: 28px;
+        height: 3px;
+        background: var(--color-borde-fuerte);
+        transition: background-color 200ms;
+    }
+    .escaneo-nodo.revisado {
+        background: var(--color-lima);
+        color: var(--color-sobre-lima);
+        box-shadow: 0 0 18px -2px var(--color-lima);
+        transform: scale(1.12);
+    }
+    .escaneo-nodo.revisado + .escaneo-union {
+        background: var(--color-lima);
+    }
+    .escaneo-nodo.roto {
+        background: var(--color-peligro);
+        color: var(--color-superficie);
+        box-shadow: 0 0 22px var(--color-peligro);
+        animation: sacudir 450ms var(--curva-entrada-salida) 2;
+    }
+    .escaneo-nodo.contaminado {
+        opacity: 0.4;
+        box-shadow: inset 0 0 0 1.5px var(--color-peligro);
+    }
+    .escaneo-hash {
+        margin: 0;
+        overflow: hidden;
+        color: var(--color-acento);
+        font: var(--texto-xs) var(--fuente-mono);
+        white-space: nowrap;
+        text-overflow: clip;
+    }
+    .esperando-escaneo {
+        display: none !important;
+    }
+    @keyframes sacudir {
+        15%,
+        55% {
+            transform: translateX(-8px) rotate(-1deg);
+        }
+        35%,
+        75% {
+            transform: translateX(8px) rotate(1deg);
+        }
+    }
+
+    /* El dictamen: un haz lo barre y el ícono se dibuja trazo a trazo. */
+    .veredicto {
+        position: relative;
+        overflow: hidden;
+        animation: resultado-entrar 800ms var(--curva-resorte) both;
+    }
+    .veredicto::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(100deg, transparent 35%, color-mix(in srgb, var(--reflejo), white 25%) 50%, transparent 65%);
+        transform: translateX(-100%);
+        pointer-events: none;
+        animation: barrer 1.3s var(--curva-entrada-salida) 500ms;
+    }
+    @keyframes barrer {
+        to {
+            transform: translateX(100%);
+        }
+    }
+    .veredicto-icono path {
+        stroke-dasharray: 40;
+        stroke-dashoffset: 40;
+        animation: trazar 600ms var(--curva-salida) 650ms forwards;
+    }
+    @keyframes trazar {
+        to {
+            stroke-dashoffset: 0;
+        }
+    }
+    .veredicto-invalido {
+        animation:
+            resultado-entrar 800ms var(--curva-resorte) both,
+            sacudir 500ms var(--curva-entrada-salida) 800ms,
+            alarma 1.2s var(--curva-entrada-salida) 1.3s 3;
+    }
+    @keyframes alarma {
+        50% {
+            box-shadow: 0 0 0 10px color-mix(in srgb, var(--color-peligro) 30%, transparent);
+        }
+    }
+
+    /* ── Formulario de transacción ──────────────────────────────────────── */
+    .resolucion.recien {
+        animation: aparecer 380ms var(--curva-resorte);
+    }
+    .campo input.sacudir {
+        animation: sacudir 450ms var(--curva-entrada-salida);
+        border-color: var(--color-peligro);
+        box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-peligro) 22%, transparent);
+    }
+    .campo input.resuelto {
+        border-color: var(--color-exito);
+        transition: border-color 300ms;
+    }
+    .ruta-envio.lista .flecha-envio svg {
+        animation: avanzar 1.1s var(--curva-entrada-salida) infinite;
+    }
+    @keyframes avanzar {
+        50% {
+            transform: translateX(5px);
+        }
+    }
+
+    /* ── Páginas de error: el código parpadea con interferencia ─────────── */
+    .error-codigo {
+        animation: interferencia 3.5s steps(1) infinite;
+    }
+    @keyframes interferencia {
+        0%,
+        86%,
+        100% {
+            transform: none;
+            text-shadow: none;
+        }
+        88% {
+            transform: translateX(-4px) skewX(-8deg);
+            text-shadow: 4px 0 var(--color-lima), -4px 0 var(--color-peligro);
+        }
+        92% {
+            transform: translateX(3px);
+            text-shadow: -3px 0 var(--color-lima), 3px 0 var(--color-cadena-2);
+        }
+    }
+    .error-arte .eslabon-final {
+        animation: flotar 3s var(--curva-entrada-salida) infinite;
+    }
+    .error-arte .hueco {
+        animation: marchar-hueco 700ms linear infinite;
+    }
+    @keyframes marchar-hueco {
+        to {
+            background-position: 12px 0;
+        }
+    }
+}
