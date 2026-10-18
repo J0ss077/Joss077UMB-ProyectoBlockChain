@@ -6,7 +6,7 @@
 
 **Tech Stack:** Python 3.11, Flask, psycopg 3, PostgreSQL 16, `hashlib.scrypt` y la cookie firmada de Flask. Sin dependencias nuevas.
 
-**Spec:** `docs/specs/2026-10-16-usuarios-y-roles-design.md`
+**Spec:** `docs/superpowers/specs/2026-10-16-usuarios-y-roles-design.md`
 
 ## Global Constraints
 

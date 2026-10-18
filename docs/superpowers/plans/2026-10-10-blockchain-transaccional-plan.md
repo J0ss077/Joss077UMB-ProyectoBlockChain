@@ -6,7 +6,7 @@
 
 **Tech Stack:** Python 3.11+, `cryptography` (ECDSA secp256k1 y Fernet), `psycopg` 3, Flask, PostgreSQL 16 en contenedor, `pytest`.
 
-**Spec:** `docs/specs/2026-10-10-blockchain-transaccional-design.md` — el plan argumenta desde el diseño y el diseño cita el eje (`documentacion_proyecto_transaccionales.pdf`); quien ejecute lee los dos.
+**Spec:** `docs/superpowers/specs/2026-10-10-blockchain-transaccional-design.md` — el plan argumenta desde el diseño y el diseño cita el eje (`documentacion_proyecto_transaccionales.pdf`); quien ejecute lee los dos.
 
 ## Global Constraints
 
@@ -1147,7 +1147,7 @@ Herramienta de verificación y demostración, aprobada por el humano: `python -m
 **Files:**
 
 - Create: `src/sabotaje.py`, `tests/integration/test_sabotaje.py`
-- Modify: `README.md`, `docs/specs/2026-10-10-blockchain-transaccional-design.md`, este plan
+- Modify: `README.md`, `docs/superpowers/specs/2026-10-10-blockchain-transaccional-design.md`, este plan
 
 **Interfaces:**
 

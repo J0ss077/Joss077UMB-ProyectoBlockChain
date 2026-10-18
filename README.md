@@ -19,8 +19,8 @@ está implementado y probado"; este repositorio es la evidencia de ese párrafo.
 
 Toda decisión que el eje no fija (curva, cifrado, contenido del hash, datos de
 demostración) está declarada y numerada en
-`docs/specs/2026-10-10-blockchain-transaccional-design.md`, y el orden en
-que se construyó, en `docs/plans/2026-10-10-blockchain-transaccional-plan.md`.
+`docs/superpowers/specs/2026-10-10-blockchain-transaccional-design.md`, y el orden en
+que se construyó, en `docs/superpowers/plans/2026-10-10-blockchain-transaccional-plan.md`.
 La explicación de cómo se ejecuta cada caso de uso está en
 `docs/recorrido-de-casos-de-uso.md`.
 
