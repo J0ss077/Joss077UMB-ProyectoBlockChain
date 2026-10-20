@@ -9,8 +9,9 @@ entorno y el `.env` (REQ-37).
 import os
 from contextlib import contextmanager
 
+from src.accounts.almacen import CarpetaDeFotos
 from src.accounts.service import Cuentas
-from src.persistence.factory import ledger, session_secret, transaction
+from src.persistence.factory import carpeta_de_fotos, ledger, session_secret, transaction
 from src.web.app import create_app
 
 
@@ -20,9 +21,10 @@ def cuentas():
 
     `Cuentas` no guarda conexión: cada operación abre la que necesita con la
     fábrica recibida. Se arma por petición igual que el ledger para que la
-    presentación no dependa de una instancia compartida entre hilos.
+    presentación no dependa de una instancia compartida entre hilos. Las fotos
+    de perfil son archivos en la carpeta de `FOTOS_DIR`.
     """
-    yield Cuentas(transaction)
+    yield Cuentas(transaction, fotos=CarpetaDeFotos(carpeta_de_fotos()))
 
 
 app = create_app(ledger, cuentas, secret_key=session_secret())

@@ -9,11 +9,15 @@ configuración del entorno la lee `src/persistence/factory.py`, que es también
 quien arma la fachada: las pruebas y la aplicación no pueden leer cosas distintas
 de `.env`.
 """
+import os
+import shutil
 import subprocess
 import sys
+import tempfile
 from contextlib import contextmanager
 from datetime import UTC, datetime
 from decimal import Decimal
+from pathlib import Path
 from uuid import UUID, uuid4
 
 import psycopg
@@ -21,6 +25,7 @@ import pytest
 from flask import Flask
 from flask.testing import FlaskClient
 
+from src.accounts.almacen import CarpetaDeFotos
 from src.accounts.credentials import hashear_contrasena
 from src.accounts.model import ADMINISTRADOR, PENDIENTE, Usuario
 from src.accounts.postgres import PostgresAccountsRepository
@@ -30,11 +35,24 @@ from src.domain.block import Block
 from src.domain.blockchain import Blockchain, ensure_genesis
 from src.domain.transaction import Transaction, TransactionStatus
 from src.domain.wallet import Wallet, create_wallet, sign_payload
-from src.persistence.factory import database_url, open_ledger, session_secret, transaction
+from src.persistence.factory import (
+    database_url,
+    database_url_de_pruebas,
+    open_ledger,
+    session_secret,
+    transaction,
+)
 from src.persistence.factory import master_key as master_key_from_env
 from src.persistence.ports import BlockRepository, WalletRepository
 from src.persistence.postgres import PostgresBlockRepository, PostgresWalletRepository
 from src.web.app import create_app
+
+# Las pruebas vacían las tablas antes de cada caso. Con `TEST_DATABASE_URL`
+# definida, todo lo que abre una conexión —estas fixtures, la fábrica real y el
+# arranque que corre en un subproceso— usa esa base y no la de la aplicación. Va a
+# nivel de módulo para que valga antes de la primera conexión.
+if base_de_pruebas := database_url_de_pruebas():
+    os.environ["DATABASE_URL"] = base_de_pruebas
 
 # Marca de tiempo fija: el payload firmado la incluye, y fijarla hace
 # reproducibles las transacciones que arman las pruebas.
@@ -51,6 +69,12 @@ DEFAULT_AMOUNT = Decimal("10.00000000")
 CONTRASENA_DE_PRUEBA = "secreta1"
 CONTRASENA_DEL_ADMINISTRADOR = "clave-del-administrador-de-prueba"
 
+# Las fotos de perfil de las pruebas van a una carpeta temporal propia y nunca a
+# la de la aplicación: `base_limpia` la vacía antes de cada prueba y se borra al
+# terminar la sesión.
+CARPETA_DE_FOTOS_DE_PRUEBA = Path(tempfile.mkdtemp(prefix="fotos-de-prueba-"))
+ALMACEN_DE_PRUEBA = CarpetaDeFotos(CARPETA_DE_FOTOS_DE_PRUEBA)
+
 
 def crear_app_de_prueba(chain_factory, *, secret_key=None) -> Flask:
     """Arma la aplicación con la fábrica del ledger y la del servicio de cuentas.
@@ -63,7 +87,7 @@ def crear_app_de_prueba(chain_factory, *, secret_key=None) -> Flask:
 
     @contextmanager
     def fabrica_de_cuentas():
-        yield Cuentas(transaction)
+        yield Cuentas(transaction, fotos=ALMACEN_DE_PRUEBA)
 
     return create_app(
         chain_factory,
@@ -120,6 +144,13 @@ def _sembrar_cuenta(
     return aprobado
 
 
+@pytest.fixture(scope="session", autouse=True)
+def _carpeta_de_fotos_de_prueba():
+    """Borra la carpeta temporal de fotos al terminar la sesión de pruebas."""
+    yield
+    shutil.rmtree(CARPETA_DE_FOTOS_DE_PRUEBA, ignore_errors=True)
+
+
 @pytest.fixture(scope="session")
 def conexion():
     """Conexión abierta a la base del entorno, en UTC y sin cierre automático por sentencia.
@@ -136,7 +167,7 @@ def conexion():
 
 @pytest.fixture
 def base_limpia(conexion):
-    """Vacía las cuatro tablas antes de cada prueba, en orden inverso a las claves foráneas.
+    """Vacía las siete tablas antes de cada prueba, en orden inverso a las claves foráneas.
 
     `users` va antes que `wallets` porque `users.wallet_id` la referencia con
     `ON DELETE RESTRICT`: al revés, la limpieza fallaría en cuanto hubiera una
@@ -147,6 +178,11 @@ def base_limpia(conexion):
     """
     conexion.execute("DELETE FROM transactions")
     conexion.execute("DELETE FROM blocks")
+    conexion.execute("DELETE FROM contactos")
+    conexion.execute("DELETE FROM solicitudes_de_contrasena")
+    conexion.execute("DELETE FROM fotos_de_perfil")
+    for archivo in CARPETA_DE_FOTOS_DE_PRUEBA.iterdir():
+        archivo.unlink()
     conexion.execute("DELETE FROM users")
     conexion.execute("DELETE FROM wallets")
     yield
@@ -183,7 +219,7 @@ def cuentas(ledger, master_key) -> Cuentas:
     la sesión lo ve apenas se escribe porque está en autocommit.
     """
     ledger.wallets.add(wallet_del_constituyente(master_key))
-    return Cuentas(transaction)
+    return Cuentas(transaction, fotos=ALMACEN_DE_PRUEBA)
 
 
 @pytest.fixture

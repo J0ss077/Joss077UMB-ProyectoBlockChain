@@ -27,9 +27,11 @@
 {%- endmacro %}
 
 
+{# `que` llega en español y se traduce acá, junto con «Copiar»: quien llama no tiene que traducirlo. #}
 {% macro copiar(valor, que="el valor completo") -%}
 {%- set texto = valor|string -%}
-<button type="button" class="copiar" data-copiar="{{ texto }}" aria-label="Copiar {{ que }}" title="Copiar {{ que }}"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="4.5" y="4.5" width="7.5" height="7.5" rx="1.5" /><path d="M9.5 2H3.5A1.5 1.5 0 0 0 2 3.5v6" /></svg></button>
+{%- set etiqueta = t("Copiar {que}", que=t(que)) -%}
+<button type="button" class="copiar" data-copiar="{{ texto }}" aria-label="{{ etiqueta }}" title="{{ etiqueta }}"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="4.5" y="4.5" width="7.5" height="7.5" rx="1.5" /><path d="M9.5 2H3.5A1.5 1.5 0 0 0 2 3.5v6" /></svg></button>
 {%- endmacro %}
 
 
@@ -40,10 +42,38 @@
 {% macro identidad(valor, nombre=None, que="el identificador", propio=False, con_nombre=True, marca=None) -%}
 <span class="identidad">
     {%- if con_nombre or propio %}<span class="linea-nombre">
-    {%- if propio %}<span class="nombre es-propio">Tú</span>
+    {%- if propio %}<span class="nombre es-propio">{{ t("Tú") }}</span>
     {%- elif nombre %}<span class="nombre">{{ nombre }}</span>
-    {%- else %}<span class="nombre sin-dueno">Sin dueño</span>{% endif %}
-    {%- if marca %}<span class="marca-identidad">{{ marca }}</span>{% endif %}</span>{% endif %}
+    {%- else %}<span class="nombre sin-dueno">{{ t("Sin dueño") }}</span>{% endif %}
+    {%- if marca %}<span class="marca-identidad">{{ t(marca) }}</span>{% endif %}</span>{% endif %}
     <span class="codigo">{{ dato(valor) }}{{ copiar(valor, que) }}</span>
 </span>
+{%- endmacro %}
+
+
+{# El avatar de una cuenta: su foto si tiene, y si no la inicial de su nombre. Es decorativo —el nombre siempre va al lado—, así que la foto lleva `alt` vacío. `clase` agrega el tamaño (`inicial-grande`, `avatar-mini`). #}
+{% macro avatar(nombre, clase="") -%}
+{%- set url = url_de_foto(nombre) -%}
+{%- if url -%}
+<img class="{{ ('inicial avatar-foto ' ~ clase)|trim }}" src="{{ url }}" alt="" />
+{%- else -%}
+<span class="{{ ('inicial ' ~ clase)|trim }}" aria-hidden="true">{{ nombre[0]|upper }}</span>
+{%- endif -%}
+{%- endmacro %}
+
+
+{# Una notificación en forma de burbuja: el resultado de una acción (un envío, un contacto, la foto, la cola). `tono` es «exito», «aviso» o «motivo» (error); el de éxito se va solo y los otros esperan a que se cierren. Con `{% call %}` se le agrega un detalle debajo del texto. Las burbujas viven en la bandeja de `base.html`; sin JavaScript se ven al principio de la página, sin botón de cerrar. #}
+{% macro burbuja(tono, texto) -%}
+<div class="burbuja burbuja-{{ tono }}" role="{{ 'alert' if tono == 'motivo' else 'status' }}" data-burbuja{% if tono == 'exito' %} data-se-va-solo{% endif %}>
+    <span class="burbuja-icono" aria-hidden="true">
+        {%- if tono == "exito" %}<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 8.5l3 3 6-7" /></svg>
+        {%- elif tono == "motivo" %}<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M8 3.5v5.5M8 12.5v.01" /></svg>
+        {%- else %}<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M8 4.5v4.5M8 12v.01" /><circle cx="8" cy="8" r="6.2" stroke-width="1.6" /></svg>{% endif -%}
+    </span>
+    <div class="burbuja-texto">
+        <p class="burbuja-titulo">{{ texto }}</p>
+        {%- if caller %}{{ caller() }}{% endif %}
+    </div>
+    <button class="burbuja-cerrar" type="button" data-burbuja-cerrar aria-label="{{ t('Cerrar aviso') }}" title="{{ t('Cerrar aviso') }}"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" /></svg></button>
+</div>
 {%- endmacro %}

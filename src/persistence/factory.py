@@ -32,7 +32,15 @@ from src.persistence.unit_of_work import PostgresUnitOfWork
 # `.env` vive en la raíz del repositorio y está en `.gitignore` (REQ-21): es el
 # respaldo local de las variables del entorno, nunca su reemplazo ni un secreto
 # versionado.
-ENV_FILE = Path(__file__).resolve().parents[2] / ".env"
+RAIZ_DEL_PROYECTO = Path(__file__).resolve().parents[2]
+ENV_FILE = RAIZ_DEL_PROYECTO / ".env"
+# Las fotos de perfil son archivos fuera de la base. Sin `FOTOS_DIR` van a
+# `datos/fotos/` dentro del proyecto, que `.gitignore` deja fuera del repositorio.
+VARIABLE_DE_LA_CARPETA_DE_FOTOS = "FOTOS_DIR"
+# Base exclusiva de las pruebas de integración, que vacían sus tablas en cada caso:
+# con ella definida, la suite no toca la base de la aplicación.
+VARIABLE_DE_LA_BASE_DE_PRUEBAS = "TEST_DATABASE_URL"
+CARPETA_DE_FOTOS_POR_DEFECTO = RAIZ_DEL_PROYECTO / "datos" / "fotos"
 
 # Nombre de la variable que trae la cadena de conexión. Es una constante y no un
 # literal porque el lector del entorno y la prueba que lo ejercita tienen que nombrar
@@ -187,6 +195,25 @@ def admin_password() -> str:
         f"`.env`: agregue {VARIABLE_DE_LA_CONTRASENA_DEL_ADMINISTRADOR} a su `.env` y "
         "fije la contraseña del administrador."
     )
+
+
+def database_url_de_pruebas() -> str | None:
+    """La cadena de la base de pruebas, o `None` si no se definió una aparte."""
+    return _env_value(VARIABLE_DE_LA_BASE_DE_PRUEBAS)
+
+
+def carpeta_de_fotos() -> Path:
+    """La carpeta donde se guardan los archivos de las fotos de perfil.
+
+    Una ruta relativa en `FOTOS_DIR` se toma desde la raíz del proyecto, no desde
+    donde se haya lanzado el proceso: el arranque y la aplicación tienen que ver
+    la misma carpeta.
+    """
+    valor = _env_value(VARIABLE_DE_LA_CARPETA_DE_FOTOS)
+    if not valor:
+        return CARPETA_DE_FOTOS_POR_DEFECTO
+    ruta = Path(valor).expanduser()
+    return ruta if ruta.is_absolute() else RAIZ_DEL_PROYECTO / ruta
 
 
 def _utc_now() -> datetime:

@@ -1,75 +1,116 @@
 {% extends "base.html" %}
-{% from "_macros.html" import dato, copiar, identidad, cantidad %}
-{% from "_transacciones.html" import tabla with context %}
+{% from "_macros.html" import dato, copiar, cantidad, avatar, burbuja %}
 {% from "_estado.html" import estado as pildora %}
-{% block titulo %}Mi tablero{% endblock %}
+{% block titulo %}{{ t("Mi tablero") }}{% endblock %}
+{# El resultado del envío es una notificación de la bandeja de `base.html`, no un bloque dentro de «Enviar dinero»: así esa tarjeta no crece y no estira a la del saldo, que está en la misma fila. #}
+{% block burbujas %}
+{%- if error_formulario %}
+{{ burbuja("motivo", t(error_formulario)) }}
+{% elif resultado and resultado.accepted %}
+{% call burbuja("exito", t("¡Listo! Tu envío quedó en espera y se completará en unos momentos.")) %}
+{% if resultado.stored %}<p class="burbuja-detalle">{{ t("Para") }} <b>{{ nombre_de_wallet(resultado.stored.receiver_id) or t("otra cuenta") }}</b> · {{ cantidad(resultado.stored.amount) }} · {{ pildora(resultado.stored.status, simple=true) }}</p>{% endif %}
+{% endcall %}
+{% elif resultado %}
+{% call burbuja("motivo", t("No se pudo hacer el envío.")) %}
+<p class="burbuja-detalle">{{ t(en_palabras(resultado.reason)) }}</p>
+{% endcall %}
+{%- endif %}
+{% endblock %}
 {% block cuerpo %}
-{# Lo que está en el pool a favor y en contra, sumado de las mismas filas de la tabla: el saldo disponible ya descuenta lo que la wallet envió y todavía no se confirma. #}
+{# Lo que está en espera a favor y en contra, sumado de las mismas filas de la tabla: el saldo disponible ya descuenta lo que la persona envió y todavía no se completa. Toda la página habla sin tecnicismos: nada de pool, wallet ni bloque. #}
 {% set pendientes = transacciones|selectattr("status", "equalto", "pending")|list %}
 {% set por_confirmar = pendientes|selectattr("receiver_id", "equalto", wallet_id)|map(attribute="amount")|sum %}
 {% set reservado = pendientes|selectattr("sender_id", "equalto", wallet_id)|map(attribute="amount")|sum %}
 <main id="contenido" tabindex="-1" class="rejilla-tablero">
     <section class="mosaico saldo-principal" aria-labelledby="titulo-saldo">
         <div>
-            <p class="saludo">Hola, {{ g.user.username }}</p>
-            <p class="saldo-etiqueta" id="titulo-saldo">Saldo disponible</p>
+            <p class="saludo">{{ t("Hola, {nombre}", nombre=g.user.username) }}</p>
+            <p class="saldo-etiqueta" id="titulo-saldo">{{ t("Saldo disponible") }}</p>
             <p class="saldo-cifra">{{ cantidad(saldo) }}</p>
-            {% if reservado %}<p class="saldo-nota">−{{ cantidad(reservado) }} reservado por tus envíos en el pool</p>{% endif %}
+            {% if reservado %}<p class="saldo-nota">−{{ cantidad(reservado) }} {{ t("apartado por envíos en espera") }}</p>{% endif %}
         </div>
-        {% if por_confirmar %}<span class="chip-lima">+{{ cantidad(por_confirmar) }} por confirmar</span>{% endif %}
+        {% if por_confirmar %}<span class="chip-lima">+{{ cantidad(por_confirmar) }} {{ t("por recibir") }}</span>{% endif %}
         <div class="mi-wallet">
-            <span class="saldo-etiqueta">Mi wallet</span>
-            <span class="codigo">{{ dato(wallet_id) }}{{ copiar(wallet_id, "el identificador de mi wallet") }}</span>
+            <span class="saldo-etiqueta">{{ t("Mi código para recibir") }}</span>
+            <span class="codigo">{{ dato(wallet_id) }}{{ copiar(wallet_id, "mi código para recibir") }}</span>
         </div>
     </section>
     <section class="mosaico envio" aria-labelledby="titulo-envio">
-        <h1 class="titulo-bloque" id="titulo-envio">Enviar</h1>
-        {% if error_formulario %}
-        <div class="motivo" role="alert">
-            <p><strong>motivo:</strong> {{ error_formulario }}</p>
-        </div>
-        {% endif %}
-        {% if resultado %}
-        {% if resultado.accepted %}
-        <div class="exito resultado" role="status">
-            <p>El envío entró al pool y espera que el administrador lo agrupe en un bloque.</p>
-            {% if resultado.stored %}
-            <dl class="ficha">
-                <dt>Para</dt>
-                <dd>{{ identidad(resultado.stored.receiver_id, nombre_de_wallet(resultado.stored.receiver_id), "el identificador del destinatario") }}</dd>
-                <dt>Transacción</dt>
-                <dd><span class="codigo">{{ dato(resultado.stored.id) }}{{ copiar(resultado.stored.id, "el identificador de la transacción") }}</span></dd>
-                <dt>Estado</dt>
-                <dd>{{ pildora(resultado.stored.status) }}</dd>
-            </dl>
-            {% endif %}
-        </div>
-        {% else %}
-        <div class="motivo resultado" role="alert">
-            <p>El envío no entró al pool.</p>
-            <p><strong>motivo:</strong> {{ resultado.reason }}</p>
-        </div>
-        {% endif %}
-        {% endif %}
+        <h1 class="titulo-bloque" id="titulo-envio">{{ t("Enviar dinero") }}</h1>
         <form class="formulario" method="post" action="/mi-envio">
-            {# El emisor no está en el formulario: sale de la sesión (REQ-34). #}
+            {# El emisor no está en el formulario: sale de la sesión (REQ-34). El destinatario puede venir del botón «Enviar» de la agenda. #}
             <div class="campo">
-                <label for="destinatario">Destinatario</label>
-                <input id="destinatario" name="destinatario" autocomplete="off" spellcheck="false" aria-describedby="ayuda-destinatario" required />
-                <p class="ayuda" id="ayuda-destinatario">El nombre de usuario o, si lo tienes a mano, el identificador de su wallet.</p>
+                <label for="destinatario">{{ t("¿A quién le envías?") }}</label>
+                <input id="destinatario" name="destinatario" value="{{ request.args.get('destinatario', '') }}" autocomplete="off" spellcheck="false" aria-describedby="ayuda-destinatario" data-sugerencias="{{ url_for('usuario.sugerencias') }}" required />
+                <p class="ayuda" id="ayuda-destinatario">{{ t("Escribe su nombre de usuario. También puedes elegir a alguien desde") }} <a href="/mis-contactos">{{ t("Mis contactos") }}</a>.</p>
             </div>
             <div class="campo">
-                <label for="monto">Monto</label>
+                <label for="monto">{{ t("¿Cuánto?") }}</label>
                 <input id="monto" name="amount" value="10" inputmode="decimal" aria-describedby="ayuda-monto" />
-                <p class="ayuda" id="ayuda-monto">Tienes {{ cantidad(saldo) }} disponibles.</p>
+                <p class="ayuda" id="ayuda-monto">{{ t("Tienes") }} {{ cantidad(saldo) }} {{ t("disponibles.") }}</p>
             </div>
-            <button class="boton boton-grande boton-primario" type="submit">Enviar</button>
+            <button class="boton boton-grande boton-primario" type="submit">{{ t("Enviar") }}</button>
         </form>
     </section>
-    <section class="mosaico movimientos" aria-labelledby="titulo-movimientos">
-        <h2 class="titulo-bloque" id="titulo-movimientos">Mis transacciones <span class="contador">{{ transacciones|length }}</span></h2>
-        {{ tabla(transacciones, wallet_id, motivo_por_transaccion, "Su wallet todavía no tiene transacciones.") }}
+    {# La lista de movimientos vive en Mi historial. El inicio muestra lo que ninguna otra pestaña tiene: el resumen del mes y con quién se mueve más la persona. #}
+    <section class="mosaico este-mes" aria-labelledby="titulo-mes">
+        <h2 class="titulo-bloque" id="titulo-mes">{{ t("Resumen de {mes}", mes=t(resumen.mes)) }}</h2>
+        {% if resumen.recepciones or resumen.envios %}
+        {% set mayor = [resumen.recibido, resumen.enviado]|max %}
+        <div class="mes-cifras">
+            <div class="mes-cifra entra">
+                <p class="mes-etiqueta">{{ t("Recibiste") }}</p>
+                <p class="mes-monto">+{{ cantidad(resumen.recibido) }}</p>
+                <span class="mes-barra" aria-hidden="true"><i style="--parte: {{ (resumen.recibido / mayor * 100)|round(1) if mayor else 0 }}%"></i></span>
+                <span class="metadato">{{ t("{n} vez", n=1) if resumen.recepciones == 1 else t("{n} veces", n=resumen.recepciones) }}</span>
+            </div>
+            <div class="mes-cifra sale">
+                <p class="mes-etiqueta">{{ t("Enviaste") }}</p>
+                <p class="mes-monto">−{{ cantidad(resumen.enviado) }}</p>
+                <span class="mes-barra" aria-hidden="true"><i style="--parte: {{ (resumen.enviado / mayor * 100)|round(1) if mayor else 0 }}%"></i></span>
+                <span class="metadato">{{ t("{n} vez", n=1) if resumen.envios == 1 else t("{n} veces", n=resumen.envios) }}</span>
+            </div>
+        </div>
+        <p class="mes-balance">
+            {% if resumen.diferencia > 0 %}{{ t("Este mes te entró") }} <b>{{ cantidad(resumen.diferencia) }}</b> {{ t("más de lo que enviaste.") }}
+            {% elif resumen.diferencia < 0 %}{{ t("Este mes enviaste") }} <b>{{ cantidad(-resumen.diferencia) }}</b> {{ t("más de lo que te entró.") }}
+            {% else %}{{ t("Este mes enviaste lo mismo que recibiste.") }}{% endif %}
+        </p>
+        {% else %}
+        <div class="vacio">
+            <p class="vacio-titulo">{{ t("Todavía no hay movimientos este mes.") }}</p>
+            <p class="ayuda">{{ t("Cuando envíes o recibas dinero, aquí verás cuánto entró y cuánto salió.") }}</p>
+        </div>
+        {% endif %}
+    </section>
+    <section class="mosaico frecuentes" aria-labelledby="titulo-frecuentes">
+        <h2 class="titulo-bloque" id="titulo-frecuentes">{{ t("Con quién más te mueves") }}</h2>
+        {% set ns = namespace(hay=false) %}
+        <ol class="lista-frecuentes">
+            {% for persona in personas if nombre_de_wallet(persona.wallet_id) %}
+            {% if loop.index <= 3 %}
+            {% set ns.hay = true %}
+            {% set nombre = nombre_de_wallet(persona.wallet_id) %}
+            <li class="frecuente">
+                {{ avatar(nombre) }}
+                <span class="frecuente-datos">
+                    <span class="nombre">{{ nombre }}</span>
+                    <span class="metadato">{{ t("{n} movimiento", n=1) if persona.movimientos == 1 else t("{n} movimientos", n=persona.movimientos) }}</span>
+                </span>
+                <a class="boton" href="{{ url_for('usuario.mi_tablero', destinatario=nombre) }}#destinatario" aria-label="{{ t('Enviar a {nombre}', nombre=nombre) }}">{{ t("Enviar") }}</a>
+            </li>
+            {% endif %}
+            {% endfor %}
+        </ol>
+        {% if not ns.hay %}
+        <div class="vacio">
+            <p class="vacio-titulo">{{ t("Aún no te has movido con nadie.") }}</p>
+            <p class="ayuda">{{ t("Cuando envíes o recibas dinero, aquí aparecerán las personas con las que más lo haces.") }}</p>
+        </div>
+        {% endif %}
+        {# El pie va pegado abajo: la tarjeta se estira al alto del resumen del mes y así no queda un hueco al final. #}
+        <p class="frecuentes-pie">{{ t("¿Le envías seguido a alguien? Guárdalo en tus contactos.") }} <a class="boton" href="/mis-contactos">{{ t("Mis contactos") }}</a></p>
     </section>
 </main>
-{# Mi historial —que reúne el historial y el dictamen de la verificación— tiene su única entrada en la navegación de la barra. #}
+{# Mi historial —que reúne los movimientos y la revisión de que nada fue alterado— tiene su única entrada en la navegación de la barra. #}
 {% endblock %}

@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% from "_macros.html" import avatar %}
+{% block titulo %}{{ t("Mis contactos") }}{% endblock %}
+{% block cuerpo %}
+<main id="contenido" tabindex="-1" class="rejilla-historial">
+    <section class="mosaico columna-principal" aria-labelledby="titulo-contactos">
+        <div>
+            <p class="antetitulo">{{ t("Tu agenda") }}</p>
+            <h1 class="titulo-pagina" id="titulo-contactos">{{ t("Mis contactos") }}</h1>
+            <p class="entradilla">{{ t("Las personas a las que les envías seguido. Agregarlas no les avisa ni las obliga a agregarte.") }}</p>
+        </div>
+        {% if contactos %}
+        <h2 class="titulo-bloque">{{ t("Contactos") }} <span class="contador">{{ contactos|length }}</span></h2>
+        <ul class="lista-contactos">
+            {% for contacto in contactos %}
+            {% set nombre = contacto.usuario.username %}
+            <li class="contacto" aria-label="{{ t('Contacto {nombre}', nombre=nombre) }}">
+                {{ avatar(nombre) }}
+                <div class="contacto-datos">
+                    <span class="nombre">{{ nombre }}</span>
+                    {% if contacto.movimientos %}
+                    <span class="metadato"><b>{{ contacto.movimientos }}</b> {{ t("movimiento contigo") if contacto.movimientos == 1 else t("movimientos contigo") }} · {{ t("el último el") }} <b>{{ contacto.ultimo.strftime("%d/%m/%Y %H:%M") }}</b></span>
+                    {% else %}
+                    <span class="metadato">{{ t("Todavía no tienen movimientos.") }}</span>
+                    {% endif %}
+                </div>
+                <div class="contacto-acciones">
+                    <a class="boton boton-primario" href="{{ url_for('usuario.mi_tablero', destinatario=nombre) }}">{{ t("Enviar") }}</a>
+                    <form method="post" action="{{ url_for('usuario.quitar_contacto', identificador=contacto.usuario.id) }}">
+                        <button class="boton boton-peligro" type="submit" aria-label="{{ t('Quitar a {nombre} de mis contactos', nombre=nombre) }}">{{ t("Quitar") }}</button>
+                    </form>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <div class="vacio">
+            <p class="vacio-titulo">{{ t("Todavía no tienes contactos.") }}</p>
+            <p class="ayuda">{{ t("Agrega a alguien por su nombre de usuario y podrás enviarle desde aquí sin escribirlo cada vez.") }}</p>
+        </div>
+        {% endif %}
+    </section>
+    <section class="mosaico envio" aria-labelledby="titulo-agregar">
+        <h2 class="titulo-bloque" id="titulo-agregar">{{ t("Agregar contacto") }}</h2>
+        <form class="formulario" method="post" action="{{ url_for('usuario.agregar_contacto') }}">
+            <div class="campo">
+                <label for="usuario-contacto">{{ t("Nombre de usuario") }}</label>
+                <input id="usuario-contacto" name="usuario" autocomplete="off" spellcheck="false" aria-describedby="ayuda-contacto" data-sugerencias="{{ url_for('usuario.sugerencias', sin_contactos=1) }}" required />
+                <p class="ayuda" id="ayuda-contacto">{{ t("El mismo nombre con el que esa persona ingresa.") }}</p>
+            </div>
+            <button class="boton boton-grande boton-primario" type="submit">{{ t("Agregar") }}</button>
+        </form>
+    </section>
+</main>
+{% endblock %}

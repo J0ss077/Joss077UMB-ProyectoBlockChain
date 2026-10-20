@@ -1,7 +1,7 @@
 {% extends "base.html" %}
-{% block titulo %}{% if creado %}Registro recibido{% else %}Registrarme{% endif %}{% endblock %}
+{% block titulo %}{% if creado %}{{ t("Registro recibido") }}{% else %}{{ t("Registrarme") }}{% endif %}{% endblock %}
 {% block regresar %}
-<a class="regresar" href="{{ url_for('ingresar') }}" aria-label="Regresar a Ingresar"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M11 4L6 9l5 5" /></svg>Regresar</a>
+<a class="regresar" href="{{ url_for('ingresar') }}" aria-label="{{ t('Regresar a Ingresar') }}"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M11 4L6 9l5 5" /></svg>{{ t("Regresar") }}</a>
 {% endblock %}
 {% block cuerpo %}
 {% if creado %}
@@ -9,59 +9,60 @@
 <main id="contenido" tabindex="-1" class="acceso-centrado">
     <section class="tarjeta-resultado" aria-labelledby="titulo-recibido">
         <span class="sello" aria-hidden="true"><svg width="34" height="34" viewBox="0 0 34 34" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M9 17.5l5.5 5.5L25 12" /></svg></span>
-        <h1 class="titulo-pagina" id="titulo-recibido">Registro recibido</h1>
+        <h1 class="titulo-pagina" id="titulo-recibido">{{ t("Registro recibido") }}</h1>
         <div class="exito" role="status">
-            <p>Tu cuenta está esperando aprobación.</p>
-            <p>El usuario <strong class="usuario-destacado">{{ creado.username }}</strong> va a poder ingresar cuando un administrador apruebe la cuenta.</p>
+            <p>{{ t("Tu cuenta está esperando aprobación.") }}</p>
+            <p>{{ t("El usuario") }} <strong class="usuario-destacado">{{ creado.username }}</strong> {{ t("va a poder ingresar cuando un administrador apruebe la cuenta.") }}</p>
         </div>
-        <ol class="progreso" aria-label="Estado de la cuenta">
-            <li aria-current="step"><small>01</small>Registrada</li>
-            <li><small>02</small>Aprobación</li>
-            <li><small>03</small>Wallet y saldo</li>
+        <ol class="progreso" aria-label="{{ t('Estado de la cuenta') }}">
+            <li aria-current="step"><small>01</small>{{ t("Registrada") }}</li>
+            <li><small>02</small>{{ t("Aprobación") }}</li>
+            <li><small>03</small>{{ t("Cuenta y saldo") }}</li>
         </ol>
-        <div><a class="boton boton-grande boton-primario" href="{{ url_for('ingresar') }}">Volver al ingreso</a></div>
+        <div><a class="boton boton-grande boton-primario" href="{{ url_for('ingresar') }}">{{ t("Volver al ingreso") }}</a></div>
     </section>
 </main>
 {% else %}
 <div class="acceso">
     <main id="contenido" tabindex="-1" class="acceso-formulario">
         <div>
-            <h1 class="titulo-pagina">Crear cuenta</h1>
-            <p class="entradilla">Tu cuenta queda pendiente hasta que un administrador la apruebe.</p>
+            <h1 class="titulo-pagina">{{ t("Crear cuenta") }}</h1>
+            <p class="entradilla">{{ t("Tu cuenta queda pendiente hasta que un administrador la apruebe.") }}</p>
         </div>
         {% if error %}
         <div class="motivo" id="error-de-registro" role="alert">
-            <p>{{ error }}</p>
+            <p>{{ t(error) }}</p>
         </div>
         {% endif %}
         <form class="formulario" method="post" action="{{ url_for('registrarme') }}">
             <div class="campo">
-                <label for="usuario">Usuario</label>
+                <label for="usuario">{{ t("Usuario") }}</label>
                 <input id="usuario" name="usuario" value="{{ usuario }}" pattern="{{ patron_usuario }}" maxlength="{{ largo_maximo_de_usuario }}" autocapitalize="off" spellcheck="false" autocomplete="username" aria-describedby="ayuda-usuario{% if error %} error-de-registro{% endif %}" required />
                 {# La ayuda sale de la misma constante que valida el servicio: la interfaz no puede prometer un conjunto de caracteres distinto del que acepta el registro. #}
-                <p class="ayuda" id="ayuda-usuario">{{ ayuda_de_usuario }}</p>
+                <p class="ayuda" id="ayuda-usuario">{{ t(ayuda_de_usuario) }}</p>
             </div>
-            <div class="dos-campos">
-                <div class="campo">
-                    <label for="contrasena">Contraseña</label>
-                    <input id="contrasena" type="password" name="contrasena" minlength="{{ largo_minimo_de_contrasena }}" autocomplete="new-password" aria-describedby="ayuda-contrasena" required />
-                </div>
-                <div class="campo">
-                    <label for="repetir">Repetir contraseña</label>
-                    <input id="repetir" type="password" name="repetir" minlength="{{ largo_minimo_de_contrasena }}" autocomplete="new-password" required />
-                </div>
+            {# El medidor y la coincidencia los arma `contrasena.js`; sin JavaScript queda la ayuda de texto. El largo mínimo sale de la constante que valida el servicio. #}
+            <div class="campo">
+                <label for="contrasena">{{ t("Contraseña") }}</label>
+                <input id="contrasena" type="password" name="contrasena" minlength="{{ largo_minimo_de_contrasena }}" autocomplete="new-password" spellcheck="false" aria-describedby="ayuda-contrasena" required />
+                <p class="ayuda" id="ayuda-contrasena">{{ t("Al menos {n} caracteres.", n=largo_minimo_de_contrasena) }}</p>
+                <div class="fuerza" data-fuerza-de="contrasena" data-largo-minimo="{{ largo_minimo_de_contrasena }}" data-reemplaza="ayuda-contrasena" hidden></div>
             </div>
-            <p class="ayuda" id="ayuda-contrasena">Al menos {{ largo_minimo_de_contrasena }} caracteres.</p>
-            <button class="boton boton-grande boton-primario" type="submit">Registrarme</button>
+            <div class="campo">
+                <label for="repetir">{{ t("Repetir contraseña") }}</label>
+                <input id="repetir" type="password" name="repetir" minlength="{{ largo_minimo_de_contrasena }}" autocomplete="new-password" spellcheck="false" required />
+                <div class="fuerza" data-campo="repetir" data-coincide-con="contrasena" hidden></div>
+            </div>
+            <button class="boton boton-grande boton-primario" type="submit">{{ t("Registrarme") }}</button>
         </form>
-        <p class="alternativa">¿Ya tienes cuenta? <a href="{{ url_for('ingresar') }}">Ingresa</a></p>
+        <p class="alternativa">{{ t("¿Ya tienes cuenta?") }} <a href="{{ url_for('ingresar') }}">{{ t("Ingresa") }}</a></p>
     </main>
-    <aside class="acceso-arte arte-lima" aria-label="Qué pasa después">
-        <h2>Tres pasos y estás dentro.</h2>
+    <aside class="acceso-arte arte-lima" aria-label="{{ t('Qué pasa después') }}">
+        <h2>{{ t("Tres pasos y estás dentro.") }}</h2>
         <ol class="linea-tiempo">
-            <li><span class="numero" aria-hidden="true">1</span><div><b>Registro</b>Tu cuenta nace en estado pendiente.</div></li>
-            <li><span class="numero" aria-hidden="true">2</span><div><b>Aprobación</b>Un administrador revisa la cola y aprueba o rechaza con un motivo.</div></li>
-            <li><span class="numero" aria-hidden="true">3</span><div><b>Wallet y saldo</b>Al aprobarte recibes tu wallet y 1000 de bienvenida.</div></li>
+            <li><span class="numero" aria-hidden="true">1</span><div><b>{{ t("Registro") }}</b>{{ t("Creas tu cuenta y queda esperando aprobación.") }}</div></li>
+            <li><span class="numero" aria-hidden="true">2</span><div><b>{{ t("Aprobación") }}</b>{{ t("Un administrador revisa tu solicitud y la aprueba o te dice por qué no.") }}</div></li>
+            <li><span class="numero" aria-hidden="true">3</span><div><b>{{ t("Cuenta y saldo") }}</b>{{ t("Al aprobarte recibes tu cuenta lista con 1000 de bienvenida.") }}</div></li>
         </ol>
     </aside>
 </div>

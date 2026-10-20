@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% from "_macros.html" import dato, copiar, identidad, cantidad %}
 {% from "_estado.html" import estado as pildora %}
-{% block titulo %}Ledger transaccional{% endblock %}
+{% block titulo %}{{ t("Ledger transaccional") }}{% endblock %}
 {% block cuerpo %}
 {# El índice de cada bloque por su identificador: la transacción guarda el bloque y la persona compara índices. #}
 {% set indices = {} %}{% for bloque in bloques %}{% set _ = indices.update({bloque.id: bloque.block_index}) %}{% endfor %}
@@ -10,43 +10,43 @@
         <div class="estado-cabecera">
             <div>
                 {% if dictamen.valid %}
-                <span class="insignia insignia-valida"><span class="punto" aria-hidden="true"></span>Cadena válida</span>
+                <span class="insignia insignia-valida"><span class="punto" aria-hidden="true"></span>{{ t("Cadena válida") }}</span>
                 {% else %}
-                <span class="insignia insignia-invalida"><span class="punto" aria-hidden="true"></span>Cadena alterada en el bloque #{{ dictamen.altered_block_index }}</span>
+                <span class="insignia insignia-invalida"><span class="punto" aria-hidden="true"></span>{{ t("Cadena alterada en el bloque #{n}", n=dictamen.altered_block_index) }}</span>
                 {% endif %}
-                <h1 class="titulo-pagina" id="titulo-estado">Estado del ledger</h1>
+                <h1 class="titulo-pagina" id="titulo-estado">{{ t("Estado del ledger") }}</h1>
             </div>
             <div class="acciones">
-                <a class="boton" href="/verificar">Verificar</a>
-                <a class="boton boton-primario" href="/bloques">Cerrar bloque</a>
+                <a class="boton" href="/verificar">{{ t("Verificar") }}</a>
+                <a class="boton boton-primario" href="/bloques">{{ t("Cerrar bloque") }}</a>
             </div>
         </div>
         {# Se dibujan los últimos cinco eslabones, que caben junto al pool en escritorio; en pantallas angostas la fila se desliza. #}
         {% set visibles = bloques[-5:] %}
-        <ol class="cadena" aria-label="Últimos {{ visibles|length }} bloques de la cadena y {{ en_el_pool }} transacciones en el pool" tabindex="0">
+        <ol class="cadena" aria-label="{{ t('Últimos {n} bloques de la cadena y {pool} transacciones en el pool', n=visibles|length, pool=en_el_pool) }}" tabindex="0">
             {% for bloque in visibles %}
             <li class="eslabon-cadena{% if loop.last %} es-ultimo{% endif %}">
-                <span class="eslabon-indice">#{{ bloque.block_index }} · {% if bloque.block_index == 0 %}génesis{% else %}{{ transacciones_por_bloque[bloque.id] }} tx{% endif %}</span>
+                <span class="eslabon-indice">#{{ bloque.block_index }} · {% if bloque.block_index == 0 %}{{ t("génesis") }}{% else %}{{ transacciones_por_bloque[bloque.id] }} tx{% endif %}</span>
                 <span class="codigo">{{ dato(bloque.hash) }}{{ copiar(bloque.hash, "el hash del bloque " ~ bloque.block_index) }}</span>
             </li>
             <li class="union-cadena" aria-hidden="true"></li>
             {% endfor %}
-            <li class="pool-cadena{% if not en_el_pool %} vacio-pool{% endif %}"><b>{{ en_el_pool }}</b>en el pool</li>
+            <li class="pool-cadena{% if not en_el_pool %} vacio-pool{% endif %}"><b>{{ en_el_pool }}</b>{{ t("en el pool") }}</li>
         </ol>
     </section>
-    <div class="metricas" role="list" aria-label="Conteos del ledger">
-        <div class="metrica metrica-acento" role="listitem"><span class="metrica-texto">Transacciones</span><span class="metrica-numero">{{ estado.transactions }}</span></div>
-        <div class="metrica" role="listitem"><span class="metrica-texto">Bloques</span><span class="metrica-numero">{{ estado.blocks }}</span></div>
-        <div class="metrica" role="listitem"><span class="metrica-texto">Wallets</span><span class="metrica-numero">{{ estado.wallets }}</span></div>
-        <div class="metrica metrica-lima" role="listitem"><span class="metrica-texto">En el pool</span><span class="metrica-numero">{{ en_el_pool }}</span></div>
+    <div class="metricas" role="list" aria-label="{{ t('Conteos del ledger') }}">
+        <div class="metrica metrica-acento" role="listitem"><span class="metrica-texto">{{ t("Transacciones") }}</span><span class="metrica-numero">{{ estado.transactions }}</span></div>
+        <div class="metrica" role="listitem"><span class="metrica-texto">{{ t("Bloques") }}</span><span class="metrica-numero">{{ estado.blocks }}</span></div>
+        <div class="metrica" role="listitem"><span class="metrica-texto">{{ t("Wallets") }}</span><span class="metrica-numero">{{ estado.wallets }}</span></div>
+        <div class="metrica metrica-lima" role="listitem"><span class="metrica-texto">{{ t("En el pool") }}</span><span class="metrica-numero">{{ en_el_pool }}</span></div>
     </div>
     <section class="mosaico ultimas" aria-labelledby="titulo-ultimas">
-        <h2 class="titulo-bloque" id="titulo-ultimas">Últimas transacciones</h2>
+        <h2 class="titulo-bloque" id="titulo-ultimas">{{ t("Últimas transacciones") }}</h2>
         {% if ultimas %}
         <div class="tabla-desplazable">
             <table class="tabla">
                 <thead>
-                    <tr><th>Transacción</th><th>Emisor</th><th>Receptor</th><th class="derecha">Monto</th><th>Estado</th><th>Bloque</th></tr>
+                    <tr><th>{{ t("Transacción") }}</th><th>{{ t("Emisor") }}</th><th>{{ t("Receptor") }}</th><th class="derecha">{{ t("Monto") }}</th><th>{{ t("Estado") }}</th><th>{{ t("Bloque") }}</th></tr>
                 </thead>
                 <tbody>
                     {% for transaccion in ultimas %}
@@ -64,8 +64,8 @@
         </div>
         {% else %}
         <div class="vacio">
-            <p class="vacio-titulo">Todavía no hay transacciones.</p>
-            <p class="ayuda">Propón la primera desde <a href="/transacciones">Transacciones</a>.</p>
+            <p class="vacio-titulo">{{ t("Todavía no hay transacciones.") }}</p>
+            <p class="ayuda">{{ t("Propón la primera desde") }} <a href="/transacciones">{{ t("Transacciones") }}</a>.</p>
         </div>
         {% endif %}
     </section>

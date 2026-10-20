@@ -11,10 +11,21 @@ va el dictamen de la cadena y debajo todas las transacciones de la sesión con s
 estado, y las confirmadas con el índice del bloque que las agrupa. `/mi-verificacion`
 sobrevive como redirección para no romper un enlace guardado.
 
+`/mis-contactos` es la agenda: las cuentas que la persona agregó por su nombre de
+usuario, con cuántos movimientos tiene con cada una y un atajo para enviarle. La
+agenda no muestra nada que el envío no muestre ya —el nombre y los movimientos
+propios—, así que no abre la vista a las wallets de otros (REQ-35).
+`/mis-contactos/sugerencias` es la vista previa de los campos de destinatario:
+mientras se teclea, ofrece los nombres de las cuentas que pueden recibir un envío.
+
+Todo lo que lee el usuario común va en palabras de todos los días: nada de pool,
+wallet, bloque ni firma. Los motivos de rechazo del dominio se traducen acá con
+`MOTIVOS_EN_PALABRAS`; el administrador los sigue viendo tal como los da el dominio.
+
 La resolución usa el servicio de cuentas y no el repositorio: la presentación no
 consulta la base (REQ-29). La validez del envío —saldo, firma, formato— la sigue
 decidiendo `Blockchain.create_transaction`, y su motivo se muestra tal cual; acá
-sólo se decide quién puede llamar y qué se pinta.
+sólo se decide quién puede llamar, qué se pinta y con qué palabras.
 
 El blueprint se arma con las fábricas que le pasa `create_app`, por la misma razón
 que la aplicación: este módulo no puede construir el ledger ni las cuentas sin
@@ -22,14 +33,30 @@ conocer la persistencia.
 """
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from contextlib import AbstractContextManager
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from decimal import Decimal
 from uuid import UUID
 
-from flask import Blueprint, Response, abort, g, redirect, render_template, request, url_for
+from flask import (
+    Blueprint,
+    Response,
+    abort,
+    flash,
+    g,
+    redirect,
+    render_template,
+    request,
+    url_for,
+)
 
-from src.accounts.service import Cuentas
+from src.accounts.model import Usuario
+from src.accounts.service import ContactoInvalido, Cuentas
 from src.domain.blockchain import Blockchain, TransactionResult
+from src.domain.transaction import RejectionReason, Transaction, TransactionStatus
+from src.emision import CONSTITUYENTE_ID
 from src.web.auth import requiere_usuario_comun
 from src.web.forms import a_monto, a_uuid
 
@@ -37,8 +64,32 @@ from src.web.forms import a_monto, a_uuid
 # ni una wallet. Los demás motivos los pone el dominio y se muestran sin traducir,
 # así que este texto no repite ninguna regla de negocio.
 MENSAJE_DESTINATARIO_INEXISTENTE = (
-    "No se encontró una cuenta ni una wallet con ese destinatario."
+    "No encontramos a nadie con ese nombre de usuario."
 )
+
+# Los motivos del dominio dichos para una persona sin conocimientos técnicos. Un
+# motivo que falte acá se muestra tal cual, así que agregar uno al dominio no deja
+# a la pantalla sin explicación.
+MOTIVOS_EN_PALABRAS: dict[str, str] = {
+    RejectionReason.AMOUNT_NOT_POSITIVE: "El monto tiene que ser mayor que cero.",
+    RejectionReason.AMOUNT_PRECISION: "El monto tiene demasiados decimales.",
+    RejectionReason.AMOUNT_OUT_OF_RANGE: "El monto es demasiado grande.",
+    RejectionReason.SAME_SENDER_AND_RECEIVER: "No puedes enviarte dinero a ti mismo.",
+    RejectionReason.UNKNOWN_WALLET: "No encontramos a esa persona.",
+    RejectionReason.BAD_SIGNATURE: "No pudimos autorizar el envío. Intenta de nuevo.",
+    RejectionReason.INSUFFICIENT_FUNDS: "No tienes saldo suficiente para este envío.",
+    RejectionReason.DUPLICATE_SIGNATURE: "Este envío ya se había hecho.",
+}
+
+
+def en_palabras(motivo: object) -> str:
+    """El motivo de un rechazo como lo entiende cualquier persona."""
+    texto = str(motivo)
+    return MOTIVOS_EN_PALABRAS.get(texto, texto)
+
+MENSAJE_CONTACTO_AGREGADO = "Agregaste a {nombre} a tus contactos."
+MENSAJE_CONTACTO_QUITADO = "Lo sacaste de tus contactos."
+MENSAJE_CONTACTO_YA_NO_ESTABA = "Ese contacto ya no estaba en tu agenda."
 
 FabricaDeCadenas = Callable[[], AbstractContextManager[Blockchain]]
 FabricaDeCuentas = Callable[[], AbstractContextManager[Cuentas]]
@@ -49,6 +100,16 @@ def crear_blueprint_del_usuario(
 ) -> Blueprint:
     """Arma las rutas del tablero con las fábricas que recibe de `create_app`."""
     tablero = Blueprint("usuario", __name__)
+
+    @tablero.context_processor
+    def palabras_del_usuario() -> dict[str, object]:
+        """Lo que las plantillas del común necesitan para hablar sin tecnicismos.
+
+        El saldo de bienvenida sale de la wallet del constituyente, que en una
+        base sin semilla no tiene dueño: sin su identificador la fila diría
+        «Sin dueño» en vez de «Saldo de bienvenida».
+        """
+        return {"en_palabras": en_palabras, "bienvenida_id": CONSTITUYENTE_ID}
 
     @tablero.get("/mi-tablero")
     @requiere_usuario_comun
@@ -83,11 +144,7 @@ def crear_blueprint_del_usuario(
                 receiver_id=wallet_destino,
                 amount=a_monto(request.form.get("amount")),
             )
-            return _pintar_tablero(
-                chain,
-                resultado=resultado,
-                motivo_por_transaccion=_motivo_por_la_transaccion(resultado),
-            )
+            return _pintar_tablero(chain, resultado=resultado)
 
     @tablero.get("/mi-historial")
     @requiere_usuario_comun
@@ -120,7 +177,109 @@ def crear_blueprint_del_usuario(
         """
         return redirect(url_for("usuario.mi_historial"), code=302)
 
+    @tablero.get("/mis-contactos")
+    @requiere_usuario_comun
+    def mis_contactos() -> str:
+        """La agenda de la sesión, con los movimientos que tiene con cada contacto."""
+        wallet_id = _wallet_de_la_sesion()
+        with abrir_cuentas() as cuentas:
+            agenda = cuentas.contactos(g.user.id)
+        with abrir_cadena() as chain:
+            historial = chain.wallet_history(wallet_id)
+        return render_template(
+            "mis_contactos.html",
+            contactos=_contactos_con_movimientos(agenda, historial, wallet_id),
+        )
+
+    @tablero.get("/mis-contactos/sugerencias")
+    @requiere_usuario_comun
+    def sugerencias() -> str:
+        """La vista previa de los campos de destinatario: quién coincide con lo tecleado.
+
+        Devuelve el fragmento con la lista y no un JSON para que el avatar y el
+        escapado salgan de las mismas plantillas que el resto de la página. Con
+        `sin_contactos=1` —el campo de agregar contacto— no ofrece a quien ya está
+        en la agenda, que el formulario rechazaría por repetido.
+        """
+        with abrir_cuentas() as cuentas:
+            nombres = cuentas.sugerir_destinatarios(
+                g.user.id,
+                request.args.get("q", ""),
+                sin_contactos=request.args.get("sin_contactos") == "1",
+            )
+        return render_template("_sugerencias.html", nombres=nombres)
+
+    @tablero.post("/mis-contactos")
+    @requiere_usuario_comun
+    def agregar_contacto() -> Response:
+        """Agenda por nombre de usuario y vuelve a la agenda con el resultado.
+
+        Se responde con redirección y aviso, como la cola del administrador: así
+        recargar la página no vuelve a mandar el formulario.
+        """
+        nombre = request.form.get("usuario", "")
+        with abrir_cuentas() as cuentas:
+            try:
+                contacto = cuentas.agregar_contacto(g.user.id, nombre)
+            except ContactoInvalido as error:
+                flash(str(error), "aviso")
+            else:
+                flash(MENSAJE_CONTACTO_AGREGADO.format(nombre=contacto.username), "exito")
+        return redirect(url_for("usuario.mis_contactos"))
+
+    @tablero.post("/mis-contactos/<identificador>/quitar")
+    @requiere_usuario_comun
+    def quitar_contacto(identificador: str) -> Response:
+        """Saca a alguien de la agenda de la sesión; la de otros no se puede tocar.
+
+        El dueño de la agenda sale de la sesión y nunca de la ruta, igual que el
+        emisor de un envío: la ruta sólo dice a quién sacar.
+        """
+        contacto_id = a_uuid(identificador)
+        if contacto_id is None:
+            abort(404, description="Ese contacto no existe.")
+        with abrir_cuentas() as cuentas:
+            if cuentas.quitar_contacto(g.user.id, contacto_id):
+                flash(MENSAJE_CONTACTO_QUITADO, "exito")
+            else:
+                flash(MENSAJE_CONTACTO_YA_NO_ESTABA, "aviso")
+        return redirect(url_for("usuario.mis_contactos"))
+
     return tablero
+
+
+@dataclass(frozen=True, slots=True)
+class ContactoConMovimientos:
+    """Un contacto de la agenda y lo que la wallet de la sesión movió con él."""
+
+    usuario: Usuario
+    movimientos: int
+    ultimo: datetime | None
+
+
+def _contactos_con_movimientos(
+    agenda: Sequence[Usuario], historial: Sequence[Transaction], propia: UUID
+) -> list[ContactoConMovimientos]:
+    """Cuenta, para cada contacto, las transacciones propias en que es la contraparte.
+
+    El historial ya viene filtrado por la wallet de la sesión y de la más nueva a
+    la más vieja, así que la primera que aparece de cada contraparte es la última.
+    """
+    por_contraparte: dict[UUID, list[Transaction]] = {}
+    for transaction in historial:
+        otra = transaction.receiver_id if transaction.sender_id == propia else transaction.sender_id
+        por_contraparte.setdefault(otra, []).append(transaction)
+    resultado = []
+    for usuario in agenda:
+        comunes = por_contraparte.get(usuario.wallet_id, [])
+        resultado.append(
+            ContactoConMovimientos(
+                usuario=usuario,
+                movimientos=len(comunes),
+                ultimo=comunes[0].created_at if comunes else None,
+            )
+        )
+    return resultado
 
 
 def _wallet_de_la_sesion() -> UUID:
@@ -170,35 +329,106 @@ def _pintar_tablero(
     *,
     resultado: TransactionResult | None = None,
     error_formulario: str | None = None,
-    motivo_por_transaccion: dict[UUID, str] | None = None,
 ) -> str:
     """Pinta el tablero con la wallet de la sesión y lo que el ledger tiene de ella.
 
     El saldo es el disponible real de la fachada —el mismo que usa el envío para
-    decidir—, y el historial se filtra por la wallet de la sesión. No se pasa el
-    panel lateral de `base.html`: esa lista es de la portada del administrador y
-    mostraría las wallets de otros, que es justo lo que REQ-35 prohíbe.
+    decidir—, y el historial se filtra por la wallet de la sesión. La lista de
+    movimientos vive en Mi historial; acá el historial sólo alimenta lo que no se
+    ve en otra pestaña: el resumen del mes y con quién se mueve más la persona.
+    No se pasa el panel lateral de `base.html`: esa lista es de la portada del
+    administrador y mostraría las wallets de otros, que es justo lo que REQ-35
+    prohíbe.
     """
     wallet_id = _wallet_de_la_sesion()
+    historial = chain.wallet_history(wallet_id)
     return render_template(
         "tablero.html",
         wallet_id=wallet_id,
         saldo=chain.available_balance(wallet_id),
-        transacciones=chain.wallet_history(wallet_id),
+        transacciones=historial,
+        resumen=_resumen_del_mes(historial, wallet_id, datetime.now(UTC)),
+        personas=_con_quien_mas(historial, wallet_id),
         resultado=resultado,
         error_formulario=error_formulario,
-        motivo_por_transaccion=motivo_por_transaccion or {},
     )
 
 
-def _motivo_por_la_transaccion(resultado: TransactionResult) -> dict[UUID, str]:
-    """El motivo del rechazo, atado a la fila que acaba de quedar `rejected`.
+MESES = (
+    "enero", "febrero", "marzo", "abril", "mayo", "junio",
+    "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
+)
 
-    La base guarda el estado de la rechazada pero no su motivo —el esquema no
-    tiene esa columna—, así que el único momento en que se puede mostrar junto a
-    la fila es la respuesta del envío que la produjo. En un rechazo que no dejó
-    fila no hay nada que anotar.
+
+@dataclass(frozen=True, slots=True)
+class ResumenDelMes:
+    """Lo que entró y salió de la wallet en el mes en curso, sólo lo completado."""
+
+    mes: str
+    recibido: Decimal
+    enviado: Decimal
+    recepciones: int
+    envios: int
+
+    @property
+    def diferencia(self) -> Decimal:
+        return self.recibido - self.enviado
+
+
+@dataclass(frozen=True, slots=True)
+class PersonaFrecuente:
+    """Una contraparte y cuántos movimientos tiene con la wallet de la sesión."""
+
+    wallet_id: UUID
+    movimientos: int
+
+
+def _resumen_del_mes(
+    historial: Sequence[Transaction], propia: UUID, ahora: datetime
+) -> ResumenDelMes:
+    """Suma lo completado del mes de `ahora`: lo que está en espera ya lo cuenta la
+    tarjeta del saldo y lo rechazado nunca movió dinero."""
+    recibido = enviado = Decimal(0)
+    recepciones = envios = 0
+    for transaction in historial:
+        momento = transaction.created_at.astimezone(UTC)
+        if transaction.status is not TransactionStatus.CONFIRMED or (
+            (momento.year, momento.month) != (ahora.year, ahora.month)
+        ):
+            continue
+        if transaction.sender_id == propia:
+            enviado += transaction.amount
+            envios += 1
+        else:
+            recibido += transaction.amount
+            recepciones += 1
+    return ResumenDelMes(
+        mes=MESES[ahora.month - 1],
+        recibido=recibido,
+        enviado=enviado,
+        recepciones=recepciones,
+        envios=envios,
+    )
+
+
+def _con_quien_mas(
+    historial: Sequence[Transaction], propia: UUID
+) -> list[PersonaFrecuente]:
+    """Las contrapartes ordenadas de la que más movimientos tiene a la que menos.
+
+    No cuenta lo rechazado ni el saldo de bienvenida: ninguno de los dos es un
+    intercambio con otra persona. La plantilla decide cuántas mostrar y salta las
+    wallets sin dueño, que no tienen nombre al que enviar.
     """
-    if resultado.accepted or resultado.stored is None:
-        return {}
-    return {resultado.stored.id: str(resultado.reason)}
+    cuentas: dict[UUID, int] = {}
+    for transaction in historial:
+        if transaction.status is TransactionStatus.REJECTED:
+            continue
+        otra = transaction.receiver_id if transaction.sender_id == propia else transaction.sender_id
+        if otra == CONSTITUYENTE_ID:
+            continue
+        cuentas[otra] = cuentas.get(otra, 0) + 1
+    return [
+        PersonaFrecuente(wallet_id=wallet_id, movimientos=movimientos)
+        for wallet_id, movimientos in sorted(cuentas.items(), key=lambda par: -par[1])
+    ]

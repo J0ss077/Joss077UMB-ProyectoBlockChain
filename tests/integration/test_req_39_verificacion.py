@@ -74,9 +74,11 @@ def test_req_39_mi_historial_lista_solo_sus_transacciones(
     # La plantilla puede partir la celda en varias líneas, así que se tolera el
     # espacio en blanco alrededor del valor y no se exige una cadena literal.
     assert re.search(rf"<td>\s*<code>{indice}</code>\s*</td>", cuerpo)
-    # La pendiente propia se lista con su estado: es la adaptación declarada.
+    # La pendiente propia se lista con su estado, dicho en palabras simples: es la
+    # adaptación declarada.
     assert str(pendiente.id) in cuerpo
-    assert "<td><code>pending</code></td>" in cuerpo
+    assert 'data-estado="pending"' in cuerpo
+    assert "En espera" in cuerpo
     assert "4.00000000" in cuerpo
     # El alcance no cambia: lo de otra wallet no aparece, ni su monto ni su clave.
     assert str(ajena.id) not in cuerpo

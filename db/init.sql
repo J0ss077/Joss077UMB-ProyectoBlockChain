@@ -162,3 +162,84 @@ COMMENT ON COLUMN users.wallet_id IS
     'Wallet del usuario, ligada al aprobar; nula mientras el alta no esté aprobada (REQ-33).';
 COMMENT ON COLUMN users.aprobado_en IS
     'Momento de la aprobación; nulo mientras el alta no esté aprobada (REQ-33).';
+
+-- ---------------------------------------------------------------------------
+-- contactos: la agenda de cada usuario común. Es de un solo sentido —agregar a
+-- alguien no lo obliga a agregarte— y la pareja es la clave primaria, así que un
+-- contacto no se repite. Nadie se agenda a sí mismo. A diferencia del resto del
+-- esquema el borrado va en cascada: una fila de la agenda no tiene sentido sin
+-- las dos cuentas y no hay historia que proteger, a diferencia de una wallet.
+-- ---------------------------------------------------------------------------
+CREATE TABLE contactos (
+    usuario_id UUID NOT NULL,
+    contacto_id UUID NOT NULL,
+    creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT pk_contactos PRIMARY KEY (usuario_id, contacto_id),
+    CONSTRAINT fk_contactos_usuario
+        FOREIGN KEY (usuario_id) REFERENCES users (id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT fk_contactos_contacto
+        FOREIGN KEY (contacto_id) REFERENCES users (id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT chk_contactos_no_a_si_mismo CHECK (usuario_id <> contacto_id)
+);
+
+COMMENT ON TABLE contactos IS
+    'Agenda de cada usuario común: a quién agregó por su nombre de usuario.';
+
+-- ---------------------------------------------------------------------------
+-- solicitudes_de_contrasena: el cambio de contraseña del usuario común no se
+-- aplica solo; queda pendiente hasta que un administrador lo apruebe. La nueva
+-- contraseña se guarda ya hasheada —nunca en claro (REQ-36)— y recién al aprobar
+-- reemplaza a `users.password_hash`. Una cuenta tiene a lo sumo una solicitud
+-- pendiente a la vez, y el rechazo puede llevar un motivo.
+-- ---------------------------------------------------------------------------
+CREATE TABLE solicitudes_de_contrasena (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    usuario_id UUID NOT NULL,
+    password_hash TEXT NOT NULL,
+    estado TEXT NOT NULL DEFAULT 'pendiente',
+    motivo_rechazo TEXT NULL,
+    creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    resuelto_en TIMESTAMPTZ NULL,
+
+    CONSTRAINT fk_solicitudes_de_contrasena_usuario
+        FOREIGN KEY (usuario_id) REFERENCES users (id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT chk_solicitudes_de_contrasena_estado
+        CHECK (estado IN ('pendiente', 'aprobado', 'rechazado')),
+    CONSTRAINT chk_solicitudes_de_contrasena_resuelta
+        CHECK ((estado = 'pendiente') = (resuelto_en IS NULL))
+);
+
+CREATE UNIQUE INDEX uq_solicitudes_de_contrasena_una_pendiente
+    ON solicitudes_de_contrasena (usuario_id) WHERE estado = 'pendiente';
+
+COMMENT ON COLUMN solicitudes_de_contrasena.password_hash IS
+    'Hash `scrypt` de la contraseña pedida; reemplaza al de la cuenta sólo al aprobarse.';
+
+-- ---------------------------------------------------------------------------
+-- fotos_de_perfil: la foto opcional de cada cuenta. La imagen no vive en la base:
+-- es un archivo aparte, en la carpeta de fotos (`FOTOS_DIR`), y esta tabla guarda
+-- sólo su nombre, su tipo y cuándo cambió. Sin fila, la interfaz muestra la
+-- inicial del nombre. El nombre lo genera la aplicación —32 dígitos hexadecimales
+-- y la extensión— y el CHECK impide que una fila apunte a cualquier otra ruta.
+-- Sólo se admiten los tres formatos que el navegador pinta sin ejecutar nada
+-- (nunca SVG); la aplicación reconoce el tipo por los bytes antes de guardar.
+-- ---------------------------------------------------------------------------
+CREATE TABLE fotos_de_perfil (
+    usuario_id UUID PRIMARY KEY,
+    archivo TEXT NOT NULL,
+    tipo TEXT NOT NULL,
+    actualizado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT fk_fotos_de_perfil_usuario
+        FOREIGN KEY (usuario_id) REFERENCES users (id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT uq_fotos_de_perfil_archivo UNIQUE (archivo),
+    CONSTRAINT chk_fotos_de_perfil_archivo
+        CHECK (archivo ~ '^[0-9a-f]{32}\.(jpg|png|webp)$'),
+    CONSTRAINT chk_fotos_de_perfil_tipo
+        CHECK (tipo IN ('image/jpeg', 'image/png', 'image/webp'))
+);

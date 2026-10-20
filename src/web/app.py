@@ -25,7 +25,9 @@ from uuid import UUID
 
 from flask import (
     Flask,
+    Response,
     abort,
+    flash,
     g,
     redirect,
     render_template,
@@ -41,6 +43,7 @@ from src.accounts.credentials import (
     LARGO_MINIMO_DE_CONTRASENA,
     PATRON_DE_USUARIO,
 )
+from src.accounts.fotos import MOTIVO_DE_FOTO_GRANDE
 from src.accounts.model import ADMINISTRADOR, UsuarioDuplicado
 from src.accounts.service import CredencialesInvalidas, Cuentas, NoAprobado
 from src.domain.blockchain import Blockchain, ensure_genesis
@@ -54,7 +57,16 @@ from src.web.auth import (
     usuario_de_la_sesion,
 )
 from src.web.forms import a_monto, a_uuid
+from src.web.idioma import (
+    COOKIE_DEL_IDIOMA,
+    DURACION_DE_LA_COOKIE,
+    IDIOMAS,
+    idioma_actual,
+    t,
+    textos_de_js,
+)
 from src.web.panel import datos_del_panel
+from src.web.perfil import crear_blueprint_del_perfil
 from src.web.user import crear_blueprint_del_usuario
 
 # Nombre de la variable que firma la cookie. Es una constante y no un literal
@@ -66,6 +78,8 @@ VARIABLE_DEL_SECRETO_DE_SESION = "SESSION_SECRET"
 # público dejaría que cualquiera firme una cookie de sesión. La prueba de REQ-37
 # exige que sea la misma que la del lector, para que las dos no se separen.
 SECRETO_DE_SESION_DE_LA_PLANTILLA = "0" * 64
+
+TAMANO_MAXIMO_DE_LA_PETICION = 3 * 1024 * 1024
 
 FabricaDeCadenas = Callable[[], AbstractContextManager[Blockchain]]
 FabricaDeCuentas = Callable[[], AbstractContextManager[Cuentas]]
@@ -97,6 +111,9 @@ def create_app(
     app.config.update(
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Lax",
+        # El único formulario con archivo es la foto de perfil, que admite 2 MB;
+        # el margen cubre el resto del cuerpo. Más que eso se corta antes de leerlo.
+        MAX_CONTENT_LENGTH=TAMANO_MAXIMO_DE_LA_PETICION,
     )
 
     @contextmanager
@@ -122,6 +139,43 @@ def create_app(
     # es la que alimenta el panel de wallets con saldos que comparten sus páginas
     # (REQ-29, REQ-31).
     app.register_blueprint(crear_blueprint_de_la_cola(abrir_cuentas, abrir_cadena))
+    # El perfil es de las dos clases de cuenta: datos, idioma y contraseña.
+    app.register_blueprint(crear_blueprint_del_perfil(abrir_cuentas))
+
+    # `t` traduce en todas las plantillas, también en las macros importadas sin
+    # contexto; por eso va como global del entorno y no en un procesador.
+    app.jinja_env.globals["t"] = t
+
+    @app.context_processor
+    def idioma_de_la_pagina() -> dict[str, object]:
+        """El idioma vigente, los disponibles y los textos que necesitan los guiones."""
+        return {
+            "idioma": idioma_actual(),
+            "idiomas": IDIOMAS,
+            "textos_de_js": textos_de_js(),
+        }
+
+    @app.post("/idioma")
+    def elegir_idioma() -> Response:
+        """Guarda el idioma elegido en una cookie y vuelve a la página de origen.
+
+        Sólo se vuelve a una ruta propia: un `volver` que no empieza con una sola
+        barra se descarta, para que el formulario no sirva de redirección abierta.
+        """
+        elegido = request.form.get("idioma", "")
+        volver = request.form.get("volver", "/")
+        if not volver.startswith("/") or volver.startswith("//"):
+            volver = "/"
+        respuesta = redirect(volver)
+        if elegido in IDIOMAS:
+            respuesta.set_cookie(
+                COOKIE_DEL_IDIOMA,
+                elegido,
+                max_age=DURACION_DE_LA_COOKIE,
+                httponly=True,
+                samesite="Lax",
+            )
+        return respuesta
 
     @app.context_processor
     def valores_de_los_formularios() -> dict[str, object]:
@@ -155,6 +209,32 @@ def create_app(
             return g.nombres_por_wallet.get(wallet_id)
 
         return {"nombre_de_wallet": nombre_de_wallet}
+
+    def url_de_foto(username: str) -> str | None:
+        """La dirección de la foto de esa cuenta, o `None` para pintar su inicial.
+
+        Como `nombre_de_wallet`, lee una vez por petición y sólo si la página
+        muestra avatares. Va como global del entorno porque la usa la macro
+        `avatar`, que se importa sin contexto. La fecha de la foto versiona la
+        dirección: al cambiarla, la caché del navegador no muestra la vieja.
+        """
+        if "fotos_por_nombre" not in g:
+            with abrir_cuentas() as cuentas:
+                g.fotos_por_nombre = cuentas.fotos_por_nombre()
+        actualizada = g.fotos_por_nombre.get(username)
+        if actualizada is None:
+            return None
+        return url_for("perfil.foto", username=username, v=int(actualizada.timestamp()))
+
+    app.jinja_env.globals["url_de_foto"] = url_de_foto
+
+    @app.errorhandler(413)
+    def demasiado_grande(_error):
+        """Un cuerpo más grande que el tope: en la foto se avisa en el perfil."""
+        if request.path == url_for("perfil.poner_foto") and g.get("user"):
+            flash(MOTIVO_DE_FOTO_GRANDE, "motivo")
+            return redirect(url_for("perfil.ver"))
+        return render_template("error.html", detalle="La solicitud es demasiado grande."), 413
 
     @app.before_request
     def recargar_usuario() -> None:

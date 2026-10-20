@@ -1,60 +1,60 @@
 {% extends "base.html" %}
 {% from "_macros.html" import dato, copiar %}
-{% block titulo %}Cerrar bloque{% endblock %}
+{% block titulo %}{{ t("Cerrar bloque") }}{% endblock %}
 {% block cuerpo %}
 <div class="rejilla">
     <main id="contenido" tabindex="-1" class="mosaico columna-principal">
         <div class="encabezado-con-accion">
             <div>
-                <p class="antetitulo">Agrupar el pool</p>
-                <h1 class="titulo-pagina">Cerrar bloque</h1>
-                <p class="entradilla">Las transacciones del pool que siguen siendo válidas se confirman en un bloque nuevo, encadenado al hash del último.</p>
+                <p class="antetitulo">{{ t("Agrupar el pool") }}</p>
+                <h1 class="titulo-pagina">{{ t("Cerrar bloque") }}</h1>
+                <p class="entradilla">{{ t("Las transacciones del pool que siguen siendo válidas se confirman en un bloque nuevo, encadenado al hash del último.") }}</p>
             </div>
             <form method="post" action="/bloques">
-                <button class="boton boton-grande boton-primario" type="submit">Cerrar bloque</button>
+                <button class="boton boton-grande boton-primario" type="submit">{{ t("Cerrar bloque") }}</button>
             </form>
         </div>
         {% if bloque %}
         <section class="exito resultado" role="status">
-            <p>Bloque creado y encadenado con el último.</p>
+            <p>{{ t("Bloque creado y encadenado con el último.") }}</p>
             {# El eslabón nuevo junto al anterior, dibujado con los dos hashes que devuelve el cierre: el previo es el hash del bloque anterior. #}
-            <ol class="cadena cadena-resultado" aria-label="El bloque {{ bloque.block_index }} encadenado al {{ bloque.block_index - 1 }}">
+            <ol class="cadena cadena-resultado" aria-label="{{ t('El bloque {n} encadenado al {anterior}', n=bloque.block_index, anterior=bloque.block_index - 1) }}">
                 <li class="eslabon-cadena">
-                    <span class="eslabon-indice">#{{ bloque.block_index - 1 }} · anterior</span>
+                    <span class="eslabon-indice">#{{ bloque.block_index - 1 }} · {{ t("anterior") }}</span>
                     <span class="codigo">{{ dato(bloque.previous_hash) }}</span>
                 </li>
                 <li class="union-cadena" aria-hidden="true"></li>
                 <li class="eslabon-cadena es-ultimo">
-                    <span class="eslabon-indice">#{{ bloque.block_index }} · nuevo</span>
+                    <span class="eslabon-indice">#{{ bloque.block_index }} · {{ t("nuevo") }}</span>
                     <span class="codigo">{{ dato(bloque.hash) }}</span>
                 </li>
             </ol>
             <dl class="ficha">
-                <dt>Índice</dt>
+                <dt>{{ t("Índice") }}</dt>
                 <dd class="cifra">{{ bloque.block_index }}</dd>
-                <dt>Marca de tiempo</dt>
+                <dt>{{ t("Marca de tiempo") }}</dt>
                 <dd class="cifra">{{ bloque.timestamp.isoformat() }}</dd>
-                <dt>Hash previo</dt>
+                <dt>{{ t("Hash previo") }}</dt>
                 <dd><span class="codigo">{{ dato(bloque.previous_hash) }}{{ copiar(bloque.previous_hash, "el hash previo") }}</span></dd>
-                <dt>Hash</dt>
+                <dt>{{ t("Hash") }}</dt>
                 <dd><span class="codigo">{{ dato(bloque.hash) }}{{ copiar(bloque.hash, "el hash del bloque") }}</span></dd>
             </dl>
         </section>
         {% elif request.method == "POST" and habia_pool %}
         <div class="aviso" role="status">
-            <p>Había transacciones en el pool y ninguna entró al bloque.</p>
-            <p>Ninguna seguía siendo válida al momento de agrupar.</p>
+            <p>{{ t("Había transacciones en el pool y ninguna entró al bloque.") }}</p>
+            <p>{{ t("Ninguna seguía siendo válida al momento de agrupar.") }}</p>
         </div>
         {% elif request.method == "POST" %}
         <div class="aviso" role="status">
-            <p>El pool estaba vacío: no se creó bloque.</p>
-            <p>Nadie propuso transacciones desde el último cierre.</p>
+            <p>{{ t("El pool estaba vacío: no se creó bloque.") }}</p>
+            <p>{{ t("Nadie propuso transacciones desde el último cierre.") }}</p>
         </div>
         {% endif %}
         <ol class="datos-clave">
-            <li><b>1 · Se revalida el pool</b>Cada transacción pendiente se vuelve a comprobar antes de entrar al bloque.</li>
-            <li><b>2 · Se calcula el hash</b>El hash del bloque nuevo cubre sus transacciones y el hash del anterior.</li>
-            <li><b>3 · Quedan confirmadas</b>Las transacciones del bloque pasan a confirmadas y cuentan en el saldo.</li>
+            <li><b>{{ t("1 · Se revalida el pool") }}</b>{{ t("Cada transacción pendiente se vuelve a comprobar antes de entrar al bloque.") }}</li>
+            <li><b>{{ t("2 · Se calcula el hash") }}</b>{{ t("El hash del bloque nuevo cubre sus transacciones y el hash del anterior.") }}</li>
+            <li><b>{{ t("3 · Quedan confirmadas") }}</b>{{ t("Las transacciones del bloque pasan a confirmadas y cuentan en el saldo.") }}</li>
         </ol>
     </main>
     {% include "_panel_wallets.html" %}

@@ -34,7 +34,12 @@ from flask import (
     url_for,
 )
 
-from src.accounts.service import Cuentas, UsuarioInexistente, UsuarioNoPendiente
+from src.accounts.service import (
+    CambioDeContrasenaInvalido,
+    Cuentas,
+    UsuarioInexistente,
+    UsuarioNoPendiente,
+)
 from src.domain.blockchain import Blockchain
 from src.web.auth import requiere_administrador
 from src.web.panel import datos_del_panel
@@ -48,6 +53,8 @@ FabricaDeCadenas = Callable[[], AbstractContextManager[Blockchain]]
 MENSAJE_APROBADA = "La cuenta quedó aprobada: ya tiene su wallet y su saldo."
 MENSAJE_RECHAZADA = "La cuenta quedó rechazada con el motivo indicado."
 MENSAJE_SIN_MOTIVO = "El rechazo necesita un motivo."
+MENSAJE_CONTRASENA_APROBADA = "El cambio de contraseña quedó aprobado."
+MENSAJE_CONTRASENA_RECHAZADA = "El cambio de contraseña quedó rechazado."
 
 
 def crear_blueprint_de_la_cola(
@@ -68,6 +75,7 @@ def crear_blueprint_de_la_cola(
             return render_template(
                 "pendientes.html",
                 pendientes=cuentas.pendientes(),
+                solicitudes=cuentas.solicitudes_pendientes(),
                 **datos_del_panel(chain),
             )
 
@@ -113,6 +121,36 @@ def crear_blueprint_de_la_cola(
                 flash(str(error), "aviso")
             else:
                 flash(MENSAJE_RECHAZADA, "exito")
+        return redirect(url_for("admin.pendientes"))
+
+    @cola.post("/contrasenas/<identificador>/<accion>")
+    @requiere_administrador
+    def resolver_contrasena(identificador: str, accion: str) -> Response:
+        """Aprueba o rechaza un cambio de contraseña pedido desde un perfil.
+
+        Al aprobar, la contraseña nueva pasa a la cuenta en la misma transacción.
+        El motivo del rechazo es opcional: la persona sigue entrando con la de
+        siempre. Una solicitud que ya no está pendiente se informa como aviso.
+        """
+        if accion not in ("aprobar", "rechazar"):
+            abort(404)
+        solicitud_id = _identificador(identificador)
+        with abrir_cuentas() as cuentas:
+            try:
+                cuentas.resolver_solicitud(
+                    solicitud_id,
+                    aprobada=accion == "aprobar",
+                    motivo=request.form.get("motivo", ""),
+                )
+            except CambioDeContrasenaInvalido as error:
+                flash(str(error), "aviso")
+            else:
+                flash(
+                    MENSAJE_CONTRASENA_APROBADA
+                    if accion == "aprobar"
+                    else MENSAJE_CONTRASENA_RECHAZADA,
+                    "exito",
+                )
         return redirect(url_for("admin.pendientes"))
 
     return cola

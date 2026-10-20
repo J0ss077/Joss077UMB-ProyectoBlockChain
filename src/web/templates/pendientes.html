@@ -1,44 +1,34 @@
 {% extends "base.html" %}
 {% from "_macros.html" import identidad %}
-{% block titulo %}Pendientes de aprobación{% endblock %}
+{% block titulo %}{{ t("Pendientes de aprobación") }}{% endblock %}
 {% block cuerpo %}
 <div class="rejilla">
     <main id="contenido" tabindex="-1" class="mosaico columna-principal">
         <div>
-            <p class="antetitulo">Alta moderada</p>
-            <h1 class="titulo-pagina">Pendientes de aprobación</h1>
-            <p class="entradilla">Aprobar crea la wallet y acredita 1000 de bienvenida. Rechazar exige un motivo, que la persona verá al intentar ingresar.</p>
+            <p class="antetitulo">{{ t("Alta moderada") }}</p>
+            <h1 class="titulo-pagina">{{ t("Pendientes de aprobación") }}</h1>
+            <p class="entradilla">{{ t("Aprobar crea la wallet y acredita 1000 de bienvenida. Rechazar exige un motivo, que la persona verá al intentar ingresar.") }}</p>
         </div>
-        {# La cola avisa en la misma página el resultado de la acción anterior: las dos vuelven acá, y el aviso de una fila que ya no estaba pendiente llega por la cookie de la sesión. La categoría del aviso («exito» o «aviso») es su clase. #}
-        {% with mensajes = get_flashed_messages(with_categories=true) %}{% if mensajes %}
-        <div id="aviso-de-la-cola" class="avisos">
-            {% for categoria, mensaje in mensajes %}
-            <div class="{{ categoria }}" role="status">
-                <p>{{ mensaje }}</p>
-            </div>
-            {% endfor %}
-        </div>
-        {% endif %}{% endwith %}
         {% if pendientes %}
-        <h2 class="titulo-bloque">{{ pendientes|length }} {{ "cuenta esperando" if pendientes|length == 1 else "cuentas esperando" }}</h2>
+        <h2 class="titulo-bloque">{{ t("{n} cuenta esperando", n=1) if pendientes|length == 1 else t("{n} cuentas esperando", n=pendientes|length) }}</h2>
         <ul class="lista-pendientes">
             {% for pendiente in pendientes %}
-            <li class="pendiente" aria-label="Cuenta {{ pendiente.username }}">
+            <li class="pendiente" aria-label="{{ t('Cuenta {nombre}', nombre=pendiente.username) }}">
                 <span class="inicial" aria-hidden="true">{{ pendiente.username[0]|upper }}</span>
                 <div class="pendiente-datos">
                     {{ identidad(pendiente.id, pendiente.username, "el identificador de la cuenta de " ~ pendiente.username) }}
-                    <span class="metadato">Registrado <b>{{ pendiente.creado_en.strftime("%d/%m/%Y %H:%M") }}</b></span>
+                    <span class="metadato">{{ t("Registrado") }} <b>{{ pendiente.creado_en.strftime("%d/%m/%Y %H:%M") }}</b></span>
                 </div>
                 <div class="pendiente-acciones">
                     <form method="post" action="{{ url_for('admin.aprobar', identificador=pendiente.id) }}">
-                        <button class="boton boton-lima" type="submit">Aprobar</button>
+                        <button class="boton boton-lima" type="submit">{{ t("Aprobar") }}</button>
                     </form>
                     <span class="separador" aria-hidden="true"></span>
                     {# El formulario del motivo viaja con el botón de rechazar: el servidor no rechaza sin un texto que explique por qué. #}
                     <form class="rechazo" method="post" action="{{ url_for('admin.rechazar', identificador=pendiente.id) }}">
-                        <label class="solo-lectores" for="motivo-{{ pendiente.id }}">Motivo del rechazo de {{ pendiente.username }}</label>
-                        <input id="motivo-{{ pendiente.id }}" name="motivo" placeholder="Motivo del rechazo" required />
-                        <button class="boton boton-peligro" type="submit">Rechazar</button>
+                        <label class="solo-lectores" for="motivo-{{ pendiente.id }}">{{ t("Motivo del rechazo de {nombre}", nombre=pendiente.username) }}</label>
+                        <input id="motivo-{{ pendiente.id }}" name="motivo" placeholder="{{ t('Motivo del rechazo') }}" required />
+                        <button class="boton boton-peligro" type="submit">{{ t("Rechazar") }}</button>
                     </form>
                 </div>
             </li>
@@ -46,8 +36,39 @@
         </ul>
         {% else %}
         <div class="vacio">
-            <p class="vacio-titulo">No hay cuentas pendientes.</p>
-            <p class="ayuda">Cuando alguien se registre, aparecerá aquí para que lo apruebes o lo rechaces.</p>
+            <p class="vacio-titulo">{{ t("No hay cuentas pendientes.") }}</p>
+            <p class="ayuda">{{ t("Cuando alguien se registre, aparecerá aquí para que lo apruebes o lo rechaces.") }}</p>
+        </div>
+        {% endif %}
+        {# Los cambios de contraseña pedidos desde el perfil: la contraseña nueva no se ve —sólo existe su hash— y pasa a la cuenta recién al aprobar. El motivo del rechazo es opcional, porque la persona sigue entrando con la de siempre. #}
+        <h2 class="titulo-bloque" id="titulo-contrasenas">{{ t("Cambios de contraseña") }} <span class="contador">{{ solicitudes|length }}</span></h2>
+        {% if solicitudes %}
+        <ul class="lista-pendientes" aria-labelledby="titulo-contrasenas">
+            {% for solicitud in solicitudes %}
+            <li class="pendiente" aria-label="{{ t('Cambio de contraseña de {nombre}', nombre=solicitud.username) }}">
+                <span class="inicial inicial-clave" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg></span>
+                <div class="pendiente-datos">
+                    <span class="nombre">{{ solicitud.username }}</span>
+                    <span class="metadato">{{ t("Lo pidió el") }} <b>{{ solicitud.creado_en.strftime("%d/%m/%Y %H:%M") }}</b></span>
+                </div>
+                <div class="pendiente-acciones">
+                    <form method="post" action="{{ url_for('admin.resolver_contrasena', identificador=solicitud.id, accion='aprobar') }}">
+                        <button class="boton boton-lima" type="submit">{{ t("Aprobar") }}</button>
+                    </form>
+                    <span class="separador" aria-hidden="true"></span>
+                    <form class="rechazo" method="post" action="{{ url_for('admin.resolver_contrasena', identificador=solicitud.id, accion='rechazar') }}">
+                        <label class="solo-lectores" for="motivo-clave-{{ solicitud.id }}">{{ t("Motivo del rechazo de {nombre}", nombre=solicitud.username) }}</label>
+                        <input id="motivo-clave-{{ solicitud.id }}" name="motivo" placeholder="{{ t('Motivo (opcional)') }}" />
+                        <button class="boton boton-peligro" type="submit">{{ t("Rechazar") }}</button>
+                    </form>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <div class="vacio">
+            <p class="vacio-titulo">{{ t("No hay cambios de contraseña pendientes.") }}</p>
+            <p class="ayuda">{{ t("Cuando alguien pida cambiar su contraseña desde su perfil, aparecerá aquí.") }}</p>
         </div>
         {% endif %}
     </main>

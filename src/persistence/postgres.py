@@ -216,11 +216,13 @@ class PostgresTransactionRepository:
         status: TransactionStatus | None = None,
         wallet_id: UUID | None = None,
         limit: int = 100,
+        newest_first: bool = False,
     ) -> Sequence[Transaction]:
         """Las transacciones que cumplen los filtros, de la más antigua a la más nueva.
 
         `wallet_id` mira las dos direcciones: el historial de una wallet son sus
-        envíos y sus recepciones (REQ-13).
+        envíos y sus recepciones (REQ-13). Con `newest_first` el orden se invierte en
+        la consulta y no después, para que el `LIMIT` deje fuera las más viejas.
         """
         condiciones: list[str] = []
         parametros: list[Any] = []
@@ -232,10 +234,11 @@ class PostgresTransactionRepository:
             parametros.extend((wallet_id, wallet_id))
         where = f"WHERE {' AND '.join(condiciones)}" if condiciones else ""
         parametros.append(limit)
+        orden = "created_at DESC, id DESC" if newest_first else "created_at, id"
 
         cursor = self._connection.cursor(row_factory=dict_row)
         cursor.execute(
-            f"SELECT * FROM transactions {where} ORDER BY created_at, id LIMIT %s",
+            f"SELECT * FROM transactions {where} ORDER BY {orden} LIMIT %s",
             parametros,
         )
         return [_row_to_transaction(row) for row in cursor.fetchall()]

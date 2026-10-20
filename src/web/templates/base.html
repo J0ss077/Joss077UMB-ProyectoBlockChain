@@ -1,12 +1,15 @@
 <!doctype html>
-<html lang="es">
+<html lang="{{ idioma }}">
     <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="color-scheme" content="light dark" />
-        <title>{% block titulo %}Ledger transaccional{% endblock %}</title>
+        <title>{% block titulo %}{{ t("Ledger transaccional") }}{% endblock %}</title>
         {# El tema guardado se aplica aquí, antes de cargar el CSS, para que la página no se pinte un instante con el tema equivocado. Sin elección guardada manda el sistema. #}
         <script>
+            // La clase `js` deja que el CSS distinga, antes de pintar, lo que sólo
+            // tiene sentido con JavaScript (las notificaciones flotantes).
+            document.documentElement.classList.add("js");
             try {
                 const tema = localStorage.getItem("tema");
                 if (tema === "claro" || tema === "oscuro") document.documentElement.dataset.tema = tema;
@@ -15,9 +18,14 @@
         <link rel="stylesheet" href="{{ url_for('static', filename='css/tokens.css') }}" />
         <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}" />
         <link rel="stylesheet" href="{{ url_for('static', filename='css/animaciones.css') }}" />
+        {# Los guiones leen sus textos de acá: vacío en español, y con las traducciones cuando la página va en inglés. #}
+        <script>window.TEXTOS = {{ textos_de_js|tojson }};</script>
         <script src="{{ url_for('static', filename='js/tema.js') }}" defer></script>
         <script src="{{ url_for('static', filename='js/codigos.js') }}" defer></script>
         <script src="{{ url_for('static', filename='js/usuario.js') }}" defer></script>
+        <script src="{{ url_for('static', filename='js/contrasena.js') }}" defer></script>
+        <script src="{{ url_for('static', filename='js/burbujas.js') }}" defer></script>
+        <script src="{{ url_for('static', filename='js/sugerencias.js') }}" defer></script>
         <script src="{{ url_for('static', filename='js/animaciones.js') }}" defer></script>
         <style>
             :root {
@@ -36,32 +44,34 @@
         </style>
     </head>
     <body>
+        {% from "_macros.html" import avatar, burbuja %}
         {# Primer elemento enfocable: con teclado se salta la barra y la navegación (WCAG 2.4.1). #}
-        <a class="saltar" href="#contenido">Saltar al contenido</a>
+        <a class="saltar" href="#contenido">{{ t("Saltar al contenido") }}</a>
         <div class="pagina">
             {% if g.user %}
             <header class="barra-superior">
                 <a class="marca" href="/"><span class="marca-cuadro" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span>Ledger</span></a>
-                {# Las rutas del eje son del administrador: el común sólo tiene su tablero y su historial. El rol se lee de la sesión recargada, no de la cookie. #}
+                {# Las rutas del eje son del administrador: el común sólo tiene su tablero, su historial y su agenda. El rol se lee de la sesión recargada, no de la cookie. #}
                 {% if g.user.role == rol_administrador %}
-                <nav class="navegacion" aria-label="Administración">
+                <nav class="navegacion" aria-label="{{ t('Administración') }}">
                     {% for ruta, texto in [("/", "Resumen"), ("/admin/pendientes", "Pendientes"), ("/wallets", "Wallets"), ("/transacciones", "Transacciones"), ("/bloques", "Bloques"), ("/verificar", "Verificar")] %}
-                    <a href="{{ ruta }}"{% if request.path == ruta %} aria-current="page"{% endif %}>{{ texto }}</a>
+                    <a href="{{ ruta }}"{% if request.path == ruta %} aria-current="page"{% endif %}>{{ t(texto) }}</a>
                     {% endfor %}
                 </nav>
                 {% else %}
-                <nav class="navegacion" aria-label="Mi cuenta">
-                    {% for ruta, texto in [("/mi-tablero", "Mi tablero"), ("/mi-historial", "Mi historial")] %}
-                    <a href="{{ ruta }}"{% if request.path == ruta %} aria-current="page"{% endif %}>{{ texto }}</a>
+                <nav class="navegacion" aria-label="{{ t('Mi cuenta') }}">
+                    {% for ruta, texto in [("/mi-tablero", "Mi tablero"), ("/mi-historial", "Mi historial"), ("/mis-contactos", "Mis contactos")] %}
+                    <a href="{{ ruta }}"{% if request.path == ruta %} aria-current="page"{% endif %}>{{ t(texto) }}</a>
                     {% endfor %}
                 </nav>
                 {% endif %}
                 <div class="sesion">
                     {% include "_alternar_tema.html" %}
-                    <span>{{ g.user.username }}</span>
-                    {% if g.user.role == rol_administrador %}<span class="rol">administrador</span>{% endif %}
+                    {# El nombre es la única entrada al perfil, para las dos clases de cuenta; el idioma se elige ahí y no en esta barra. #}
+                    <a class="usuario-sesion" href="/perfil"{% if request.path == "/perfil" %} aria-current="page"{% endif %} title="{{ t('Mi perfil') }}">{{ avatar(g.user.username, "avatar-mini") }}<span>{{ g.user.username }}</span></a>
+                    {% if g.user.role == rol_administrador %}<span class="rol">{{ t("administrador") }}</span>{% endif %}
                     <form method="post" action="{{ url_for('salir') }}">
-                        <button class="boton" type="submit">Salir</button>
+                        <button class="boton" type="submit">{{ t("Salir") }}</button>
                     </form>
                 </div>
             </header>
@@ -69,10 +79,20 @@
             {# Sin sesión la barra es mínima: Regresar (si la pantalla lo pide), la marca y el tema. #}
             <header class="barra-minima">
                 {% block regresar %}{% endblock %}
-                <a class="marca" href="{{ url_for('ingresar') }}"><span class="marca-cuadro" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span>Ledger transaccional</span></a>
-                {% include "_alternar_tema.html" %}
+                <a class="marca" href="{{ url_for('ingresar') }}"><span class="marca-cuadro" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span>{{ t("Ledger transaccional") }}</span></a>
+                <div class="sesion">
+                    {% include "_idioma.html" %}
+                    {% include "_alternar_tema.html" %}
+                </div>
             </header>
             {% endif %}
+            {# La bandeja de notificaciones: los avisos de la acción anterior (que llegan por la cookie de la sesión) y los que agregue la pantalla en su bloque `burbujas`. Con JavaScript flota centrada arriba; sin él, se ve acá, al principio de la página. #}
+            <div class="burbujas" data-burbujas>
+                {%- with mensajes = get_flashed_messages(with_categories=true) %}{% for categoria, mensaje in mensajes %}
+                {{ burbuja(categoria, t(mensaje)) }}
+                {%- endfor %}{% endwith %}
+                {%- block burbujas %}{% endblock -%}
+            </div>
             {# Cada pantalla pone aquí su rejilla con su propio <main id="contenido">. #}
             {% block cuerpo %}{% endblock %}
         </div>
@@ -84,6 +104,7 @@
             // la API, el clic tampoco puede quedar en silencio —el valor completo
             // sigue en el `title` del dato—.
             document.addEventListener("click", (evento) => {
+                const tr = (texto) => (window.TEXTOS && window.TEXTOS[texto]) || texto;
                 const origen = evento.target.closest("[data-copiar]");
                 if (!origen) return;
                 const avisar = (texto) => {
@@ -95,13 +116,13 @@
                     setTimeout(() => aviso.remove(), 1200);
                 };
                 if (!navigator.clipboard) {
-                    avisar(" no se pudo copiar");
+                    avisar(" " + tr("no se pudo copiar"));
                     return;
                 }
                 navigator.clipboard
                     .writeText(origen.dataset.copiar)
-                    .then(() => avisar(" copiado"))
-                    .catch(() => avisar(" no se pudo copiar"));
+                    .then(() => avisar(" " + tr("copiado")))
+                    .catch(() => avisar(" " + tr("no se pudo copiar")));
             });
         </script>
     </body>

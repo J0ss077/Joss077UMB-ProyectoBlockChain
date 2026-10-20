@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% from "_macros.html" import dato, copiar, avatar %}
+{% block titulo %}{{ t("Mi perfil") }}{% endblock %}
+{% block cuerpo %}
+{% set es_admin = g.user.role == rol_administrador %}
+{# Con un cambio esperando al administrador no se ofrece otro: la cuenta admite una sola solicitud pendiente. #}
+{% set en_espera = solicitud and solicitud.estado == "pendiente" %}
+<main id="contenido" tabindex="-1" class="rejilla-historial">
+    <section class="mosaico columna-principal" aria-labelledby="titulo-perfil">
+        {% set tiene_foto = url_de_foto(g.user.username) %}
+        <div class="perfil-cabecera">
+            {{ avatar(g.user.username, "inicial-grande") }}
+            <div class="perfil-identidad">
+                <p class="antetitulo">{{ t("Administrador") if es_admin else t("Usuario") }}</p>
+                <h1 class="titulo-pagina" id="titulo-perfil">{{ g.user.username }}</h1>
+                {# La foto: sin JavaScript se elige el archivo y se sube con «Guardar foto»; con él, `foto.js` esconde ese botón y abre el editor para encuadrarla antes de subir el recorte. «Editar» reencuadra la foto que ya está, así que sólo existe con JavaScript. #}
+                <div class="foto-acciones">
+                    <form class="foto-subir" method="post" action="{{ url_for('perfil.poner_foto') }}" enctype="multipart/form-data" data-foto-formulario>
+                        <label class="boton" for="foto">{{ t("Cambiar foto") if tiene_foto else t("Subir foto") }}</label>
+                        <input class="foto-archivo" id="foto" type="file" name="foto" accept="image/jpeg,image/png,image/webp" aria-describedby="ayuda-foto" />
+                        <button class="boton boton-primario" type="submit" data-solo-sin-js>{{ t("Guardar foto") }}</button>
+                    </form>
+                    {% if tiene_foto %}
+                    <button class="boton" type="button" data-foto-editar="{{ tiene_foto }}" hidden>{{ t("Editar") }}</button>
+                    <form method="post" action="{{ url_for('perfil.quitar_foto') }}">
+                        <button class="boton boton-peligro" type="submit">{{ t("Quitar foto") }}</button>
+                    </form>
+                    {% endif %}
+                </div>
+                <p class="ayuda" id="ayuda-foto" data-foto-estado>{{ t("JPG, PNG o WebP, hasta 2 MB.") }}</p>
+            </div>
+        </div>
+        {# El editor de recorte: la imagen se ve entera y encima va un cuadro con la cuadrícula de tercios. Lo arma y lo mueve `foto.js`; sin JavaScript no se abre y la foto se sube tal cual. #}
+        <dialog class="editor-foto" data-foto-editor aria-labelledby="titulo-editor-foto">
+            <h2 class="titulo-bloque" id="titulo-editor-foto">{{ t("Recorta tu foto") }}</h2>
+            <p class="ayuda" id="ayuda-recorte">{{ t("Arrastra el cuadro para elegir qué parte se ve y tira de sus esquinas o usa los botones de zoom para cambiar el tamaño. Con el teclado: flechas para mover, + y − para acercar o alejar.") }}</p>
+            <div class="editor-foto-cuerpo">
+                <div class="editor-foto-escenario" data-foto-escenario>
+                    <canvas data-foto-lienzo aria-hidden="true"></canvas>
+                    <div class="recorte" data-foto-recorte tabindex="0" role="group" aria-label="{{ t('Área de recorte') }}" aria-describedby="ayuda-recorte">
+                        <span class="recorte-cuadricula" aria-hidden="true"></span>
+                        {% for esquina in ["no", "ne", "so", "se"] %}<span class="recorte-asa recorte-asa-{{ esquina }}" data-esquina="{{ esquina }}" aria-hidden="true"></span>{% endfor %}
+                    </div>
+                </div>
+                <div class="editor-foto-previa">
+                    <canvas class="inicial inicial-grande" data-foto-previa width="192" height="192" role="img" aria-label="{{ t('Vista previa de la foto') }}"></canvas>
+                    <span class="metadato">{{ t("Así se verá") }}</span>
+                </div>
+            </div>
+            <div class="editor-foto-herramientas" role="group" aria-label="{{ t('Herramientas') }}">
+                {# Acercar achica el cuadro de recorte y alejar lo agranda, desde su centro: es el zoom sobre la foto final. #}
+                <button class="boton" type="button" data-foto-zoom="1" aria-label="{{ t('Acercar') }}" title="{{ t('Acercar') }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" /><path d="M15.5 15.5L21 21M10.5 7.5v6M7.5 10.5h6" /></svg></button>
+                <button class="boton" type="button" data-foto-zoom="-1" aria-label="{{ t('Alejar') }}" title="{{ t('Alejar') }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" /><path d="M15.5 15.5L21 21M7.5 10.5h6" /></svg></button>
+                <span class="separador" aria-hidden="true"></span>
+                <button class="boton" type="button" data-foto-girar="-1" aria-label="{{ t('Girar a la izquierda') }}" title="{{ t('Girar a la izquierda') }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7v5h5" /><path d="M3.5 12a8.5 8.5 0 1 0 2.5-6" /></svg></button>
+                <button class="boton" type="button" data-foto-girar="1" aria-label="{{ t('Girar a la derecha') }}" title="{{ t('Girar a la derecha') }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 7v5h-5" /><path d="M20.5 12a8.5 8.5 0 1 1-2.5-6" /></svg></button>
+                <button class="boton" type="button" data-foto-restablecer>{{ t("Restablecer") }}</button>
+            </div>
+            <div class="editor-foto-acciones">
+                <button class="boton" type="button" data-foto-cancelar>{{ t("Cancelar") }}</button>
+                <button class="boton boton-primario" type="button" data-foto-guardar>{{ t("Guardar foto") }}</button>
+            </div>
+        </dialog>
+        <script src="{{ url_for('static', filename='js/foto.js') }}" defer></script>
+        <dl class="ficha perfil-datos">
+            <dt>{{ t("Nombre de usuario") }}</dt>
+            <dd>{{ g.user.username }}</dd>
+            <dt>{{ t("Tipo de cuenta") }}</dt>
+            <dd>{{ t("Administrador") if es_admin else t("Usuario") }}</dd>
+            <dt>{{ t("Miembro desde") }}</dt>
+            <dd>{{ g.user.creado_en.strftime("%d/%m/%Y") }}</dd>
+            {% if g.user.wallet_id and not es_admin %}
+            <dt>{{ t("Mi código para recibir") }}</dt>
+            <dd><span class="codigo">{{ dato(g.user.wallet_id) }}{{ copiar(g.user.wallet_id, "mi código para recibir") }}</span></dd>
+            {% endif %}
+        </dl>
+
+        <h2 class="titulo-bloque" id="titulo-contrasena">{{ t("Cambiar contraseña") }}</h2>
+        {% if solicitud %}
+        {% if en_espera %}
+        <div class="motivo" data-tono="pendiente" role="status">
+            <p>{{ t("Tu cambio de contraseña está esperando aprobación desde el {fecha}.", fecha=solicitud.creado_en.strftime("%d/%m/%Y %H:%M")) }}</p>
+            <p>{{ t("Mientras tanto sigues entrando con tu contraseña de siempre.") }}</p>
+        </div>
+        {% elif solicitud.estado == "rechazado" %}
+        <div class="motivo" data-tono="rechazo" role="status">
+            <p>{{ t("El administrador rechazó tu último cambio de contraseña.") }}</p>
+            {% if solicitud.motivo_rechazo %}<p>{{ t("Motivo: {motivo}", motivo=solicitud.motivo_rechazo) }}</p>{% endif %}
+        </div>
+        {% elif solicitud.estado == "aprobado" %}
+        <div class="exito" role="status">
+            <p>{{ t("Tu último cambio de contraseña se aprobó el {fecha}.", fecha=solicitud.resuelto_en.strftime("%d/%m/%Y %H:%M")) }}</p>
+        </div>
+        {% endif %}
+        {% endif %}
+        {% if not en_espera %}
+        <form class="formulario" method="post" action="{{ url_for('perfil.cambiar_contrasena') }}" aria-labelledby="titulo-contrasena">
+            <p class="ayuda">{{ t("El cambio se aplica de inmediato.") if es_admin else t("Un administrador tiene que aprobar el cambio. Hasta entonces sigues entrando con tu contraseña de siempre.") }}</p>
+            <div class="campo">
+                <label for="actual">{{ t("Contraseña actual") }}</label>
+                <input id="actual" type="password" name="actual" autocomplete="current-password" spellcheck="false" required />
+            </div>
+            {# El medidor y la coincidencia los arma `contrasena.js`, igual que en el registro. #}
+            <div class="campo">
+                <label for="nueva">{{ t("Contraseña nueva") }}</label>
+                <input id="nueva" type="password" name="nueva" minlength="{{ largo_minimo_de_contrasena }}" autocomplete="new-password" spellcheck="false" aria-describedby="ayuda-nueva" required />
+                <p class="ayuda" id="ayuda-nueva">{{ t("Al menos {n} caracteres.", n=largo_minimo_de_contrasena) }}</p>
+                <div class="fuerza" data-fuerza-de="nueva" data-largo-minimo="{{ largo_minimo_de_contrasena }}" data-reemplaza="ayuda-nueva" hidden></div>
+            </div>
+            <div class="campo">
+                <label for="repetir">{{ t("Repetir contraseña nueva") }}</label>
+                <input id="repetir" type="password" name="repetir" minlength="{{ largo_minimo_de_contrasena }}" autocomplete="new-password" spellcheck="false" required />
+                <div class="fuerza" data-campo="repetir" data-coincide-con="nueva" hidden></div>
+            </div>
+            <button class="boton boton-grande boton-primario" type="submit">{{ t("Cambiar contraseña") if es_admin else t("Pedir el cambio") }}</button>
+        </form>
+        {% endif %}
+    </section>
+    <section class="mosaico idioma-tarjeta" aria-labelledby="titulo-idioma">
+        <h2 class="titulo-bloque" id="titulo-idioma">{{ t("Idioma") }}</h2>
+        <p class="ayuda">{{ t("Elige el idioma de toda la aplicación. Se guarda en este navegador.") }}</p>
+        <form class="opciones-idioma" method="post" action="{{ url_for('elegir_idioma') }}">
+            <input type="hidden" name="volver" value="/perfil" />
+            {% for codigo, nombre in idiomas.items() %}
+            <button class="opcion-idioma" type="submit" name="idioma" value="{{ codigo }}" lang="{{ codigo }}" aria-pressed="{{ 'true' if codigo == idioma else 'false' }}">
+                <span class="opcion-idioma-codigo" aria-hidden="true">{{ codigo|upper }}</span>
+                <span class="opcion-idioma-nombre">{{ nombre }}</span>
+                {% if codigo == idioma %}<span class="opcion-idioma-marca" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6.2 4.7 8.9 10 3.3" /></svg></span>{% endif %}
+            </button>
+            {% endfor %}
+        </form>
+    </section>
+</main>
+{% endblock %}

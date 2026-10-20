@@ -58,6 +58,7 @@ class TransactionRepository(Protocol):
         status: TransactionStatus | None = None,
         wallet_id: UUID | None = None,
         limit: int = 100,
+        newest_first: bool = False,
     ) -> Sequence[Transaction]: ...
 
     def pending(self) -> Sequence[Transaction]: ...

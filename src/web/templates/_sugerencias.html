@@ -1,0 +1,10 @@
+{# La vista previa de un campo de destinatario: la pide `sugerencias.js` mientras se teclea y la pone debajo del campo. Cada opción lleva el nombre en `data-nombre`, que es lo que se escribe en el campo al elegirla. #}
+{% from "_macros.html" import avatar %}
+{% for nombre in nombres %}
+<li class="sugerencia" role="option" id="sugerencia-{{ loop.index }}" aria-selected="false" data-nombre="{{ nombre }}">
+    {{ avatar(nombre, "inicial-chica") }}
+    <span class="nombre">{{ nombre }}</span>
+</li>
+{% else %}
+<li class="sugerencia-vacia" role="presentation">{{ t("No encontramos a nadie con ese nombre de usuario.") }}</li>
+{% endfor %}
