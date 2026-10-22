@@ -18,6 +18,7 @@
         <link rel="stylesheet" href="{{ url_for('static', filename='css/tokens.css') }}" />
         <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}" />
         <link rel="stylesheet" href="{{ url_for('static', filename='css/animaciones.css') }}" />
+        {% if g.user %}<link rel="stylesheet" href="{{ url_for('static', filename='css/asistente.css') }}" />{% endif %}
         {# Los guiones leen sus textos de acá: vacío en español, y con las traducciones cuando la página va en inglés. #}
         <script>window.TEXTOS = {{ textos_de_js|tojson }};</script>
         <script src="{{ url_for('static', filename='js/tema.js') }}" defer></script>
@@ -27,6 +28,7 @@
         <script src="{{ url_for('static', filename='js/burbujas.js') }}" defer></script>
         <script src="{{ url_for('static', filename='js/sugerencias.js') }}" defer></script>
         <script src="{{ url_for('static', filename='js/animaciones.js') }}" defer></script>
+        {% if g.user %}<script src="{{ url_for('static', filename='js/asistente.js') }}" defer></script>{% endif %}
         <style>
             :root {
                 --mono: var(--fuente-mono);
@@ -96,6 +98,8 @@
             {# Cada pantalla pone aquí su rejilla con su propio <main id="contenido">. #}
             {% block cuerpo %}{% endblock %}
         </div>
+        {# El ayudante flota en todas las páginas de quien ya entró: explica en palabras simples lo que pasa en la pantalla. En el ingreso y el registro no aparece. #}
+        {% if g.user %}{% include "_asistente.html" %}{% endif %}
         <script>
             // Un solo guion para los datos copiables de las páginas de trabajo: cada
             // `[data-copiar]` lleva su valor completo, así que copia lo que se ve. El

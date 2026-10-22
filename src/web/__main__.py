@@ -11,7 +11,13 @@ from contextlib import contextmanager
 
 from src.accounts.almacen import CarpetaDeFotos
 from src.accounts.service import Cuentas
-from src.persistence.factory import carpeta_de_fotos, ledger, session_secret, transaction
+from src.persistence.factory import (
+    carpeta_de_fotos,
+    configuracion_del_asistente,
+    ledger,
+    session_secret,
+    transaction,
+)
 from src.web.app import create_app
 
 
@@ -27,10 +33,20 @@ def cuentas():
     yield Cuentas(transaction, fotos=CarpetaDeFotos(carpeta_de_fotos()))
 
 
-app = create_app(ledger, cuentas, secret_key=session_secret())
+app = create_app(
+    ledger,
+    cuentas,
+    secret_key=session_secret(),
+    asistente=configuracion_del_asistente(),
+)
 
 
 if __name__ == "__main__":
+    conector = app.extensions.get("asistente")
+    if conector is None:
+        print(" * Ayudante: sin IA configurada, contesta con su guía local")
+    else:
+        print(f" * Ayudante: conectado a {conector.proveedor.nombre} ({conector.modelo})")
     # El depurador interactivo y el recargador no van por defecto: el primero deja
     # ejecutar código desde el navegador y el segundo reinicia el proceso en cada
     # cambio. Se activan con `FLASK_DEBUG=1` en el entorno, para desarrollo local.

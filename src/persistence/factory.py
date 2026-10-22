@@ -41,6 +41,13 @@ VARIABLE_DE_LA_CARPETA_DE_FOTOS = "FOTOS_DIR"
 # con ella definida, la suite no toca la base de la aplicación.
 VARIABLE_DE_LA_BASE_DE_PRUEBAS = "TEST_DATABASE_URL"
 CARPETA_DE_FOTOS_POR_DEFECTO = RAIZ_DEL_PROYECTO / "datos" / "fotos"
+# El servicio de IA del ayudante flotante: basta la clave; el resto es opcional.
+VARIABLES_DEL_ASISTENTE = (
+    "ASISTENTE_API_KEY",
+    "ASISTENTE_PROVEEDOR",
+    "ASISTENTE_MODELO",
+    "ASISTENTE_URL",
+)
 
 # Nombre de la variable que trae la cadena de conexión. Es una constante y no un
 # literal porque el lector del entorno y la prueba que lo ejercita tienen que nombrar
@@ -200,6 +207,15 @@ def admin_password() -> str:
 def database_url_de_pruebas() -> str | None:
     """La cadena de la base de pruebas, o `None` si no se definió una aparte."""
     return _env_value(VARIABLE_DE_LA_BASE_DE_PRUEBAS)
+
+
+def configuracion_del_asistente() -> dict[str, str | None]:
+    """Las variables del servicio de IA del ayudante, del entorno o de `.env`.
+
+    Se devuelven tal cual: qué servicio es y con qué modelo lo decide
+    `src/web/ia.py`. Sin `ASISTENTE_API_KEY` el ayudante usa su guía local.
+    """
+    return {nombre: _env_value(nombre) for nombre in VARIABLES_DEL_ASISTENTE}
 
 
 def carpeta_de_fotos() -> Path:

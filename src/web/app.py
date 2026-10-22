@@ -19,7 +19,7 @@ Uso: `python -m src.web`.
 from __future__ import annotations
 
 import os
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Mapping
 from contextlib import AbstractContextManager, contextmanager
 from uuid import UUID
 
@@ -48,6 +48,7 @@ from src.accounts.model import ADMINISTRADOR, UsuarioDuplicado
 from src.accounts.service import CredencialesInvalidas, Cuentas, NoAprobado
 from src.domain.blockchain import Blockchain, ensure_genesis
 from src.web.admin import crear_blueprint_de_la_cola
+from src.web.asistente import crear_blueprint_del_asistente
 from src.web.auth import (
     CLAVE_DEL_USUARIO,
     abrir_sesion,
@@ -57,6 +58,7 @@ from src.web.auth import (
     usuario_de_la_sesion,
 )
 from src.web.forms import a_monto, a_uuid
+from src.web.ia import crear_conector
 from src.web.idioma import (
     COOKIE_DEL_IDIOMA,
     DURACION_DE_LA_COOKIE,
@@ -90,6 +92,7 @@ def create_app(
     cuentas_factory: FabricaDeCuentas,
     *,
     secret_key: str | bytes | None = None,
+    asistente: Mapping[str, str | None] | None = None,
 ) -> Flask:
     """Arma la aplicación con las fábricas que abren el ledger y las cuentas.
 
@@ -102,6 +105,9 @@ def create_app(
     `secret_key` se inyecta por la misma razón: el arranque pasa la clave que lee
     de la configuración. Si no llega, se toma del entorno, que es lo que deja a la
     fábrica usable sola en una prueba.
+
+    `asistente` trae las variables del servicio de IA del ayudante, leídas de
+    `.env` por el arranque. Sin ellas el ayudante contesta con su guía local.
     """
     app = Flask(__name__)
     app.secret_key = _secreto_de_sesion() if secret_key is None else secret_key
@@ -141,6 +147,12 @@ def create_app(
     app.register_blueprint(crear_blueprint_de_la_cola(abrir_cuentas, abrir_cadena))
     # El perfil es de las dos clases de cuenta: datos, idioma y contraseña.
     app.register_blueprint(crear_blueprint_del_perfil(abrir_cuentas))
+    # El ayudante flotante lee la cadena y las cuentas para explicar, en palabras
+    # simples, lo que tiene la cuenta de la sesión; tampoco abre conexiones propias.
+    # El conector queda a la vista del arranque, que avisa en la terminal a qué IA quedó
+    # conectado el ayudante.
+    app.extensions["asistente"] = conector = crear_conector(asistente)
+    app.register_blueprint(crear_blueprint_del_asistente(abrir_cadena, abrir_cuentas, conector))
 
     # `t` traduce en todas las plantillas, también en las macros importadas sin
     # contexto; por eso va como global del entorno y no en un procesador.
