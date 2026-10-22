@@ -1,3 +1,6 @@
+
+
+
 # Prototipo transaccional basado en blockchain
 
 Nodo único de un ledger transaccional: wallets con par de llaves ECDSA, transacciones
