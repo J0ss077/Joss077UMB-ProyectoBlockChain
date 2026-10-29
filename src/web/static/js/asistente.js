@@ -1,5 +1,6 @@
-// El ayudante flotante. Al abrirlo pide a `/asistente/ahora` la explicación de la
-// página y de la cuenta en palabras simples, y ofrece preguntas sugeridas. Lo que
+// El ayudante, en su propia página (`/asistente`). Al cargar pide a `/asistente/ahora`
+// la explicación de la pantalla de la que vino la persona (`data-pagina`, que llega
+// en `?desde=`) y de la cuenta en palabras simples, y ofrece preguntas sugeridas. Lo que
 // la persona escribe va a `/asistente/preguntar`, que contesta con Claude o con la
 // guía local. La conversación se guarda en `sessionStorage` (por pestaña) para que
 // no se pierda al cambiar de página; si el almacenamiento falla, sigue funcionando
@@ -10,8 +11,6 @@
     const tr = (texto) => (window.TEXTOS && window.TEXTOS[texto]) || texto;
     const $ = (selector) => raiz.querySelector(selector);
 
-    const lanzador = $("[data-asistente-lanzador]");
-    const panel = $("[data-asistente-panel]");
     const cuerpo = $("[data-asistente-cuerpo]");
     const ahora = $("[data-asistente-ahora]");
     const pagina = $("[data-asistente-pagina]");
@@ -20,8 +19,8 @@
     const chips = $("[data-asistente-chips]");
     const formulario = $("[data-asistente-formulario]");
     const campo = $("[data-asistente-pregunta]");
-    const punto = $("[data-asistente-punto]");
-    const teaser = $("[data-asistente-teaser]");
+    // La pantalla que se explica: la de origen; si se entró directo, esta misma.
+    const paginaDeContexto = raiz.dataset.pagina || location.pathname;
 
     const CLAVE = "asistente:" + (raiz.dataset.usuario || "visitante");
     const leer = () => {
@@ -33,16 +32,15 @@
     };
     const guardar = () => {
         try {
-            sessionStorage.setItem(CLAVE, JSON.stringify({ abierto: !panel.hidden, historial }));
+            sessionStorage.setItem(CLAVE, JSON.stringify({ historial }));
         } catch {}
     };
 
     let historial = Array.isArray(leer().historial) ? leer().historial : [];
     let ocupado = false;
 
-    // El aviso visible en la página (la burbuja del último envío, por ejemplo): el
-    // ayudante lo ofrece explicar y se lo pasa al servidor como contexto.
-    // Se lee al cargar porque los avisos de éxito se van solos a los pocos segundos.
+    // El aviso visible en la página (una burbuja), si lo hay: se le pasa al servidor
+    // como contexto. Se lee al cargar porque los de éxito se van solos.
     const textoDe = (burbuja) => (burbuja ? burbuja.innerText.replace(/\s+/g, " ").trim().slice(0, 300) : "");
     const avisoInicial = textoDe(document.querySelector("[data-burbuja]"));
     const avisoVisible = () => textoDe(document.querySelector("[data-burbuja]:not(.cerrando)")) || avisoInicial;
@@ -146,7 +144,7 @@
     const cargarAhora = async () => {
         ahora.classList.add("cargando");
         try {
-            const url = raiz.dataset.ahora + "?pagina=" + encodeURIComponent(location.pathname);
+            const url = raiz.dataset.ahora + "?pagina=" + encodeURIComponent(paginaDeContexto);
             const respuesta = await fetch(url, { headers: { Accept: "application/json" } });
             if (!respuesta.ok) throw new Error(String(respuesta.status));
             const datos = await respuesta.json();
@@ -186,7 +184,7 @@
                 body: JSON.stringify({
                     pregunta: texto,
                     tema: tema || "",
-                    pagina: location.pathname,
+                    pagina: paginaDeContexto,
                     aviso: avisoVisible(),
                     historial: anteriores,
                 }),
@@ -207,36 +205,6 @@
         }
     };
 
-    // ── Abrir y cerrar ─────────────────────────────────────────────────────
-    const abrir = ({ enfocar = true } = {}) => {
-        panel.hidden = false;
-        raiz.classList.add("abierto");
-        lanzador.setAttribute("aria-expanded", "true");
-        punto.hidden = true;
-        teaser.hidden = true;
-        if (!cargado) cargarAhora();
-        bajar();
-        if (enfocar) campo.focus();
-        guardar();
-    };
-    const cerrar = () => {
-        panel.hidden = true;
-        raiz.classList.remove("abierto");
-        lanzador.setAttribute("aria-expanded", "false");
-        guardar();
-    };
-
-    lanzador.addEventListener("click", () => {
-        if (panel.hidden) abrir();
-        else {
-            cerrar();
-            lanzador.focus();
-        }
-    });
-    $("[data-asistente-cerrar]").addEventListener("click", () => {
-        cerrar();
-        lanzador.focus();
-    });
     $("[data-asistente-reiniciar]").addEventListener("click", () => {
         historial = [];
         mensajes.replaceChildren();
@@ -245,14 +213,6 @@
         cargarAhora();
         campo.focus();
     });
-    document.addEventListener("keydown", (evento) => {
-        if (evento.key === "Escape" && !panel.hidden && raiz.contains(document.activeElement)) {
-            evento.stopPropagation();
-            cerrar();
-            lanzador.focus();
-        }
-    });
-
     formulario.addEventListener("submit", (evento) => {
         evento.preventDefault();
         const texto = campo.value;
@@ -280,22 +240,7 @@
         }
     });
 
-    // Si la página trae un aviso (un envío hecho o rechazado), el botón lo marca
-    // y, un momento después, ofrece explicarlo.
-    if (avisoInicial) {
-        punto.hidden = false;
-        setTimeout(() => {
-            if (panel.hidden) teaser.hidden = false;
-        }, 1200);
-    }
-    $("[data-asistente-explicar]").addEventListener("click", () => {
-        const aviso = avisoVisible();
-        abrir({ enfocar: false });
-        preguntar(tr("Explícame este aviso") + (aviso ? ": «" + aviso + "»" : ""));
-    });
-    $("[data-asistente-teaser-cerrar]").addEventListener("click", () => {
-        teaser.hidden = true;
-    });
-
-    if (leer().abierto) abrir({ enfocar: false });
+    cargarAhora();
+    bajar();
+    campo.focus();
 })();

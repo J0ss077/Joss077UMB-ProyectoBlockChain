@@ -1,12 +1,13 @@
-"""El ayudante flotante: explica en palabras simples lo que pasa en la pantalla.
+"""El ayudante: explica en palabras simples lo que pasa en la pantalla.
 
 La persona común no sabe qué es un pool, un bloque ni una firma, y no tiene por
-qué saberlo. El ayudante es una ventana que flota en todas las páginas y responde
+qué saberlo. El ayudante vive en su propia pestaña de la barra superior y responde
 dos cosas: «¿qué está pasando ahora?» —lo que la pantalla y la cuenta tienen en
 este momento, dicho sin tecnicismos— y las preguntas que la persona escriba.
 
-Dos rutas:
+Tres rutas:
 
+- `GET /asistente` es la página del ayudante, con su pestaña en la barra.
 - `GET /asistente/ahora?pagina=/mi-tablero` arma la explicación de la página en
   la que está la persona, con lo que su cuenta tiene en espera, completado o
   rechazado, y las preguntas sugeridas para esa pantalla.
@@ -20,8 +21,9 @@ Dos rutas:
 Alcance (REQ-35): el contexto que se arma para el usuario común es sólo el suyo
 —su saldo y sus movimientos—, el mismo que ya ve en su tablero. Los nombres de
 las contrapartes son los que su historial ya muestra. El del administrador lleva
-los conteos que ve en su portada. Sin sesión el ayudante no existe: no se pinta
-en el ingreso ni en el registro, y sus rutas responden 401.
+los conteos que ve en su portada. Sin sesión el ayudante no existe: su pestaña no
+se pinta en el ingreso ni en el registro, su página manda al ingreso y sus rutas
+de datos responden 401.
 
 Como el resto de la presentación (REQ-29), este módulo no consulta la base: lee
 la fachada del ledger y el servicio de cuentas con las fábricas que le pasa
@@ -37,13 +39,14 @@ from datetime import UTC
 from decimal import Decimal
 from uuid import UUID
 
-from flask import Blueprint, Response, g, jsonify, request
+from flask import Blueprint, Response, g, jsonify, render_template, request
 
 from src.accounts.model import ADMINISTRADOR
 from src.accounts.service import Cuentas
 from src.domain.blockchain import Blockchain
 from src.domain.transaction import TransactionStatus
 from src.emision import CONSTITUYENTE_ID
+from src.web.auth import requiere_sesion
 from src.web.ia import ConectorDeIA
 from src.web.idioma import idioma_actual
 
@@ -508,6 +511,15 @@ PAGINAS: dict[str, tuple[dict[str, str], tuple[str, ...]]] = {
         ),
         ("en_espera", "completada"),
     ),
+    "/asistente": (
+        _bilingue(
+            "Estás hablando con el ayudante. Pregúntame lo que quieras sobre tu cuenta "
+            "o sobre cómo funciona el registro.",
+            "You're talking to the helper. Ask me anything about your account or how "
+            "the record works.",
+        ),
+        ("que_es", "seguro"),
+    ),
     "/": (
         _bilingue(
             "El resumen del registro: cuántos bloques hay, qué está en el pool y si la "
@@ -819,10 +831,28 @@ def crear_blueprint_del_asistente(
 
     @asistente.before_request
     def solo_con_sesion() -> tuple[Response, int] | None:
-        """El ayudante es de quien ya entró: sin sesión no explica ni consulta nada."""
+        """El ayudante es de quien ya entró: sin sesión no explica ni consulta nada.
+
+        La página misma no pasa por aquí: sin sesión manda al ingreso, como las demás.
+        """
+        if request.endpoint == "asistente.pagina":
+            return None
         if g.get("user") is None:
             return jsonify(error="sin_sesion"), 401
         return None
+
+    @asistente.get("")
+    @requiere_sesion
+    def pagina() -> str:
+        """El ayudante en su propia pestaña de la barra superior.
+
+        `?desde=/mi-tablero` dice de qué pantalla vino la persona, para que «lo que
+        pasa ahora» explique esa y no la del ayudante. Sólo se acepta una ruta local.
+        """
+        desde = request.args.get("desde", "")
+        if not desde.startswith("/") or desde.startswith("//"):
+            desde = ""
+        return render_template("asistente.html", desde=desde)
 
     def situacion_actual(idioma: str) -> Situacion:
         usuario = g.get("user")

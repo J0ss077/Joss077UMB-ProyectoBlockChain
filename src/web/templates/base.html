@@ -18,7 +18,6 @@
         <link rel="stylesheet" href="{{ url_for('static', filename='css/tokens.css') }}" />
         <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}" />
         <link rel="stylesheet" href="{{ url_for('static', filename='css/animaciones.css') }}" />
-        {% if g.user %}<link rel="stylesheet" href="{{ url_for('static', filename='css/asistente.css') }}" />{% endif %}
         {# Los guiones leen sus textos de acá: vacío en español, y con las traducciones cuando la página va en inglés. #}
         <script>window.TEXTOS = {{ textos_de_js|tojson }};</script>
         <script src="{{ url_for('static', filename='js/tema.js') }}" defer></script>
@@ -28,7 +27,6 @@
         <script src="{{ url_for('static', filename='js/burbujas.js') }}" defer></script>
         <script src="{{ url_for('static', filename='js/sugerencias.js') }}" defer></script>
         <script src="{{ url_for('static', filename='js/animaciones.js') }}" defer></script>
-        {% if g.user %}<script src="{{ url_for('static', filename='js/asistente.js') }}" defer></script>{% endif %}
         <style>
             :root {
                 --mono: var(--fuente-mono);
@@ -53,17 +51,17 @@
             {% if g.user %}
             <header class="barra-superior">
                 <a class="marca" href="/"><span class="marca-cuadro" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span>Ledger</span></a>
-                {# Las rutas del eje son del administrador: el común sólo tiene su tablero, su historial y su agenda. El rol se lee de la sesión recargada, no de la cookie. #}
+                {# Las rutas del eje son del administrador: el común sólo tiene su tablero, su historial y su agenda. Los dos tienen la pestaña del ayudante, que lleva en `desde` la pantalla de origen para explicarla. El rol se lee de la sesión recargada, no de la cookie. #}
                 {% if g.user.role == rol_administrador %}
                 <nav class="navegacion" aria-label="{{ t('Administración') }}">
-                    {% for ruta, texto in [("/", "Resumen"), ("/admin/pendientes", "Pendientes"), ("/wallets", "Wallets"), ("/transacciones", "Transacciones"), ("/bloques", "Bloques"), ("/verificar", "Verificar")] %}
-                    <a href="{{ ruta }}"{% if request.path == ruta %} aria-current="page"{% endif %}>{{ t(texto) }}</a>
+                    {% for ruta, texto in [("/", "Resumen"), ("/admin/pendientes", "Pendientes"), ("/wallets", "Wallets"), ("/transacciones", "Transacciones"), ("/bloques", "Bloques"), ("/verificar", "Verificar"), ("/asistente", "Ayudante")] %}
+                    <a href="{{ ruta }}{% if ruta == '/asistente' and request.path != ruta %}?desde={{ request.path|urlencode }}{% endif %}"{% if request.path == ruta %} aria-current="page"{% endif %}>{{ t(texto) }}</a>
                     {% endfor %}
                 </nav>
                 {% else %}
                 <nav class="navegacion" aria-label="{{ t('Mi cuenta') }}">
-                    {% for ruta, texto in [("/mi-tablero", "Mi tablero"), ("/mi-historial", "Mi historial"), ("/mis-contactos", "Mis contactos")] %}
-                    <a href="{{ ruta }}"{% if request.path == ruta %} aria-current="page"{% endif %}>{{ t(texto) }}</a>
+                    {% for ruta, texto in [("/mi-tablero", "Mi tablero"), ("/mi-historial", "Mi historial"), ("/mis-contactos", "Mis contactos"), ("/asistente", "Ayudante")] %}
+                    <a href="{{ ruta }}{% if ruta == '/asistente' and request.path != ruta %}?desde={{ request.path|urlencode }}{% endif %}"{% if request.path == ruta %} aria-current="page"{% endif %}>{{ t(texto) }}</a>
                     {% endfor %}
                 </nav>
                 {% endif %}
@@ -98,8 +96,6 @@
             {# Cada pantalla pone aquí su rejilla con su propio <main id="contenido">. #}
             {% block cuerpo %}{% endblock %}
         </div>
-        {# El ayudante flota en todas las páginas de quien ya entró: explica en palabras simples lo que pasa en la pantalla. En el ingreso y el registro no aparece. #}
-        {% if g.user %}{% include "_asistente.html" %}{% endif %}
         <script>
             // Un solo guion para los datos copiables de las páginas de trabajo: cada
             // `[data-copiar]` lleva su valor completo, así que copia lo que se ve. El

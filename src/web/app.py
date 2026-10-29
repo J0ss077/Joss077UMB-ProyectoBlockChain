@@ -147,8 +147,8 @@ def create_app(
     app.register_blueprint(crear_blueprint_de_la_cola(abrir_cuentas, abrir_cadena))
     # El perfil es de las dos clases de cuenta: datos, idioma y contraseña.
     app.register_blueprint(crear_blueprint_del_perfil(abrir_cuentas))
-    # El ayudante flotante lee la cadena y las cuentas para explicar, en palabras
-    # simples, lo que tiene la cuenta de la sesión; tampoco abre conexiones propias.
+    # El ayudante, con su pestaña en la barra, lee la cadena y las cuentas para explicar,
+    # en palabras simples, lo que tiene la cuenta de la sesión; tampoco abre conexiones propias.
     # El conector queda a la vista del arranque, que avisa en la terminal a qué IA quedó
     # conectado el ayudante.
     app.extensions["asistente"] = conector = crear_conector(asistente)

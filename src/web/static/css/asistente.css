@@ -1,5 +1,6 @@
-/* El ayudante flotante (`_asistente.html`, `asistente.js`). Un botón cobalto abajo a
-   la derecha que se abre en una ventana de conversación. Sólo usa los alias
+/* El ayudante (`_asistente.html`, `asistente.js`), en su propia página. Por ahora
+   reusa los estilos de la antigua ventana flotante; el diseño de la página queda
+   pendiente. Sólo usa los alias
    semánticos de `colores.css`, así que el tema oscuro sale solo. Es de lo poco que
    flota, así que lleva `--sombra-flotante`. Sin JavaScript no se muestra: no tendría
    cómo contestar. */
@@ -8,18 +9,13 @@
     display: none;
 }
 .js .asistente {
-    position: fixed;
-    right: var(--espacio-4);
-    bottom: var(--espacio-4);
-    z-index: 55;
     display: flex;
     flex-direction: column;
-    align-items: flex-end;
     gap: var(--espacio-3);
-    pointer-events: none;
 }
-.asistente > * {
-    pointer-events: auto;
+.js .asistente .asistente-panel {
+    width: 100%;
+    height: min(720px, calc(100dvh - 160px));
 }
 
 /* ── El botón ─────────────────────────────────────────────────────────── */
