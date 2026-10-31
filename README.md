@@ -407,7 +407,7 @@ propios: `DATABASE_URL` apuntando a la base de pruebas, `SESSION_SECRET` y
 vez de omitirse en silencio.
 
 Las pruebas de integración vacían las tablas antes de cada caso. Para no perder los
-datos de la aplicación, defina `TEST_DATABASE_URL` en su `.env` con una base aparte
+datos de la aplicación, se define `TEST_DATABASE_URL` en `.env` con una base aparte
 en el mismo PostgreSQL (creada una vez y con `db/init.sql` aplicado): con ella, la
 suite usa esa base y no toca la de `DATABASE_URL`. Las fotos de perfil de las
 pruebas van siempre a una carpeta temporal, nunca a `FOTOS_DIR`.

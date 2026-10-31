@@ -282,7 +282,7 @@ def test_req_28_rf5_historial_con_uuid_invalido_o_inexistente_responde_una_pagin
     assert "No hay ninguna wallet registrada" in inexistente.get_data(as_text=True)
     # Werkzeug describe el 404 en inglés; la página no puede mostrarlo así.
     assert "The requested URL was not found" not in ruta_que_no_existe.get_data(as_text=True)
-    assert "No se encontró lo que buscaba" in ruta_que_no_existe.get_data(as_text=True)
+    assert "No se encontró lo que buscabas" in ruta_que_no_existe.get_data(as_text=True)
 
 
 def test_req_28_rf5_la_pagina_de_error_no_depende_del_ledger(administrador):
@@ -330,7 +330,7 @@ def test_req_28_rf5_la_pagina_de_error_no_depende_de_las_cuentas():
     respuesta = cliente.get("/no-existe")
 
     assert respuesta.status_code == 404
-    assert "No se encontró lo que buscaba" in respuesta.get_data(as_text=True)
+    assert "No se encontró lo que buscabas" in respuesta.get_data(as_text=True)
 
 
 def test_req_29_la_interfaz_no_explica_el_proyecto(cliente):

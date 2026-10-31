@@ -359,7 +359,7 @@ TEMAS: tuple[Tema, ...] = (
         relacionados=("seguro",),
     ),
     # Los del administrador: él sí ve el vocabulario técnico, pero igual se lo
-    # explicamos en simple.
+    # explica en simple.
     Tema(
         "pool",
         _bilingue("¿Qué es el pool?", "What is the pool?"),

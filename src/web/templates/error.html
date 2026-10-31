@@ -6,7 +6,7 @@
 <main id="contenido" tabindex="-1" class="pagina-error{% if es_permiso %} error-permiso{% endif %}">
     <section class="mosaico error-texto" aria-labelledby="titulo-error">
         <span class="error-codigo" aria-hidden="true">{{ 403 if es_permiso else 404 }}</span>
-        <h1 class="titulo-pagina" id="titulo-error">{{ t(encabezado|default("No se encontró lo que buscaba")) }}</h1>
+        <h1 class="titulo-pagina" id="titulo-error">{{ t(encabezado|default("No se encontró lo que buscabas")) }}</h1>
         <div class="motivo">
             <p>{{ t(detalle) }}</p>
         </div>

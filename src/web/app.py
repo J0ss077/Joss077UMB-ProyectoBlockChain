@@ -499,7 +499,7 @@ def create_app(
         """
         detalle = error.description
         if not detalle or detalle == NotFound.description:
-            detalle = "No se encontró lo que buscaba."
+            detalle = "No se encontró lo que buscabas."
         return render_template("error.html", detalle=detalle), 404
 
     @app.errorhandler(403)

@@ -236,7 +236,7 @@ def crear_conector(configuracion: Mapping[str, str | None] | None) -> ConectorDe
     if not nombre:
         if clave:
             registro.warning(
-                "No se reconoce de qué servicio es %s; indíquelo en %s (%s). El ayudante "
+                "No se reconoce de qué servicio es %s; indícalo en %s (%s). El ayudante "
                 "usa su guía local.",
                 VARIABLE_DE_LA_CLAVE,
                 VARIABLE_DEL_PROVEEDOR,
@@ -248,7 +248,7 @@ def crear_conector(configuracion: Mapping[str, str | None] | None) -> ConectorDe
     if proveedor is None:
         if not url:
             registro.warning(
-                "%s=%s no está en la lista (%s); para otro servicio defina %s. El "
+                "%s=%s no está en la lista (%s); para otro servicio define %s. El "
                 "ayudante usa su guía local.",
                 VARIABLE_DEL_PROVEEDOR,
                 nombre,
