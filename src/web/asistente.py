@@ -31,12 +31,15 @@ la fachada del ledger y el servicio de cuentas con las fábricas que le pasa
 """
 from __future__ import annotations
 
+import logging
+import time
 import unicodedata
 from collections.abc import Callable, Sequence
 from contextlib import AbstractContextManager
 from dataclasses import dataclass, field
 from datetime import UTC
 from decimal import Decimal
+from threading import Lock
 from uuid import UUID
 
 from flask import Blueprint, Response, g, jsonify, render_template, request
@@ -50,6 +53,8 @@ from src.web.auth import requiere_sesion
 from src.web.ia import ConectorDeIA
 from src.web.idioma import idioma_actual
 
+registro = logging.getLogger(__name__)
+
 FabricaDeCadenas = Callable[[], AbstractContextManager[Blockchain]]
 FabricaDeCuentas = Callable[[], AbstractContextManager[Cuentas]]
 
@@ -58,9 +63,19 @@ FabricaDeCuentas = Callable[[], AbstractContextManager[Cuentas]]
 LARGO_MAXIMO_DE_PREGUNTA = 600
 TURNOS_DE_HISTORIAL = 10
 LARGO_MAXIMO_DE_TURNO = 1500
+# La página y el aviso entran al contexto como texto: se recortan para que un
+# valor manipulado desde el navegador no infle la petición al servicio.
+LARGO_MAXIMO_DE_PAGINA = 300
+LARGO_MAXIMO_DE_AVISO = 300
 
 # Cuántos movimientos recientes se le cuentan a la IA como contexto.
 MOVIMIENTOS_DE_CONTEXTO = 5
+
+# Tope de gasto: cada pregunta escrita a mano puede consumir la cuenta del
+# operador, así que una misma cuenta no puede hacer más de cinco por minuto. Las
+# preguntas sugeridas no cuentan: las contesta la guía local y no salen del equipo.
+PREGUNTAS_POR_MINUTO = 5
+VENTANA_DEL_LIMITE = 60.0
 
 
 def _bilingue(es: str, en: str) -> dict[str, str]:
@@ -69,6 +84,50 @@ def _bilingue(es: str, en: str) -> dict[str, str]:
 
 def _en(textos: dict[str, str], idioma: str) -> str:
     return textos.get(idioma) or textos["es"]
+
+
+MENSAJE_DE_LIMITE = _bilingue(
+    "Has hecho varias preguntas seguidas. Espera un minuto antes de volver a "
+    "preguntarle a la IA; mientras tanto, te contesto con la guía rápida.",
+    "You've asked several questions in a row. Wait a minute before asking the AI "
+    "again; meanwhile, I'll answer from the quick guide.",
+)
+
+
+def permite_pregunta(
+    marcas: Sequence[float], ahora: float, *, maximo: int = PREGUNTAS_POR_MINUTO
+) -> bool:
+    """Dice si una cuenta puede hacer otra pregunta con las marcas de su ventana."""
+    vigentes = sum(1 for marca in marcas if ahora - marca < VENTANA_DEL_LIMITE)
+    return vigentes < maximo
+
+
+class LimitadorDePreguntas:
+    """Aplica el tope por cuenta con las marcas en memoria del proceso.
+
+    No se comparte entre procesos: alcanza para el prototipo, que corre en uno
+    solo, y se reinicia junto con el servidor.
+    """
+
+    def __init__(self) -> None:
+        self._marcas: dict[str, list[float]] = {}
+        self._candado = Lock()
+
+    def permite(self, cuenta: str, ahora: float | None = None) -> bool:
+        """Registra la pregunta si cabe en el minuto, y dice si se la deja pasar."""
+        momento = time.monotonic() if ahora is None else ahora
+        with self._candado:
+            vigentes = [
+                marca
+                for marca in self._marcas.get(cuenta, ())
+                if momento - marca < VENTANA_DEL_LIMITE
+            ]
+            if not permite_pregunta(vigentes, momento):
+                self._marcas[cuenta] = vigentes
+                return False
+            vigentes.append(momento)
+            self._marcas[cuenta] = vigentes
+            return True
 
 
 # ── La guía local ────────────────────────────────────────────────────────────
@@ -583,6 +642,40 @@ def _sugerencias(claves: Sequence[str], rol: str, idioma: str) -> list[dict[str,
     return vistas
 
 
+def _respuesta_de_la_guia(
+    pregunta: str,
+    rol: str,
+    idioma: str,
+    *,
+    tema: Tema | None = None,
+    nota: str | None = None,
+) -> dict[str, object]:
+    """La respuesta local: el tema que calce o la invitación a elegir otro.
+
+    `nota` se antepone al texto cuando la IA no está disponible o se alcanzó el
+    tope, para explicar por qué contesta la guía.
+    """
+    tema = tema or buscar_tema(pregunta, rol)
+    if tema is None:
+        claves = ["que_es", "en_espera", "seguro"] if rol != "admin" else [
+            "pool", "cerrar_bloque", "verificar"
+        ]
+        respuesta = (
+            "Mmm, no estoy seguro de haber entendido. Prueba con otras palabras "
+            "o elige una de estas preguntas:"
+            if idioma != "en" else
+            "Hmm, I'm not sure I understood. Try other words or pick one of these "
+            "questions:"
+        )
+        sugerencias = _sugerencias(claves, rol, idioma)
+    else:
+        respuesta = _en(tema.respuesta, idioma)
+        sugerencias = _sugerencias(tema.relacionados[:3], rol, idioma)
+    if nota:
+        respuesta = f"{nota}\n\n{respuesta}"
+    return {"respuesta": respuesta, "sugerencias": sugerencias, "fuente": "guia"}
+
+
 # ── Lo que pasa ahora en la cuenta ──────────────────────────────────────────
 
 
@@ -828,6 +921,7 @@ def crear_blueprint_del_asistente(
     contesta sólo con su guía local.
     """
     asistente = Blueprint("asistente", __name__, url_prefix="/asistente")
+    limitador = LimitadorDePreguntas()
 
     @asistente.before_request
     def solo_con_sesion() -> tuple[Response, int] | None:
@@ -852,7 +946,7 @@ def crear_blueprint_del_asistente(
         desde = request.args.get("desde", "")
         if not desde.startswith("/") or desde.startswith("//"):
             desde = ""
-        return render_template("asistente.html", desde=desde)
+        return render_template("asistente.html", desde=desde, ia=conector is not None)
 
     def situacion_actual(idioma: str) -> Situacion:
         usuario = g.get("user")
@@ -887,7 +981,13 @@ def crear_blueprint_del_asistente(
     @asistente.post("/preguntar")
     def preguntar() -> Response:
         """Contesta una pregunta: con la IA si está configurada, si no con la guía."""
-        datos = request.get_json(silent=True) or {}
+        datos = request.get_json(silent=True)
+        if datos is None:
+            datos = {}
+        elif not isinstance(datos, dict):
+            # Un JSON válido que no es objeto (una lista, un número) no tiene campos
+            # que leer: se rechaza con un 400 claro en vez de fallar con AttributeError.
+            return jsonify(error="cuerpo_invalido"), 400
         idioma = idioma_actual()
         usuario = g.get("user")
         rol = _rol(usuario)
@@ -902,26 +1002,41 @@ def crear_blueprint_del_asistente(
             tema = None
 
         if conector is not None and tema is None:
+            if not limitador.permite(str(usuario.id)):
+                return jsonify(
+                    _respuesta_de_la_guia(
+                        pregunta, rol, idioma, nota=_en(MENSAJE_DE_LIMITE, idioma)
+                    )
+                )
+            pagina_pedida = str(datos.get("pagina", "/")).strip()[:LARGO_MAXIMO_DE_PAGINA]
             situacion = situacion_actual(idioma)
-            pagina = _pagina(str(datos.get("pagina", "/")))
+            pagina = _pagina(pagina_pedida)
             contexto = "\n".join(
                 [
                     f"Idioma de la respuesta: {'inglés' if idioma == 'en' else 'español'}",
                     f"Rol: {'administrador' if rol == 'admin' else 'usuario común'}",
                     f"Nombre de usuario: {usuario.username}",
-                    f"Página actual: {datos.get('pagina', '/')}"
+                    f"Página actual: {pagina_pedida}"
                     + (f" — {_en(pagina[0], 'es')}" if pagina else ""),
                     *situacion.contexto,
                 ]
             )
-            aviso = str(datos.get("aviso", "")).strip()[:300]
+            aviso = str(datos.get("aviso", "")).strip()[:LARGO_MAXIMO_DE_AVISO]
             if aviso:
                 contexto += f"\nAviso visible en pantalla: {aviso}"
             mensajes = _historial_limpio(datos.get("historial")) + [{
                 "role": "user",
                 "content": f"<contexto>\n{contexto}\n</contexto>\n\n{pregunta}",
             }]
-            texto = conector.responder(INSTRUCCIONES, mensajes)
+            try:
+                texto = conector.responder(INSTRUCCIONES, mensajes)
+            except Exception:
+                # Un SDK, un parámetro o un proveedor inesperado no pueden terminar
+                # en un 500: la persona ve la guía y el motivo queda en el registro.
+                registro.exception(
+                    "El servicio de IA del ayudante falló; se contesta con la guía local"
+                )
+                texto = None
             if texto:
                 tema_cercano = buscar_tema(pregunta, rol)
                 relacionados = tema_cercano.relacionados if tema_cercano else ()
@@ -931,27 +1046,7 @@ def crear_blueprint_del_asistente(
                     fuente="ia",
                 )
 
-        tema = tema or buscar_tema(pregunta, rol)
-        if tema is None:
-            claves = ["que_es", "en_espera", "seguro"] if rol != "admin" else [
-                "pool", "cerrar_bloque", "verificar"
-            ]
-            return jsonify(
-                respuesta=(
-                    "Mmm, no estoy seguro de haber entendido. Prueba con otras palabras "
-                    "o elige una de estas preguntas:"
-                    if idioma != "en" else
-                    "Hmm, I'm not sure I understood. Try other words or pick one of these "
-                    "questions:"
-                ),
-                sugerencias=_sugerencias(claves, rol, idioma),
-                fuente="guia",
-            )
-        return jsonify(
-            respuesta=_en(tema.respuesta, idioma),
-            sugerencias=_sugerencias(tema.relacionados[:3], rol, idioma),
-            fuente="guia",
-        )
+        return jsonify(_respuesta_de_la_guia(pregunta, rol, idioma, tema=tema))
 
     return asistente
 

@@ -2,12 +2,15 @@
 
 La configuración vive en `.env` y la lee el arranque (`src/web/__main__.py`), que
 se la pasa a `create_app`. Lo único obligatorio es `ASISTENTE_API_KEY`: el
-proveedor se reconoce por el comienzo de la clave (`sk-ant-` es Anthropic, `gsk_`
-es Groq, `AIza` es Google Gemini…) y cada proveedor trae su dirección y un modelo
-por defecto. Tres variables opcionales cubren el resto:
+proveedor se reconoce por el comienzo de la clave cuando ese comienzo identifica a
+un único servicio (`sk-ant-` es Anthropic, `gsk_` es Groq, `AIza` es Google
+Gemini…), y cada proveedor trae su dirección y un modelo por defecto. Una clave
+`sk-` a secas no se reconoce: OpenAI, DeepSeek y Mistral comparten ese comienzo.
+Tres variables opcionales cubren el resto:
 
-- `ASISTENTE_PROVEEDOR`: para las claves que no se distinguen por su comienzo
-  (DeepSeek y Mistral, por ejemplo) o para un servidor local como Ollama.
+- `ASISTENTE_PROVEEDOR`: obligatoria para una clave `sk-` (OpenAI, DeepSeek,
+  Mistral…) y para las demás claves que no se distinguen por su comienzo; también
+  sirve para un servidor local como Ollama.
 - `ASISTENTE_MODELO`: otro modelo del mismo proveedor.
 - `ASISTENTE_URL`: cualquier servicio compatible con la API de OpenAI
   (`…/v1/chat/completions`), aunque no esté en la tabla.
@@ -87,16 +90,16 @@ PROVEEDORES: dict[str, Proveedor] = {
     )
 }
 
-# El comienzo de la clave dice de quién es. El orden importa: `sk-ant-` y `sk-or-`
-# empiezan igual que las de OpenAI, así que van antes que `sk-`. Una clave `sk-`
-# también puede ser de DeepSeek: en ese caso hay que decirlo en ASISTENTE_PROVEEDOR.
+# El comienzo de la clave dice de quién es, pero sólo cuando identifica a un único
+# servicio. `sk-` a secas no está en la tabla: OpenAI, DeepSeek y Mistral comparten
+# ese comienzo, y mandar la clave a uno de ellos sin saber cuál la enviaría al
+# proveedor equivocado. Esa clave exige ASISTENTE_PROVEEDOR.
 PREFIJOS: tuple[tuple[str, str], ...] = (
     ("sk-ant-", "anthropic"),
     ("sk-or-", "openrouter"),
     ("gsk_", "groq"),
     ("AIza", "gemini"),
     ("xai-", "xai"),
-    ("sk-", "openai"),
 )
 
 # Los modelos de Claude que aceptan el respaldo del servidor ante un rechazo y el
@@ -151,7 +154,7 @@ class ConectorDeIA:
         try:
             respuesta = cliente.beta.messages.create(
                 model=self.modelo,
-                max_tokens=16000,
+                max_tokens=700,
                 system=[{
                     "type": "text",
                     "text": instrucciones,
@@ -230,6 +233,15 @@ def crear_conector(configuracion: Mapping[str, str | None] | None) -> ConectorDe
 
     if not nombre and clave:
         nombre = detectar_proveedor(clave) or ""
+    if not nombre and clave and clave.startswith("sk-"):
+        # OpenAI, DeepSeek y Mistral comparten el comienzo. Sin el proveedor elegido,
+        # usar cualquiera de los tres mandaría la credencial al servicio equivocado.
+        registro.warning(
+            "La clave empieza por «sk-», que comparten OpenAI, DeepSeek y Mistral: "
+            "define %s con el servicio correcto. El ayudante usa su guía local.",
+            VARIABLE_DEL_PROVEEDOR,
+        )
+        return None
     if not nombre and url:
         # Una dirección propia sin proveedor: se la trata como compatible con OpenAI.
         nombre = "personalizado"

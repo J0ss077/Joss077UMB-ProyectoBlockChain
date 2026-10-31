@@ -76,7 +76,9 @@ CARPETA_DE_FOTOS_DE_PRUEBA = Path(tempfile.mkdtemp(prefix="fotos-de-prueba-"))
 ALMACEN_DE_PRUEBA = CarpetaDeFotos(CARPETA_DE_FOTOS_DE_PRUEBA)
 
 
-def crear_app_de_prueba(chain_factory, *, cuentas_factory=None, secret_key=None) -> Flask:
+def crear_app_de_prueba(
+    chain_factory, *, cuentas_factory=None, secret_key=None, asistente=None
+) -> Flask:
     """Arma la aplicación con la fábrica del ledger y la del servicio de cuentas.
 
     La fábrica de cuentas se compone acá, con `transaction()` real, para que las
@@ -88,6 +90,10 @@ def crear_app_de_prueba(chain_factory, *, cuentas_factory=None, secret_key=None)
     siempre— sin tocar la composición real: es el camino para exigir que una
     página que no muestra cuentas no las abra aunque la base esté caída. Si no se
     inyecta, las cuentas usan la carpeta temporal de fotos de la suite.
+
+    `asistente` trae la configuración del servicio de IA del ayudante, tal como la
+    leería el arranque. Sin ella, la aplicación usa sólo la guía local; con una URL
+    que no responde se prueba el camino de la IA sin salir a la red.
     """
 
     @contextmanager
@@ -98,6 +104,7 @@ def crear_app_de_prueba(chain_factory, *, cuentas_factory=None, secret_key=None)
         chain_factory,
         fabrica_real if cuentas_factory is None else cuentas_factory,
         secret_key=session_secret() if secret_key is None else secret_key,
+        asistente=asistente,
     )
 
 

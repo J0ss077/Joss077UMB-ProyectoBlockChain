@@ -47,7 +47,7 @@ EN: dict[str, str] = {
     "Cambiar tema": "Change theme",
     "Copiar {que}": "Copy {que}",
     "Tú": "You",
-    # ── Ayudante flotante ─────────────────────────────────────────────────
+    # ── Ayudante ──────────────────────────────────────────────────────────
     "Ayudante": "Helper",
     "¿Dudas?": "Questions?",
     "Abrir el ayudante": "Open the helper",
@@ -55,6 +55,15 @@ EN: dict[str, str] = {
     "Cerrar": "Close",
     "Empezar de nuevo": "Start over",
     "Te explico lo que pasa, sin palabras raras.": "I'll explain what's going on, no jargon.",
+    (
+        "Si escribes una pregunta, tu pregunta y el resumen de tu cuenta (saldo y "
+        "últimos movimientos) se envían a un servicio externo de inteligencia "
+        "artificial. Los botones de sugerencia no salen de este equipo."
+    ): (
+        "If you type a question, your question and the summary of your account "
+        "(balance and latest movements) are sent to an external artificial "
+        "intelligence service. Suggestion buttons don't leave this device."
+    ),
     "Lo que pasa ahora": "What's happening now",
     "Conversación con el ayudante": "Conversation with the helper",
     "Escribe tu pregunta": "Type your question",
