@@ -33,7 +33,7 @@ from src.domain.blockchain import Blockchain, ensure_genesis
 from src.domain.transaction import Transaction, TransactionStatus
 from src.domain.wallet import CURVE, Wallet, encrypt_private_key, public_key_hex, sign_payload
 from src.emision import CONSTITUYENTE_ID, CONSTITUYENTE_SEED
-from src.persistence.factory import admin_password, ledger, transaction
+from src.persistence.factory import admin_password, database_url, ledger, transaction
 
 # Semilla del par de llaves del fondo: fijarla hace que su clave pública sea la
 # misma en cada corrida. Sin eso, el fondo quedaría con una pública distinta cada
@@ -107,10 +107,11 @@ def tablas_faltantes() -> tuple[str, ...]:
     """Las tablas del esquema que la base todavía no tiene, en el orden declarado.
 
     Se consulta el catálogo en vez de confiar en que la conexión funcione: una base
-    vacía conecta bien y falla recién en la primera consulta. No escribe.
+    vacía conecta bien y falla recién en la primera consulta. Abre su propia conexión
+    porque el arranque es el punto de composición y no tiene una a mano. No escribe.
     """
-    with transaction() as actual:
-        filas = actual.connection.execute(
+    with psycopg.connect(database_url()) as conexion:
+        filas = conexion.execute(
             """
             SELECT table_name
             FROM information_schema.tables

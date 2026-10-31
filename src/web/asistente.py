@@ -967,9 +967,22 @@ def crear_blueprint_del_asistente(
         rol = _rol(g.get("user"))
         pagina = _pagina(request.args.get("pagina", "/"))
         situacion = situacion_actual(idioma)
-        claves = list(dict.fromkeys(situacion.temas + list(pagina[1] if pagina else ())))
+        # Los temas se filtran por rol antes de decidir el respaldo: los de la
+        # portada son del administrador, y una persona común en su tablero sin
+        # `?pagina` se quedaba sin ninguna sugerencia.
+        claves = [
+            clave
+            for clave in dict.fromkeys(
+                situacion.temas + list(pagina[1] if pagina else ())
+            )
+            if (tema := TEMAS_POR_CLAVE.get(clave)) is not None and _le_sirve(tema, rol)
+        ]
         if not claves:
-            claves = ["que_es", "blockchain", "seguro"]
+            claves = (
+                ["pool", "cerrar_bloque", "verificar"]
+                if rol == "admin"
+                else ["que_es", "blockchain", "seguro"]
+            )
         return jsonify(
             pagina=_en(pagina[0], idioma) if pagina else "",
             puntos=situacion.puntos,

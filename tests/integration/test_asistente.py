@@ -97,6 +97,31 @@ def test_req_44_ahora_dice_el_saldo_en_palabras(cliente_comun):
     )
 
 
+def test_req_44_ahora_sin_pagina_sugiere_temas_del_rol(
+    cliente_comun, aplicacion, administrador
+):
+    """Criterio: sin `?pagina`, cada rol recibe sugerencias que le sirven.
+
+    La guía de la portada es del administrador. Antes de filtrar por rol, una
+    persona común que abría el ayudante sin venir de una pantalla se quedaba con
+    cero botones, porque la lista de la portada no le sirve y el respaldo no se
+    aplicaba. Los dos clientes son distintos: `cliente_comun` y `cliente_admin`
+    comparten el mismo objeto y el segundo ingreso pisaría al primero.
+    """
+    del_administrador = aplicacion.test_client()
+    ingresar_como(del_administrador, administrador.username, CONTRASENA_DEL_ADMINISTRADOR)
+
+    comun = cliente_comun.get("/asistente/ahora").get_json()
+    admin = del_administrador.get("/asistente/ahora").get_json()
+
+    assert comun["sugerencias"], "el usuario común se queda sin botones"
+    assert admin["sugerencias"], "el administrador se queda sin botones"
+    claves_comun = {sugerencia["clave"] for sugerencia in comun["sugerencias"]}
+    claves_admin = {sugerencia["clave"] for sugerencia in admin["sugerencias"]}
+    assert claves_comun.isdisjoint({"pool", "cerrar_bloque", "pendientes_admin"})
+    assert claves_admin & {"pool", "cerrar_bloque", "verificar"}
+
+
 def test_req_44_una_pregunta_conocida_contesta_la_guia(cliente_comun):
     """Criterio: sin IA, una pregunta de la guía se contesta con la guía."""
     respuesta = cliente_comun.post(
