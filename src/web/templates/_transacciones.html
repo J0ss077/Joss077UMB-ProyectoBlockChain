@@ -1,39 +1,54 @@
-{# La tabla de transacciones que comparten el tablero y el historial del usuario común. Se importa `with context` porque pinta el nombre de las contrapartes con `nombre_de_wallet`.
+{# La tabla de movimientos que comparten el tablero y el historial del usuario común. Se importa `with context` porque nombra a la otra persona con `nombre_de_wallet` y usa `en_palabras` y `bienvenida_id`, que pone el blueprint del usuario.
 
-   `propia` es la wallet de la sesión: sus celdas dicen «Tú» y su dirección (entrada o salida) sale de comparar con ella. `motivo_por_transaccion` llega sólo en la respuesta del envío que acaba de rechazar una fila: la base guarda el estado pero no el motivo, así que fuera de ese momento la columna queda vacía. `indices_de_bloque` llega en el historial unificado: traduce el identificador del bloque al índice que la persona puede comparar con la cadena; cuando no llega, la columna muestra el identificador.
+   Habla como habla cualquiera: «Enviaste a ana», «Recibiste de beto», «En espera». Nada de identificadores, wallets ni bloques a la vista. El identificador de cada transacción queda en `data-transaccion` de la fila, que no se ve pero sirve para encontrarla.
 
-   Monto, estado e índice de bloque quedan `<td><code>…</code></td>` porque así los leen las pruebas; la píldora del estado y el «#» del índice los pone el CSS de `.tabla-movimientos`. Las contrapartes se muestran por su wallet, nunca por su clave pública (REQ-35). #}
-{% from "_macros.html" import dato, copiar, identidad %}
-{% macro tabla(transacciones, propia, motivo_por_transaccion=None, vacio="No hay transacciones.", indices_de_bloque=None) -%}
+   `propia` es la wallet de la sesión: de ella sale si el movimiento es una entrada o una salida. `motivo_por_transaccion` llega sólo en la respuesta del envío que acaba de rechazarse: la base guarda el estado pero no el motivo, así que fuera de ese momento la columna no aparece. `indices_de_bloque` llega en el historial: es el número de registro que vuelve verificable un movimiento completado (REQ-39) y se pinta `<td><code>N</code></td>`, con el «#» puesto por el CSS. #}
+{% from "_macros.html" import cantidad %}
+{% from "_estado.html" import estado as pildora %}
+{% macro tabla(transacciones, propia, motivo_por_transaccion=None, vacio="Todavía no tienes movimientos.", indices_de_bloque=None) -%}
 {%- set motivos = motivo_por_transaccion or {} -%}
 {% if transacciones %}
 <div class="tabla-desplazable">
-    <table class="tabla tabla-movimientos tabla-usuario">
+    <table class="tabla tabla-usuario">
         <thead>
-            <tr><th>Transacción</th><th>Emisor</th><th>Receptor</th><th class="derecha">Monto</th><th>Estado</th><th>Bloque</th><th>Motivo del rechazo</th></tr>
+            <tr>
+                <th>{{ t("Movimiento") }}</th>
+                <th>{{ t("Fecha") }}</th>
+                <th class="derecha">{{ t("Monto") }}</th>
+                <th>{{ t("Estado") }}</th>
+                {% if indices_de_bloque is not none %}<th>{{ t("N.º de registro") }}</th>{% endif %}
+                {% if motivos %}<th>{{ t("Por qué no se hizo") }}</th>{% endif %}
+            </tr>
         </thead>
         <tbody>
             {% for transaction in transacciones %}
             {% set sale = transaction.sender_id == propia %}
-            <tr data-estado="{{ transaction.status }}"{% if transaction.id in motivos %} class="recien-rechazada"{% endif %}>
+            {% set otra = transaction.receiver_id if sale else transaction.sender_id %}
+            {% set nombre = nombre_de_wallet(otra) %}
+            <tr data-estado="{{ transaction.status }}" data-transaccion="{{ transaction.id }}"{% if transaction.id in motivos %} class="recien-rechazada"{% endif %}>
                 <td>
                     <span class="transaccion-con-direccion">
-                        <span class="direccion {{ 'salida' if sale else 'entrada' }}" role="img" aria-label="{{ 'Salida' if sale else 'Entrada' }}"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="{{ 'M7 12V2M3 6l4-4 4 4' if sale else 'M7 2v10M3 8l4 4 4-4' }}" /></svg></span>
-                        <span class="codigo">{{ dato(transaction.id) }}{{ copiar(transaction.id, "el identificador de la transacción") }}</span>
+                        <span class="direccion {{ 'salida' if sale else 'entrada' }}" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><path d="{{ 'M7 12V2M3 6l4-4 4 4' if sale else 'M7 2v10M3 8l4 4 4-4' }}" /></svg></span>
+                        <span>
+                            {%- if not sale and otra == bienvenida_id and not nombre %}{{ t("Saldo de bienvenida") }}
+                            {%- elif sale %}{{ t("Enviaste a") }} <b>{{ nombre or t("otra cuenta") }}</b>
+                            {%- else %}{{ t("Recibiste de") }} <b>{{ nombre or t("otra cuenta") }}</b>{% endif -%}
+                        </span>
                     </span>
                 </td>
-                <td>{{ identidad(transaction.sender_id, nombre_de_wallet(transaction.sender_id), "el identificador del emisor", propio=sale) }}</td>
-                <td>{{ identidad(transaction.receiver_id, nombre_de_wallet(transaction.receiver_id), "el identificador del receptor", propio=not sale) }}</td>
-                <td><code>{{ "%.8f"|format(transaction.amount) }}</code></td>
-                <td><code>{{ transaction.status }}</code></td>
-                {% if transaction.block_id and indices_de_bloque and transaction.block_id in indices_de_bloque %}
+                <td><span class="suave">{{ transaction.created_at.strftime("%d/%m/%Y %H:%M") }}</span></td>
+                <td class="derecha monto-{{ 'salida' if sale else 'entrada' }}">{{ "−" if sale else "+" }}{{ cantidad(transaction.amount) }}</td>
+                <td>{{ pildora(transaction.status, simple=true) }}</td>
+                {% if indices_de_bloque is not none %}
+                {% if transaction.block_id and transaction.block_id in indices_de_bloque %}
                 <td><code>{{ indices_de_bloque[transaction.block_id] }}</code></td>
-                {% elif transaction.block_id %}
-                <td><span class="codigo">{{ dato(transaction.block_id) }}</span></td>
                 {% else %}
                 <td><span class="suave">—</span></td>
                 {% endif %}
-                <td>{% if transaction.id in motivos %}<span class="motivo-fila">{{ motivos[transaction.id] }}</span>{% else %}<span class="suave">—</span>{% endif %}</td>
+                {% endif %}
+                {% if motivos %}
+                <td>{% if transaction.id in motivos %}<span class="motivo-fila">{{ t(motivos[transaction.id]) }}</span>{% else %}<span class="suave">—</span>{% endif %}</td>
+                {% endif %}
             </tr>
             {% endfor %}
         </tbody>
@@ -41,8 +56,8 @@
 </div>
 {% else %}
 <div class="vacio">
-    <p class="vacio-titulo">{{ vacio }}</p>
-    <p class="ayuda">Cuando alguien te envíe o hagas tu primer envío, aparecerá aquí con su estado y el bloque que lo confirma.</p>
+    <p class="vacio-titulo">{{ t(vacio) }}</p>
+    <p class="ayuda">{{ t("Cuando envíes o recibas dinero, aparecerá aquí.") }}</p>
 </div>
 {% endif %}
 {%- endmacro %}

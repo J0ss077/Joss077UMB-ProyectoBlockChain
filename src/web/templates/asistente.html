@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block titulo %}{{ t("Ayudante") }}{% endblock %}
+{% block cuerpo %}
+{# Por ahora sólo funcional: la conversación ocupa la página con los estilos del panel. #}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/asistente.css') }}" />
+<script src="{{ url_for('static', filename='js/asistente.js') }}" defer></script>
+<main id="contenido" tabindex="-1">
+    {% include "_asistente.html" %}
+</main>
+{% endblock %}

@@ -1,3 +1,6 @@
+
+
+
 # Prototipo transaccional basado en blockchain
 
 Nodo único de un ledger transaccional: wallets con par de llaves ECDSA, transacciones
@@ -401,7 +404,13 @@ corren con el contenedor apagado y con `DATABASE_URL` sin definir en el entorno:
 **Toda la suite.** Necesita el contenedor levantado y tres variables con valores
 propios: `DATABASE_URL` apuntando a la base de pruebas, `SESSION_SECRET` y
 `ADMIN_PASSWORD`. Las de integración fallan con un mensaje claro si falta alguna, en
-vez de omitirse en silencio:
+vez de omitirse en silencio.
+
+Las pruebas de integración vacían las tablas antes de cada caso. Para no perder los
+datos de la aplicación, defina `TEST_DATABASE_URL` en su `.env` con una base aparte
+en el mismo PostgreSQL (creada una vez y con `db/init.sql` aplicado): con ella, la
+suite usa esa base y no toca la de `DATABASE_URL`. Las fotos de perfil de las
+pruebas van siempre a una carpeta temporal, nunca a `FOTOS_DIR`.
 
 ```text
 <venv> -m pytest tests -v

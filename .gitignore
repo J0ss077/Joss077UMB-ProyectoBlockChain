@@ -6,6 +6,9 @@
 .legacy-project/
 .reference/
 
+# Fotos de perfil subidas en este equipo (`FOTOS_DIR`): son datos, no código.
+datos/
+
 # Andamiaje de ejecución y cachés
 __pycache__/
 *.py[codz]

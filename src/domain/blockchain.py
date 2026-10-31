@@ -341,8 +341,11 @@ class Blockchain:
         return VerificationReport(valid=True, altered_block_index=None)
 
     def wallet_history(self, wallet_id: UUID) -> Sequence[Transaction]:
-        """Los envíos y las recepciones de una wallet, en cualquier estado (CU-05, REQ-13)."""
-        return self.transactions.list(wallet_id=wallet_id)
+        """Los envíos y las recepciones de una wallet, en cualquier estado (CU-05, REQ-13).
+
+        Van de la más nueva a la más vieja: el último movimiento queda arriba.
+        """
+        return self.transactions.list(wallet_id=wallet_id, newest_first=True)
 
     def available_balance(self, wallet_id: UUID) -> Decimal:
         """Saldo disponible de una wallet: confirma a favor menos lo comprometido (REQ-05).

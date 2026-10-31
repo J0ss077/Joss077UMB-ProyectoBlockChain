@@ -6,6 +6,9 @@
 // identificador, que es lo único que recibe la ruta. Si lo escrito no corresponde a
 // una sola wallet, el campo queda inválido y el formulario no se envía.
 (() => {
+    // Los textos a la vista pasan por `window.TEXTOS`, que pone `base.html`: vacío en
+    // español y con las traducciones cuando la página va en inglés.
+    const tr = (texto) => (window.TEXTOS && window.TEXTOS[texto]) || texto;
     const ruta = document.querySelector("[data-ruta-envio]");
     if (!ruta) return;
     const formulario = ruta.closest("form");
@@ -14,10 +17,12 @@
         const [nombre, clave, saldo] = opcion.textContent.split(" · ");
         return {
             id: opcion.value,
-            // Las wallets sin dueño sólo se pueden elegir por su identificador.
-            nombre: nombre === "Sin dueño" ? null : nombre,
+            // Las wallets sin dueño sólo se pueden elegir por su identificador. La
+            // opción dice «Sin dueño» en el idioma de la página, igual que `tr`.
+            nombre: nombre === tr("Sin dueño") ? null : nombre,
             clave,
-            saldo: saldo.replace(/^saldo /, ""),
+            // El saldo llega como «saldo 12» o «balance 12»: se descarta la palabra.
+            saldo: saldo.replace(/^\S+ /, ""),
         };
     });
 
@@ -32,10 +37,13 @@
             const porPrefijo = wallets.filter((wallet) => wallet.id.startsWith(buscado));
             if (porPrefijo.length === 1) return { wallet: porPrefijo[0] };
             if (porPrefijo.length > 1) {
-                return { wallet: null, motivo: `${porPrefijo.length} wallets empiezan así; escribe más caracteres.` };
+                return {
+                    wallet: null,
+                    motivo: tr("{n} wallets empiezan así; escribe más caracteres.").replace("{n}", porPrefijo.length),
+                };
             }
         }
-        return { wallet: null, motivo: "Ninguna wallet tiene ese nombre o ese ID." };
+        return { wallet: null, motivo: tr("Ninguna wallet tiene ese nombre o ese ID.") };
     };
 
     const campos = [...ruta.querySelectorAll("input[list]")];
@@ -47,8 +55,8 @@
         salida.replaceChildren();
         if (wallet) {
             const nombre = document.createElement("b");
-            nombre.textContent = wallet.nombre ?? "Sin dueño";
-            salida.append(nombre, ` · ${wallet.id.slice(0, 8)}… · saldo ${wallet.saldo}`);
+            nombre.textContent = wallet.nombre ?? tr("Sin dueño");
+            salida.append(nombre, ` · ${wallet.id.slice(0, 8)}… · ${tr("saldo")} ${wallet.saldo}`);
             salida.dataset.estado = "encontrada";
             campo.setCustomValidity("");
         } else {

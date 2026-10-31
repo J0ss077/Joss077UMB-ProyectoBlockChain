@@ -384,6 +384,7 @@ def test_req_30_el_formulario_limita_el_usuario_a_los_caracteres_permitidos(clie
     """
     for ruta in ("/registrarme", "/ingresar"):
         cuerpo = cliente.get(ruta).get_data(as_text=True)
+        assert "js/usuario.js" in cuerpo, ruta
         assert f'pattern="{PATRON_DE_USUARIO}"' in cuerpo, ruta
         assert f'maxlength="{LARGO_MAXIMO_DE_USUARIO}"' in cuerpo, ruta
         assert 'autocapitalize="off"' in cuerpo, ruta

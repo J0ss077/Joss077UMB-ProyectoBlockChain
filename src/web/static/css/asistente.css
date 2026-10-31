@@ -1,0 +1,489 @@
+/* El ayudante (`_asistente.html`, `asistente.js`), en su propia página. Por ahora
+   reusa los estilos de la antigua ventana flotante; el diseño de la página queda
+   pendiente. Sólo usa los alias
+   semánticos de `colores.css`, así que el tema oscuro sale solo. Es de lo poco que
+   flota, así que lleva `--sombra-flotante`. Sin JavaScript no se muestra: no tendría
+   cómo contestar. */
+
+.asistente {
+    display: none;
+}
+.js .asistente {
+    display: flex;
+    flex-direction: column;
+    gap: var(--espacio-3);
+}
+.js .asistente .asistente-panel {
+    width: 100%;
+    height: min(720px, calc(100dvh - 160px));
+}
+
+/* ── El botón ─────────────────────────────────────────────────────────── */
+.asistente-lanzador {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--espacio-2);
+    min-height: 3.5rem;
+    padding: 0 20px 0 16px;
+    border: 0;
+    border-radius: var(--radio-pildora);
+    background: var(--color-acento);
+    color: var(--color-sobre-acento);
+    box-shadow: var(--sombra-flotante);
+    font: var(--peso-negrita) var(--texto-md) / 1 var(--fuente-texto);
+    cursor: pointer;
+    transition:
+        transform var(--duracion-corta) var(--curva-resorte),
+        filter var(--duracion-instante) var(--curva-salida);
+}
+.asistente-lanzador:hover {
+    filter: brightness(1.08);
+    transform: translateY(-2px);
+}
+.asistente-lanzador:active {
+    transform: scale(0.96);
+}
+.asistente-lanzador:focus-visible {
+    outline: none;
+    box-shadow: var(--anillo-foco), var(--sombra-flotante);
+}
+.asistente-lanzador-cerrar {
+    display: none;
+}
+.asistente.abierto .asistente-lanzador {
+    width: 3.5rem;
+    padding: 0;
+    justify-content: center;
+}
+.asistente.abierto .asistente-lanzador-abrir,
+.asistente.abierto .asistente-lanzador-texto {
+    display: none;
+}
+.asistente.abierto .asistente-lanzador-cerrar {
+    display: block;
+}
+/* El punto lima: hay un aviso en la página que el ayudante puede explicar. */
+.asistente-punto {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 14px;
+    height: 14px;
+    border: 3px solid var(--color-fondo);
+    border-radius: 50%;
+    background: var(--color-lima);
+}
+
+/* ── La invitación a explicar un aviso ────────────────────────────────── */
+.asistente-teaser {
+    display: flex;
+    align-items: center;
+    gap: var(--espacio-1);
+    max-width: 280px;
+    margin: 0;
+    padding: 6px 6px 6px 16px;
+    border: 1px solid var(--color-borde);
+    border-radius: var(--radio-xl) var(--radio-xl) var(--radio-xs) var(--radio-xl);
+    background: var(--color-superficie);
+    color: var(--color-texto);
+    box-shadow: var(--sombra-flotante);
+}
+.asistente-teaser[hidden] {
+    display: none;
+}
+.asistente-teaser-texto {
+    padding: 6px 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: var(--peso-semi) var(--texto-base) / 1.35 var(--fuente-texto);
+    text-align: left;
+    cursor: pointer;
+}
+.asistente-teaser-texto:hover {
+    color: var(--color-acento);
+}
+.asistente-teaser-cerrar,
+.asistente-icono {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--color-texto-suave);
+    cursor: pointer;
+}
+.asistente-teaser-cerrar:hover,
+.asistente-icono:hover {
+    background: var(--color-superficie-2);
+    color: var(--color-texto);
+}
+
+/* ── La ventana ───────────────────────────────────────────────────────── */
+.asistente-panel {
+    display: flex;
+    flex-direction: column;
+    width: min(400px, calc(100vw - 32px));
+    height: min(620px, calc(100dvh - 120px));
+    overflow: hidden;
+    border: 1px solid var(--color-borde);
+    border-radius: var(--radio-4xl);
+    background: var(--color-superficie);
+    color: var(--color-texto);
+    box-shadow: var(--sombra-flotante);
+    transform-origin: bottom right;
+}
+.asistente-panel[hidden] {
+    display: none;
+}
+.asistente-cabecera {
+    display: flex;
+    align-items: center;
+    gap: var(--espacio-3);
+    padding: var(--espacio-4) var(--espacio-3) var(--espacio-4) var(--espacio-5);
+    background: var(--color-acento);
+    color: var(--color-sobre-acento);
+}
+.asistente-cabecera .asistente-icono {
+    color: inherit;
+}
+.asistente-cabecera .asistente-icono:hover {
+    background: color-mix(in srgb, var(--color-sobre-acento) 16%, transparent);
+    color: inherit;
+}
+.asistente-cara {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radio-lg);
+    background: var(--color-lima);
+    color: var(--color-sobre-lima);
+}
+.asistente-encabezado {
+    flex: 1;
+    min-width: 0;
+}
+.asistente-titulo {
+    margin: 0;
+    font-size: var(--texto-xl);
+    font-weight: var(--peso-titulo);
+    letter-spacing: var(--tracking-titulo);
+    line-height: var(--interlinea-titulo);
+}
+.asistente-subtitulo {
+    margin: 0;
+    font-size: var(--texto-sm);
+    opacity: 0.85;
+}
+.asistente-cuerpo {
+    /* Referencia de `offsetTop` para llevar la vista al comienzo de cada respuesta. */
+    position: relative;
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: var(--espacio-3);
+    padding: var(--espacio-4);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scroll-behavior: smooth;
+}
+
+/* «Lo que pasa ahora»: la tarjeta que explica la página y la cuenta. */
+.asistente-ahora {
+    padding: var(--espacio-4);
+    border-radius: var(--radio-xl);
+    background: var(--color-superficie-2);
+}
+.asistente-ahora[hidden] {
+    display: none;
+}
+.asistente-etiqueta {
+    margin: 0 0 var(--espacio-2);
+    color: var(--color-texto-suave);
+    font: var(--peso-semi) var(--texto-2xs) / 1 var(--fuente-mono);
+    letter-spacing: var(--tracking-etiqueta);
+    text-transform: uppercase;
+}
+.asistente-pagina {
+    margin: 0;
+    font-size: var(--texto-md);
+    line-height: var(--interlinea-cuerpo);
+}
+.asistente-puntos {
+    display: flex;
+    flex-direction: column;
+    gap: var(--espacio-2);
+    margin: var(--espacio-3) 0 0;
+    padding: 0;
+    list-style: none;
+}
+.asistente-puntos:empty {
+    display: none;
+}
+.asistente-puntos li {
+    position: relative;
+    padding-left: 18px;
+    font-size: var(--texto-base);
+    line-height: var(--interlinea-cuerpo);
+}
+.asistente-puntos li::before {
+    content: "";
+    position: absolute;
+    top: 0.5em;
+    left: 2px;
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    background: var(--color-acento);
+}
+.asistente-ahora.cargando .asistente-pagina:empty {
+    height: 1em;
+    border-radius: var(--radio-xs);
+    background: color-mix(in srgb, var(--color-texto) 8%, transparent);
+}
+
+/* ── La conversación ──────────────────────────────────────────────────── */
+.asistente-mensajes {
+    display: flex;
+    flex-direction: column;
+    gap: var(--espacio-3);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.asistente-mensajes:empty {
+    display: none;
+}
+.asistente-mensaje {
+    display: flex;
+    flex-direction: column;
+    gap: var(--espacio-1);
+    max-width: 88%;
+}
+.asistente-mensaje-persona {
+    align-self: flex-end;
+    align-items: flex-end;
+}
+.asistente-mensaje-ayudante {
+    align-self: flex-start;
+}
+.asistente-globo {
+    padding: 10px 14px;
+    font-size: var(--texto-md);
+    line-height: var(--interlinea-cuerpo);
+    overflow-wrap: anywhere;
+}
+.asistente-mensaje-persona .asistente-globo {
+    border-radius: var(--radio-xl) var(--radio-xl) var(--radio-xs) var(--radio-xl);
+    background: var(--color-acento);
+    color: var(--color-sobre-acento);
+    white-space: pre-wrap;
+}
+.asistente-mensaje-ayudante .asistente-globo {
+    border-radius: var(--radio-xl) var(--radio-xl) var(--radio-xl) var(--radio-xs);
+    background: var(--color-superficie-2);
+}
+.asistente-globo p,
+.asistente-globo ul {
+    margin: 0;
+}
+.asistente-globo p + p,
+.asistente-globo p + ul,
+.asistente-globo ul + p {
+    margin-top: var(--espacio-2);
+}
+.asistente-globo ul {
+    padding-left: 1.2em;
+}
+.asistente-globo li + li {
+    margin-top: var(--espacio-1);
+}
+.asistente-fuente {
+    padding-left: var(--espacio-1);
+    color: var(--color-texto-suave);
+    font: var(--peso-medio) var(--texto-2xs) / 1 var(--fuente-mono);
+    letter-spacing: var(--tracking-etiqueta);
+    text-transform: uppercase;
+}
+.asistente-escribiendo .asistente-globo {
+    display: flex;
+    gap: 4px;
+    padding: 14px 16px;
+}
+.asistente-escribiendo i {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--color-texto-suave);
+    opacity: 0.5;
+}
+
+/* Las preguntas sugeridas. */
+.asistente-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--espacio-2);
+}
+.asistente-chips:empty {
+    display: none;
+}
+.asistente-chip {
+    min-height: 36px;
+    padding: 8px 14px;
+    border: 1px solid var(--color-borde-fuerte);
+    border-radius: var(--radio-pildora);
+    background: var(--color-superficie);
+    color: var(--color-texto);
+    font: var(--peso-medio) var(--texto-sm) / 1.25 var(--fuente-texto);
+    text-align: left;
+    cursor: pointer;
+    transition:
+        background-color var(--duracion-instante) var(--curva-salida),
+        border-color var(--duracion-instante) var(--curva-salida);
+}
+.asistente-chip:hover {
+    border-color: var(--color-acento);
+    background: var(--color-superficie-2);
+    color: var(--color-acento);
+}
+
+/* ── La caja de texto ─────────────────────────────────────────────────── */
+.asistente-formulario {
+    display: flex;
+    align-items: flex-end;
+    gap: var(--espacio-2);
+    padding: var(--espacio-3);
+    border-top: 1px solid var(--color-borde);
+}
+.asistente-formulario textarea {
+    flex: 1;
+    min-height: var(--objetivo-tactil);
+    max-height: 120px;
+    padding: 11px 14px;
+    border: 1px solid var(--color-borde-fuerte);
+    border-radius: var(--radio-lg);
+    background: var(--color-superficie);
+    color: var(--color-texto);
+    /* El texto de la persona no es un dato: va en la proporcional. */
+    font: var(--peso-normal) var(--texto-lg) / 1.35 var(--fuente-texto);
+    resize: none;
+}
+.asistente-formulario textarea:focus {
+    outline: none;
+    border-color: var(--color-acento);
+    box-shadow: var(--anillo-foco);
+}
+.asistente-enviar {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: var(--objetivo-tactil);
+    height: var(--objetivo-tactil);
+    border: 0;
+    border-radius: var(--radio-lg);
+    background: var(--color-acento);
+    color: var(--color-sobre-acento);
+    cursor: pointer;
+}
+.asistente-enviar:hover {
+    filter: brightness(1.08);
+}
+.asistente-formulario.ocupado .asistente-enviar {
+    opacity: 0.5;
+    cursor: progress;
+}
+.asistente :is(button, textarea):focus-visible {
+    outline: none;
+    box-shadow: var(--anillo-foco);
+}
+
+/* ── Movimiento ───────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: no-preference) {
+    .asistente-panel:not([hidden]) {
+        animation: asistente-abre var(--duracion-media) var(--curva-salida);
+    }
+    .asistente-teaser:not([hidden]) {
+        animation: asistente-abre var(--duracion-media) var(--curva-resorte);
+    }
+    .asistente-mensaje:not(.sin-animar) {
+        animation: asistente-mensaje var(--duracion-media) var(--curva-salida);
+    }
+    .asistente-escribiendo i {
+        animation: asistente-puntos 1.1s infinite ease-in-out;
+    }
+    .asistente-escribiendo i:nth-child(2) {
+        animation-delay: 0.15s;
+    }
+    .asistente-escribiendo i:nth-child(3) {
+        animation-delay: 0.3s;
+    }
+    .asistente-punto {
+        animation: asistente-latido 2s infinite;
+    }
+}
+@keyframes asistente-abre {
+    from {
+        opacity: 0;
+        transform: translateY(12px) scale(0.96);
+    }
+}
+@keyframes asistente-mensaje {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+}
+@keyframes asistente-puntos {
+    0%,
+    80%,
+    100% {
+        opacity: 0.35;
+        transform: translateY(0);
+    }
+    40% {
+        opacity: 1;
+        transform: translateY(-3px);
+    }
+}
+@keyframes asistente-latido {
+    0%,
+    100% {
+        box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-lima) 70%, transparent);
+    }
+    60% {
+        box-shadow: 0 0 0 8px transparent;
+    }
+}
+
+/* ── Teléfono: la ventana ocupa el ancho y sube desde abajo ───────────── */
+@media (max-width: 30rem) {
+    .js .asistente {
+        right: var(--espacio-3);
+        bottom: var(--espacio-3);
+    }
+    .asistente-lanzador-texto {
+        display: none;
+    }
+    .asistente-lanzador {
+        width: 3.5rem;
+        padding: 0;
+        justify-content: center;
+    }
+    .asistente-panel {
+        width: calc(100vw - 24px);
+        height: calc(100dvh - 108px);
+        border-radius: var(--radio-3xl);
+    }
+}
+
+@media print {
+    .asistente {
+        display: none !important;
+    }
+}

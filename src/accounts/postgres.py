@@ -13,6 +13,7 @@ El nombre se normaliza en el repositorio, al escribir y al buscar, para que
 ningún llamador pueda saltarse la regla de REQ-30.
 """
 from collections.abc import Sequence
+from datetime import datetime
 from typing import Any
 from uuid import UUID
 
@@ -20,7 +21,17 @@ import psycopg
 from psycopg.rows import dict_row
 
 from src.accounts.credentials import normalizar_usuario
-from src.accounts.model import APROBADO, PENDIENTE, RECHAZADO, Usuario, UsuarioDuplicado
+from src.accounts.model import (
+    APROBADO,
+    PENDIENTE,
+    RECHAZADO,
+    USUARIO,
+    FotoDePerfil,
+    SolicitudDeContrasena,
+    SolicitudYaPendiente,
+    Usuario,
+    UsuarioDuplicado,
+)
 
 # Los dos nombres con los que el motor puede informar la unicidad del nombre: el
 # `UNIQUE` exacto del esquema y el índice único sobre `lower(username)`. Como la
@@ -42,6 +53,28 @@ def _row_to_usuario(row: dict[str, Any]) -> Usuario:
         wallet_id=row["wallet_id"],
         creado_en=row["creado_en"],
         aprobado_en=row["aprobado_en"],
+    )
+
+
+# Las columnas de la solicitud más el nombre de la cuenta, que la cola necesita.
+_SELECT_SOLICITUD = """
+    SELECT s.*, u.username
+    FROM solicitudes_de_contrasena s
+    JOIN users u ON u.id = s.usuario_id
+"""
+
+
+def _row_to_solicitud(row: dict[str, Any]) -> SolicitudDeContrasena:
+    """Fila de `solicitudes_de_contrasena` (con el nombre de la cuenta) al modelo."""
+    return SolicitudDeContrasena(
+        id=row["id"],
+        usuario_id=row["usuario_id"],
+        username=row["username"],
+        password_hash=row["password_hash"],
+        estado=row["estado"],
+        motivo_rechazo=row["motivo_rechazo"],
+        creado_en=row["creado_en"],
+        resuelto_en=row["resuelto_en"],
     )
 
 
@@ -224,3 +257,231 @@ class PostgresAccountsRepository:
     def count(self) -> int:
         """Cuántas cuentas hay registradas, en cualquier estado."""
         return self._connection.execute("SELECT count(*) FROM users").fetchone()[0]
+
+    def agregar_contacto(self, usuario_id: UUID, contacto_id: UUID) -> bool:
+        """Agenda la cuenta como contacto; `False` si ya estaba agendada.
+
+        El `ON CONFLICT` hace que agregar dos veces —el doble clic, otra pestaña—
+        no sea un error del motor sino una fila que ya existía. Quién puede
+        agendarse lo decide el servicio; el CHECK del esquema sólo respalda que
+        nadie se agende a sí mismo.
+        """
+        cursor = self._connection.execute(
+            """
+            INSERT INTO contactos (usuario_id, contacto_id)
+            VALUES (%s, %s)
+            ON CONFLICT DO NOTHING
+            """,
+            (usuario_id, contacto_id),
+        )
+        return cursor.rowcount == 1
+
+    def quitar_contacto(self, usuario_id: UUID, contacto_id: UUID) -> bool:
+        """Saca la cuenta de la agenda; `False` si no estaba."""
+        cursor = self._connection.execute(
+            "DELETE FROM contactos WHERE usuario_id = %s AND contacto_id = %s",
+            (usuario_id, contacto_id),
+        )
+        return cursor.rowcount == 1
+
+    def contactos_de(self, usuario_id: UUID) -> Sequence[Usuario]:
+        """Las cuentas que ese usuario agendó, por nombre de usuario."""
+        cursor = self._connection.cursor(row_factory=dict_row)
+        cursor.execute(
+            """
+            SELECT u.*
+            FROM contactos c
+            JOIN users u ON u.id = c.contacto_id
+            WHERE c.usuario_id = %s
+            ORDER BY u.username
+            """,
+            (usuario_id,),
+        )
+        return [_row_to_usuario(row) for row in cursor.fetchall()]
+
+    def destinatarios_parecidos(
+        self, texto: str, usuario_id: UUID, sin_contactos: bool, limite: int
+    ) -> Sequence[str]:
+        """Los nombres de las cuentas comunes aprobadas que contienen `texto`.
+
+        Primero los que empiezan por el texto y después los que sólo lo contienen,
+        cada grupo por nombre. Queda fuera la cuenta que pregunta y, con
+        `sin_contactos`, las que ya agendó. Los comodines de `LIKE` del texto se
+        escapan: un `%` tecleado busca un `%` y no todos los nombres.
+        """
+        patron = (
+            normalizar_usuario(texto)
+            .replace("\\", "\\\\")
+            .replace("%", "\\%")
+            .replace("_", "\\_")
+        )
+        filas = self._connection.execute(
+            """
+            SELECT u.username
+            FROM users u
+            WHERE u.role = %(rol)s
+              AND u.estado = %(estado)s
+              AND u.id <> %(usuario_id)s
+              AND u.username LIKE '%%' || %(patron)s || '%%'
+              AND NOT (%(sin_contactos)s AND EXISTS (
+                  SELECT 1 FROM contactos c
+                  WHERE c.usuario_id = %(usuario_id)s AND c.contacto_id = u.id
+              ))
+            ORDER BY u.username NOT LIKE %(patron)s || '%%', u.username
+            LIMIT %(limite)s
+            """,
+            {
+                "rol": USUARIO,
+                "estado": APROBADO,
+                "usuario_id": usuario_id,
+                "patron": patron,
+                "sin_contactos": sin_contactos,
+                "limite": limite,
+            },
+        ).fetchall()
+        return [username for (username,) in filas]
+
+    def cambiar_hash(self, usuario_id: UUID, password_hash: str) -> bool:
+        """Reemplaza el hash de la contraseña; `False` si la cuenta ya no existe."""
+        cursor = self._connection.execute(
+            "UPDATE users SET password_hash = %s WHERE id = %s",
+            (password_hash, usuario_id),
+        )
+        return cursor.rowcount == 1
+
+    def crear_solicitud(
+        self, usuario_id: UUID, password_hash: str
+    ) -> SolicitudDeContrasena:
+        """Deja pendiente un cambio de contraseña y lo devuelve.
+
+        El índice único parcial impide una segunda pendiente de la misma cuenta; esa
+        violación se traduce a `SolicitudYaPendiente` y cualquier otra sube cruda.
+        """
+        cursor = self._connection.cursor(row_factory=dict_row)
+        try:
+            cursor.execute(
+                """
+                INSERT INTO solicitudes_de_contrasena (usuario_id, password_hash)
+                VALUES (%s, %s)
+                RETURNING id
+                """,
+                (usuario_id, password_hash),
+            )
+        except psycopg.errors.UniqueViolation as error:
+            if error.diag.constraint_name != "uq_solicitudes_de_contrasena_una_pendiente":
+                raise
+            raise SolicitudYaPendiente(usuario_id) from error
+        return self.solicitud(cursor.fetchone()["id"])
+
+    def ultima_solicitud(self, usuario_id: UUID) -> SolicitudDeContrasena | None:
+        """La solicitud más reciente de la cuenta, en cualquier estado."""
+        cursor = self._connection.cursor(row_factory=dict_row)
+        cursor.execute(
+            _SELECT_SOLICITUD + " WHERE s.usuario_id = %s ORDER BY s.creado_en DESC, s.id LIMIT 1",
+            (usuario_id,),
+        )
+        row = cursor.fetchone()
+        return _row_to_solicitud(row) if row is not None else None
+
+    def solicitud(self, id: UUID) -> SolicitudDeContrasena | None:
+        """La solicitud con ese identificador, o `None` si no existe."""
+        cursor = self._connection.cursor(row_factory=dict_row)
+        cursor.execute(_SELECT_SOLICITUD + " WHERE s.id = %s", (id,))
+        row = cursor.fetchone()
+        return _row_to_solicitud(row) if row is not None else None
+
+    def solicitudes_pendientes(self) -> Sequence[SolicitudDeContrasena]:
+        """Las solicitudes que esperan al administrador, de la más antigua a la más nueva."""
+        cursor = self._connection.cursor(row_factory=dict_row)
+        cursor.execute(
+            _SELECT_SOLICITUD + " WHERE s.estado = %s ORDER BY s.creado_en, s.id",
+            (PENDIENTE,),
+        )
+        return [_row_to_solicitud(row) for row in cursor.fetchall()]
+
+    def resolver_solicitud(
+        self, id: UUID, *, aprobada: bool, motivo: str | None = None
+    ) -> SolicitudDeContrasena | None:
+        """Aprueba o rechaza una solicitud pendiente; `None` si ya no lo estaba.
+
+        Igual que la aprobación de cuentas, la condición `estado = 'pendiente'` va
+        dentro del `UPDATE`: dos administradores no pueden resolverla dos veces.
+        Al aprobar, el hash nuevo pasa a la cuenta en la misma transacción.
+        """
+        cursor = self._connection.cursor(row_factory=dict_row)
+        cursor.execute(
+            """
+            UPDATE solicitudes_de_contrasena
+            SET estado = %s, motivo_rechazo = %s, resuelto_en = NOW()
+            WHERE id = %s AND estado = %s
+            RETURNING usuario_id, password_hash
+            """,
+            (APROBADO if aprobada else RECHAZADO, motivo, id, PENDIENTE),
+        )
+        row = cursor.fetchone()
+        if row is None:
+            return None
+        if aprobada:
+            self.cambiar_hash(row["usuario_id"], row["password_hash"])
+        return self.solicitud(id)
+
+    def guardar_foto(self, usuario_id: UUID, archivo: str, tipo: str) -> str | None:
+        """Apunta la foto de la cuenta a ese archivo y devuelve el que tenía antes.
+
+        El nombre anterior se lee en la misma sentencia, antes de reemplazarlo, para
+        que quien llama pueda borrar ese archivo después de confirmar.
+        """
+        fila = self._connection.execute(
+            """
+            WITH anterior AS (
+                SELECT archivo FROM fotos_de_perfil WHERE usuario_id = %s
+            )
+            INSERT INTO fotos_de_perfil (usuario_id, archivo, tipo)
+            VALUES (%s, %s, %s)
+            ON CONFLICT (usuario_id)
+            DO UPDATE SET archivo = EXCLUDED.archivo, tipo = EXCLUDED.tipo,
+                          actualizado_en = NOW()
+            RETURNING (SELECT archivo FROM anterior)
+            """,
+            (usuario_id, usuario_id, archivo, tipo),
+        ).fetchone()
+        return fila[0]
+
+    def quitar_foto(self, usuario_id: UUID) -> str | None:
+        """Borra la referencia a la foto y devuelve el archivo; `None` si no tenía."""
+        fila = self._connection.execute(
+            "DELETE FROM fotos_de_perfil WHERE usuario_id = %s RETURNING archivo",
+            (usuario_id,),
+        ).fetchone()
+        return fila[0] if fila is not None else None
+
+    def foto_de(self, username: str) -> FotoDePerfil | None:
+        """La referencia a la foto de la cuenta con ese nombre, o `None` si no tiene."""
+        fila = self._connection.execute(
+            """
+            SELECT f.archivo, f.tipo, f.actualizado_en
+            FROM fotos_de_perfil f
+            JOIN users u ON u.id = f.usuario_id
+            WHERE lower(u.username) = %s
+            """,
+            (normalizar_usuario(username),),
+        ).fetchone()
+        if fila is None:
+            return None
+        archivo, tipo, actualizado_en = fila
+        return FotoDePerfil(archivo=archivo, tipo=tipo, actualizado_en=actualizado_en)
+
+    def fotos_por_nombre(self) -> dict[str, datetime]:
+        """Cuándo cambió la foto de cada cuenta que tiene una, por nombre de usuario.
+
+        Es lo que necesita una página para decidir, sin traer los bytes, a quién
+        pintar con foto y a quién con su inicial.
+        """
+        filas = self._connection.execute(
+            """
+            SELECT u.username, f.actualizado_en
+            FROM fotos_de_perfil f
+            JOIN users u ON u.id = f.usuario_id
+            """
+        ).fetchall()
+        return {username: actualizado_en for username, actualizado_en in filas}

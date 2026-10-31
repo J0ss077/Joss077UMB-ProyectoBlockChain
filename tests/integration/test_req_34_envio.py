@@ -14,7 +14,7 @@ from decimal import Decimal
 import pytest
 
 from src.domain.transaction import RejectionReason
-from src.web.user import MENSAJE_DESTINATARIO_INEXISTENTE
+from src.web.user import MENSAJE_DESTINATARIO_INEXISTENTE, MOTIVOS_EN_PALABRAS
 from tests.integration.conftest import CONTRASENA_DE_PRUEBA
 
 
@@ -104,7 +104,8 @@ def test_req_34_un_envio_sin_saldo_se_rechaza_con_el_motivo_del_dominio(
     """Criterio: los rechazos del dominio se muestran con su motivo.
 
     El monto supera el saldo de bienvenida, así que la transacción queda
-    `rejected` con el motivo que decide el dominio, y el tablero lo muestra.
+    `rejected` con el motivo que decide el dominio, y el tablero lo muestra en
+    palabras de todos los días.
     """
     respuesta = cliente_comun.post(
         "/mi-envio", data={"destinatario": "bruno", "amount": "999999.00000000"}
@@ -112,8 +113,9 @@ def test_req_34_un_envio_sin_saldo_se_rechaza_con_el_motivo_del_dominio(
 
     assert respuesta.status_code == 200
     cuerpo = respuesta.get_data(as_text=True)
-    assert "no entró al pool" in cuerpo
-    assert RejectionReason.INSUFFICIENT_FUNDS.value in cuerpo
+    assert "No se pudo hacer el envío." in cuerpo
+    assert MOTIVOS_EN_PALABRAS[RejectionReason.INSUFFICIENT_FUNDS] in cuerpo
+    assert "pool" not in cuerpo
     filas = conexion.execute(
         "SELECT status, amount FROM transactions WHERE sender_id = %s",
         (usuario_comun.wallet_id,),
@@ -135,9 +137,11 @@ def test_req_34_el_tablero_muestra_su_nombre_su_wallet_y_su_saldo(
     assert str(usuario_comun.wallet_id) in cuerpo
     assert str(usuario_comun.wallet_id)[:8] in cuerpo
     assert "1000.00000000" in cuerpo
-    # Las transacciones propias se listan con su estado; el crédito de bienvenida
-    # de la aprobación es la confirmada que toda cuenta tiene (REQ-33).
-    assert "confirmed" in cuerpo
+    # El crédito de bienvenida de la aprobación es la confirmada que toda cuenta
+    # tiene (REQ-33); el inicio la cuenta en lo recibido del mes. La lista de
+    # movimientos con su estado vive en Mi historial.
+    bienvenida = '<span class="cantidad" title="1000.00000000">1000</span>'
+    assert f'<p class="mes-monto">+{bienvenida}</p>' in cuerpo
 
 
 def test_req_34_el_formulario_del_tablero_no_tiene_emisor(cliente_comun):

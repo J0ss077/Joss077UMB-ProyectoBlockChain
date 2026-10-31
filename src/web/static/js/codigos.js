@@ -5,6 +5,9 @@
 // desplazamiento horizontal de las tablas. Mientras se muestra, el `title` del dato
 // se guarda aparte para que el navegador no pinte un segundo tooltip encima.
 (() => {
+    // Los textos a la vista pasan por `window.TEXTOS`, que pone `base.html`: vacío en
+    // español y con las traducciones cuando la página va en inglés.
+    const tr = (texto) => (window.TEXTOS && window.TEXTOS[texto]) || texto;
     const ventana = document.createElement("div");
     ventana.className = "ventana-codigo";
     ventana.setAttribute("role", "tooltip");
@@ -44,8 +47,8 @@
         }
         valor.textContent = agrupar(origen.dataset.copiar);
         pista.textContent = origen.classList.contains("copiar")
-            ? "Enter para copiar"
-            : "Clic para copiar";
+            ? tr("Enter para copiar")
+            : tr("Clic para copiar");
         if (!ventana.isConnected) document.body.append(ventana);
         ventana.hidden = false;
         ubicar(origen);
