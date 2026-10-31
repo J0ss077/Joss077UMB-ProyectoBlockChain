@@ -1,40 +1,43 @@
-{% extends "base.html" %}
-{% from "_macros.html" import dato, copiar %}
-{% from "_transacciones.html" import tabla with context %}
-{% block titulo %}Mi historial{% endblock %}
-{% block cuerpo %}
+{% extends "base.html" %} {% from "_macros.html" import dato, copiar %} {# Para el usuario común: la revisión se cuenta como «tus movimientos están protegidos», sin hablar de cadena, bloques ni hashes. #} {% from "_transacciones.html" import tabla with
+context %} {% block titulo %}{{ t("Mi historial") }}{% endblock %} {% block cuerpo %}
 <main id="contenido" tabindex="-1" class="rejilla-historial">
     <section class="mosaico columna-principal" aria-labelledby="titulo-historial">
-        <h1 class="titulo-pagina" id="titulo-historial">Mi historial</h1>
-        {# El dictamen va arriba porque es lo que decide si el historial de abajo está respaldado; las filas se listan igual aunque la cadena no verifique. #}
-        {% if dictamen.valid %}
+        <h1 class="titulo-pagina" id="titulo-historial">{{ t("Mi historial") }}</h1>
+        {# El dictamen va arriba porque es lo que decide si los movimientos de abajo están respaldados; las filas se listan igual aunque la revisión falle. #} {% if dictamen.valid %}
         <div class="veredicto veredicto-valido" role="status">
-            <span class="veredicto-icono" aria-hidden="true"><svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M7 14.5l4.5 4.5L21 9.5" /></svg></span>
+            <span class="veredicto-icono" aria-hidden="true"
+                ><svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M7 14.5l4.5 4.5L21 9.5" /></svg
+            ></span>
             <div>
-                <p class="veredicto-titulo">La cadena es válida: tu historial está respaldado.</p>
+                <p class="veredicto-titulo">{{ t("Todo en orden: tus movimientos están respaldados.") }}</p>
             </div>
-            <form method="get" action="/mi-historial"><button class="boton boton-tinta" type="submit">Verificar de nuevo</button></form>
+            <form method="get" action="/mi-historial"><button class="boton boton-tinta" type="submit">{{ t("Revisar otra vez") }}</button></form>
         </div>
         {% else %}
         <div class="veredicto veredicto-invalido" role="alert">
-            <span class="veredicto-icono" aria-hidden="true"><svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M9 9l10 10M19 9L9 19" /></svg></span>
+            <span class="veredicto-icono" aria-hidden="true"
+                ><svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M9 9l10 10M19 9L9 19" /></svg
+            ></span>
             <div>
-                <p class="veredicto-titulo">No se puede verificar tu historial: la cadena no es válida.</p>
-                <p>El primer bloque que no encaja es el de índice <code>{{ dictamen.altered_block_index }}</code>.</p>
+                <p class="veredicto-titulo">{{ t("No se puede verificar tu historial en este momento.") }}</p>
+                <p>{{ t("El primer bloque que no encaja es el de índice") }} <code>{{ dictamen.altered_block_index }}</code>. {{ t("Avísale al administrador.") }}</p>
             </div>
-            <form method="get" action="/mi-historial"><button class="boton" type="submit">Verificar de nuevo</button></form>
+            <form method="get" action="/mi-historial"><button class="boton" type="submit">{{ t("Revisar otra vez") }}</button></form>
         </div>
         {% endif %}
     </section>
-    <section class="mosaico mi-wallet-tarjeta" aria-label="Mi wallet">
-        <span class="etiqueta">Mi wallet</span>
-        <span class="linea-nombre"><span class="nombre es-propio">Tú</span></span>
-        <span class="codigo">{{ dato(wallet_id) }}{{ copiar(wallet_id, "el identificador de mi wallet") }}</span>
+    <section class="mosaico mi-wallet-tarjeta" aria-label="{{ t('Mi código para recibir') }}">
+        <span class="etiqueta">{{ t("Mi código para recibir") }}</span>
+        <span class="codigo">{{ dato(wallet_id) }}{{ copiar(wallet_id, "mi código para recibir") }}</span>
+        <p class="ayuda">{{ t("Compártelo si alguien te quiere enviar dinero sin saber tu nombre de usuario.") }}</p>
     </section>
     <section class="mosaico movimientos" aria-labelledby="titulo-mis-transacciones">
-        <h2 class="titulo-bloque" id="titulo-mis-transacciones">Mis transacciones <span class="contador">{{ transacciones|length }}</span></h2>
-        <p class="ayuda">Todas las transacciones de tu wallet, con su estado. Las confirmadas muestran el índice del bloque que las agrupa.</p>
-        {{ tabla(transacciones, wallet_id, indices_de_bloque=indices_de_bloque, vacio="Tu wallet todavía no tiene transacciones.") }}
+        <h2 class="titulo-bloque" id="titulo-mis-transacciones">{{ t("Mis movimientos") }} <span class="contador">{{ transacciones|length }}</span></h2>
+        {% if dictamen.valid %}
+        <p class="ayuda">{{ t("Todo lo que enviaste y recibiste. Los completados llevan su número de registro.") }}</p>
+        {% else %}
+        <p class="ayuda">{{ t("Tus movimientos siguen aquí, pero no los podemos verificar hasta que el problema se resuelva.") }}</p>
+        {% endif %} {{ tabla(transacciones, wallet_id, indices_de_bloque=indices_de_bloque) }}
     </section>
 </main>
 {% endblock %}

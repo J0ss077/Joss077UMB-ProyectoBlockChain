@@ -27,7 +27,7 @@ def test_req_38_el_usuario_comun_no_puede_agrupar_un_bloque(cliente_comun, conex
     respuesta = cliente_comun.post("/bloques")
 
     assert respuesta.status_code == 403
-    assert "permiso" in respuesta.get_data(as_text=True)
+    assert "No tienes permiso para esta operación" in respuesta.get_data(as_text=True)
     assert conexion.execute("SELECT count(*) FROM blocks").fetchone()[0] == antes
 
 

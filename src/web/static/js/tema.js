@@ -3,6 +3,9 @@
 // base.html; este archivo sólo atiende el botón. Sin elección guardada manda el
 // sistema (`prefers-color-scheme`), y el botón refleja ese tema mientras tanto.
 (() => {
+    // Los textos a la vista pasan por `window.TEXTOS`, que pone `base.html`: vacío en
+    // español y con las traducciones cuando la página va en inglés.
+    const tr = (texto) => (window.TEXTOS && window.TEXTOS[texto]) || texto;
     const CLAVE = "tema";
     const raiz = document.documentElement;
     const sistemaOscuro = window.matchMedia("(prefers-color-scheme: dark)");
@@ -16,7 +19,7 @@
             boton.setAttribute("aria-pressed", String(oscuro));
             boton.setAttribute(
                 "aria-label",
-                oscuro ? "Cambiar a tema claro" : "Cambiar a tema oscuro"
+                tr(oscuro ? "Cambiar a tema claro" : "Cambiar a tema oscuro")
             );
         }
     };

@@ -17,6 +17,7 @@ Uso: `python -m src.bootstrap`.
 """
 from __future__ import annotations
 
+import sys
 from datetime import UTC, datetime
 from decimal import Decimal
 from hashlib import sha256
@@ -32,7 +33,7 @@ from src.domain.blockchain import Blockchain, ensure_genesis
 from src.domain.transaction import Transaction, TransactionStatus
 from src.domain.wallet import CURVE, Wallet, encrypt_private_key, public_key_hex, sign_payload
 from src.emision import CONSTITUYENTE_ID, CONSTITUYENTE_SEED
-from src.persistence.factory import admin_password, ledger, transaction
+from src.persistence.factory import admin_password, database_url, ledger, transaction
 
 # Semilla del par de llaves del fondo: fijarla hace que su clave pública sea la
 # misma en cada corrida. Sin eso, el fondo quedaría con una pública distinta cada
@@ -76,16 +77,49 @@ NOMBRES_DE_DEMOSTRACION = (
     "asociado3",
 )
 
-# Mensaje del arranque sobre un volumen anterior a las cuentas. El proyecto no
-# tiene migraciones (§6): la tabla `users` llega con `db/init.sql` al crear el
-# volumen, así que la única salida es recrearlo. El texto nombra los comandos
-# exactos porque el error del motor no le dice a la persona qué hacer.
+# Las tablas que `db/init.sql` deja en una base completa. Se comprueban todas y no
+# sólo `users` porque el esquema creció por funciones: un volumen creado antes del
+# perfil, los contactos o las fotos tiene las tablas viejas y le faltan las nuevas,
+# y la aplicación fallaría en la primera página con sesión.
+TABLAS_DEL_ESQUEMA = (
+    "wallets",
+    "blocks",
+    "transactions",
+    "users",
+    "contactos",
+    "solicitudes_de_contrasena",
+    "fotos_de_perfil",
+)
+
+# Mensaje del arranque sobre un volumen anterior al esquema actual. El proyecto no
+# tiene migraciones (§6): las tablas llegan con `db/init.sql` al crear el volumen,
+# así que la única salida es recrearlo. El texto nombra los comandos exactos porque
+# el error del motor no le dice a la persona qué hacer.
 MENSAJE_DE_VOLUMEN_VIEJO = (
-    "La base no tiene la tabla `users`: el volumen es anterior a las cuentas y "
-    "este proyecto no tiene migraciones. Recrea el volumen y vuelve a sembrar: "
+    "La base está incompleta: le faltan tablas que este proyecto espera y no tiene "
+    "migraciones. Recrea el volumen y vuelve a sembrar: "
     "`docker compose down -v`, `docker compose up -d` y `python -m src.bootstrap` "
     "(con Podman, los mismos comandos con `podman compose`)."
 )
+
+
+def tablas_faltantes() -> tuple[str, ...]:
+    """Las tablas del esquema que la base todavía no tiene, en el orden declarado.
+
+    Se consulta el catálogo en vez de confiar en que la conexión funcione: una base
+    vacía conecta bien y falla recién en la primera consulta. Abre su propia conexión
+    porque el arranque es el punto de composición y no tiene una a mano. No escribe.
+    """
+    with psycopg.connect(database_url()) as conexion:
+        filas = conexion.execute(
+            """
+            SELECT table_name
+            FROM information_schema.tables
+            WHERE table_schema = 'public'
+            """
+        ).fetchall()
+    presentes = {fila[0] for fila in filas}
+    return tuple(tabla for tabla in TABLAS_DEL_ESQUEMA if tabla not in presentes)
 
 
 def _llave(semilla: bytes) -> ec.EllipticCurvePrivateKey:
@@ -328,6 +362,11 @@ def _mensaje_de_admin_ocupado(usuario: Usuario) -> str:
 
 def main() -> None:
     """Asegura el génesis, siembra la demostración si hace falta e informa el estado."""
+    # Se comprueba el esquema antes de escribir nada: un volumen viejo se reconoce
+    # y se explica, en vez de sembrar media demostración y fallar en la pantalla.
+    if faltantes := tablas_faltantes():
+        print(f"faltan tablas: {', '.join(faltantes)}", file=sys.stderr)
+        raise SystemExit(MENSAJE_DE_VOLUMEN_VIEJO)
     with ledger() as chain:
         genesis = ensure_genesis(chain)
         bloque = run(chain)

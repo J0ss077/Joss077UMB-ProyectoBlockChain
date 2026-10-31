@@ -322,6 +322,45 @@ direcciones y wallet sin movimientos),
 `tests/integration/test_req_24_rutas.py::test_req_28_get_historial_devuelve_las_transacciones_con_su_estado`
 y `...::test_req_28_rf5_historial_con_uuid_invalido_o_inexistente_responde_una_pagina_clara`.
 
+## El perfil, los contactos y el ayudante
+
+Estas funciones no son casos de uso del eje: son lo que convierte el sistema en algo que
+se usa como producto. El camino es el mismo para las tres: alguien se registra, el
+administrador aprueba su cuenta y entra.
+
+**El perfil (`GET /perfil`).** Muestra el nombre de usuario, el rol, el estado y la foto.
+La foto es opcional: se acepta un JPEG, PNG o WebP de hasta 2 MB, el servidor reconoce el
+tipo por los primeros bytes (un SVG se rechaza porque puede llevar código) y guarda el
+archivo en `FOTOS_DIR` mientras la base apunta a él. Sin foto —o si el archivo ya no
+está— la interfaz pinta la inicial del nombre.
+
+**El cambio de contraseña (`POST /perfil/contrasena`).** El usuario común escribe su
+contraseña actual y la nueva; el sistema guarda la nueva **hasheada y pendiente**, y el
+administrador la aprueba o la rechaza con un motivo desde `GET /admin/pendientes`. Hasta
+que se apruebe, sigue valiendo la anterior. El administrador, que no tiene a quién
+pedírselo, la aplica de inmediato.
+
+**Los contactos (`GET /mis-contactos`).** La agenda se arma por nombre de usuario, sólo de
+cuentas comunes aprobadas, sin poder agregarse a uno mismo ni repetir. Es de un solo
+sentido: agregar a alguien no lo obliga a agregarte. Cada contacto muestra cuántos
+movimientos tienen en común y cuándo fue el último.
+
+**El idioma (`POST /idioma`).** La interfaz se ve en español o en inglés, y la elección se
+guarda en una cookie que dura un año: vale también en el ingreso y el registro, antes de
+que haya sesión. El español es la clave del catálogo, así que una frase sin traducir se ve
+en español en vez de romper la página.
+
+**El ayudante (`GET /asistente`).** Es una pestaña, no una ventana flotante: el tutor pidió
+que el módulo sirviera para analítica, y una ventana no da espacio. Hoy explica en palabras
+simples qué pasa con la cuenta y con la pantalla, y contesta preguntas con una guía local
+que funciona sin red. Con `ASISTENTE_API_KEY` configurada, una pregunta escrita a mano la
+responde un servicio de IA, con el resumen de la cuenta de la sesión y un aviso visible de
+que esos datos salen del equipo. No escribe, no firma y no mueve dinero.
+
+**Qué prueba lo demuestra.** `tests/integration/test_perfil.py`, `test_foto.py`,
+`test_contactos.py`, `test_idioma.py` y `test_asistente.py`; el diseño con sus
+requerimientos está en `docs/superpowers/specs/2026-10-31-perfil-contactos-fotos-asistente-design.md`.
+
 ## Preguntas probables del tutor y dónde vive cada respuesta
 
 | Pregunta                                                                 | Respuesta                                                                                                                                                                                                                                | Dónde vive                                                                                                                                                                                                                                                                   |

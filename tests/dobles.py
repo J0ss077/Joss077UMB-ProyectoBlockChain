@@ -101,6 +101,7 @@ class InMemoryTransactionRepository:
         status: TransactionStatus | None = None,
         wallet_id: UUID | None = None,
         limit: int = 100,
+        newest_first: bool = False,
     ) -> Sequence[Transaction]:
         filas = [
             transaction
@@ -111,6 +112,8 @@ class InMemoryTransactionRepository:
                 or wallet_id in (transaction.sender_id, transaction.receiver_id)
             )
         ]
+        if newest_first:
+            filas.reverse()
         return filas[:limit]
 
     def pending(self) -> Sequence[Transaction]:

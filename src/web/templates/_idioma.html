@@ -1,0 +1,7 @@
+{# Selector de idioma de la barra mínima (ingreso y registro, sin sesión): dos botones, ES y EN, que guardan la elección en una cookie y vuelven a la misma página. Con sesión el idioma se elige en el perfil. El vigente queda marcado con aria-pressed. #}
+<form class="selector-idioma" method="post" action="{{ url_for('elegir_idioma') }}" aria-label="{{ t('Idioma') }}">
+    <input type="hidden" name="volver" value="{{ request.full_path if request.query_string else request.path }}" />
+    {% for codigo, nombre in idiomas.items() %}
+    <button type="submit" name="idioma" value="{{ codigo }}" lang="{{ codigo }}" title="{{ nombre }}" aria-label="{{ nombre }}" aria-pressed="{{ 'true' if codigo == idioma else 'false' }}">{{ codigo|upper }}</button>
+    {% endfor %}
+</form>

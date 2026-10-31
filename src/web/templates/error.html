@@ -1,28 +1,30 @@
 {% extends "base.html" %}
 {# La página de error no abre el ledger ni las cuentas: se pinta sólo con la explicación que le pasa el manejador. El 403 llega con `titulo`; el 404 no. #}
-{% block titulo %}{{ titulo|default("No encontrado") }}{% endblock %}
+{% block titulo %}{{ t(titulo|default("No encontrado")) }}{% endblock %}
 {% block cuerpo %}
 {% set es_permiso = titulo is defined %}
 <main id="contenido" tabindex="-1" class="pagina-error{% if es_permiso %} error-permiso{% endif %}">
     <section class="mosaico error-texto" aria-labelledby="titulo-error">
         <span class="error-codigo" aria-hidden="true">{{ 403 if es_permiso else 404 }}</span>
-        <h1 class="titulo-pagina" id="titulo-error">{{ encabezado|default("No se encontró lo que buscaba") }}</h1>
+        <h1 class="titulo-pagina" id="titulo-error">{{ t(encabezado|default("No se encontró lo que buscabas")) }}</h1>
         <div class="motivo">
-            <p>{{ detalle }}</p>
+            <p>{{ t(detalle) }}</p>
         </div>
         {% if es_permiso %}
-        <p class="entradilla">Esta página es del administrador. Desde tu tablero puedes enviar, ver tu saldo y revisar tu historial.</p>
+        <p class="entradilla">{{ t("Esta página es del administrador. Desde tu tablero puedes enviar, ver tu saldo y revisar tu historial.") }}</p>
+        {% elif g.user and g.user.role != rol_administrador %}
+        <p class="entradilla">{{ t("Puede que el enlace esté mal escrito o que ya no exista. Vuelve a tu tablero para seguir.") }}</p>
         {% else %}
-        <p class="entradilla">Si el identificador es de una wallet, cópialo tal como aparece al registrarla: el botón de copiar junto a cada wallet lo deja completo.</p>
+        <p class="entradilla">{{ t("Si el identificador es de una wallet, cópialo tal como aparece al registrarla: el botón de copiar junto a cada wallet lo deja completo.") }}</p>
         {% endif %}
         <div class="acciones">
             {% if not g.user %}
-            <a class="boton boton-grande boton-primario" href="{{ url_for('ingresar') }}">Ir al ingreso</a>
+            <a class="boton boton-grande boton-primario" href="{{ url_for('ingresar') }}">{{ t("Ir al ingreso") }}</a>
             {% elif g.user.role == rol_administrador %}
-            <a class="boton boton-grande boton-primario" href="/">Volver a la portada</a>
-            <a class="boton boton-grande" href="/wallets">Ver las wallets</a>
+            <a class="boton boton-grande boton-primario" href="/">{{ t("Volver a la portada") }}</a>
+            <a class="boton boton-grande" href="/wallets">{{ t("Ver las wallets") }}</a>
             {% else %}
-            <a class="boton boton-grande boton-primario" href="/mi-tablero">Ir a mi tablero</a>
+            <a class="boton boton-grande boton-primario" href="/mi-tablero">{{ t("Ir a mi tablero") }}</a>
             {% endif %}
         </div>
     </section>

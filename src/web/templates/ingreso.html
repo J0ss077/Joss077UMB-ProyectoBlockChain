@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {# El ingreso distingue dos clases de error sin que la ruta cambie: el de credenciales es el único que no empieza con «Tu cuenta», y los de una cuenta que no puede entrar (pendiente o rechazada) sí, porque el servicio los redacta así. Una cuenta no habilitada no es un error de tipeo: la pantalla ofrece volver y no marca los campos como inválidos. #}
-{% block titulo %}Ingresar{% endblock %}
+{% block titulo %}{{ t("Ingresar") }}{% endblock %}
 {% block regresar %}{% if error and error.startswith("Tu cuenta") %}
-<a class="regresar" href="{{ url_for('ingresar') }}" aria-label="Regresar a Ingresar"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M11 4L6 9l5 5" /></svg>Regresar</a>
+<a class="regresar" href="{{ url_for('ingresar') }}" aria-label="{{ t('Regresar a Ingresar') }}"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M11 4L6 9l5 5" /></svg>{{ t("Regresar") }}</a>
 {% endif %}{% endblock %}
 {% block cuerpo %}
 {% set cuenta_no_habilitada = error and error.startswith("Tu cuenta") %}
@@ -11,43 +11,43 @@
 <div class="acceso">
     <main id="contenido" tabindex="-1" class="acceso-formulario">
         <div>
-            <h1 class="titulo-pagina">Ingresar</h1>
-            <p class="entradilla">Entra con la cuenta que aprobó un administrador.</p>
+            <h1 class="titulo-pagina">{{ t("Ingresar") }}</h1>
+            <p class="entradilla">{{ t("Entra con la cuenta que aprobó un administrador.") }}</p>
         </div>
         {% if error %}
         <div class="motivo" id="error-de-ingreso" role="alert"{% if cuenta_no_habilitada %} data-tono="{{ 'rechazo' if cuenta_rechazada else 'pendiente' }}"{% endif %}>
-            <p>{{ error }}</p>
+            <p>{{ t(error) }}</p>
             {% if cuenta_rechazada %}
-            <p>El motivo lo dejó el administrador que revisó tu registro.</p>
+            <p>{{ t("El motivo lo dejó el administrador que revisó tu registro.") }}</p>
             {% elif cuenta_no_habilitada %}
-            <p>La contraseña es correcta. Podrás entrar cuando un administrador apruebe la cuenta.</p>
+            <p>{{ t("La contraseña es correcta. Podrás entrar cuando un administrador apruebe la cuenta.") }}</p>
             {% endif %}
         </div>
         {% endif %}
         <form class="formulario" method="post" action="{{ url_for('ingresar') }}">
             <div class="campo">
-                <label for="usuario">Usuario</label>
+                <label for="usuario">{{ t("Usuario") }}</label>
                 <input id="usuario" name="usuario" value="{{ usuario }}" pattern="{{ patron_usuario }}" maxlength="{{ largo_maximo_de_usuario }}" autocapitalize="off" spellcheck="false" autocomplete="username" aria-describedby="ayuda-usuario{% if error %} error-de-ingreso{% endif %}"{% if invalido %} aria-invalid="true"{% endif %} required />
                 {# La ayuda sale de la misma constante que valida el servicio: la interfaz no puede prometer un conjunto de caracteres distinto del que acepta el registro. #}
-                <p class="ayuda" id="ayuda-usuario">{{ ayuda_de_usuario }}</p>
+                <p class="ayuda" id="ayuda-usuario">{{ t(ayuda_de_usuario) }}</p>
             </div>
             <div class="campo">
-                <label for="contrasena">Contraseña</label>
+                <label for="contrasena">{{ t("Contraseña") }}</label>
                 <input id="contrasena" type="password" name="contrasena" autocomplete="current-password"{% if error %} aria-describedby="error-de-ingreso"{% endif %}{% if invalido %} aria-invalid="true"{% endif %} required />
             </div>
-            <button class="boton boton-grande boton-primario" type="submit">Ingresar</button>
+            <button class="boton boton-grande boton-primario" type="submit">{{ t("Ingresar") }}</button>
         </form>
-        <p class="alternativa">¿Todavía no tienes cuenta? <a href="{{ url_for('registrarme') }}">Regístrate</a></p>
+        <p class="alternativa">{{ t("¿Todavía no tienes cuenta?") }} <a href="{{ url_for('registrarme') }}">{{ t("Regístrate") }}</a></p>
     </main>
-    <aside class="acceso-arte arte-cobalto" aria-label="Cómo funciona">
+    <aside class="acceso-arte arte-cobalto" aria-label="{{ t('Cómo funciona') }}">
         <div>
             <div class="cadena-decorativa" aria-hidden="true"><span class="eslabon"></span><span class="union"></span><span class="eslabon"></span><span class="union"></span><span class="eslabon"></span><span class="union"></span><span class="eslabon"></span></div>
-            <h2>Cada envío, firmado y encadenado.</h2>
+            <h2>{{ t("Envía dinero de forma simple y segura.") }}</h2>
         </div>
         <ol class="pasos">
-            <li><b>01</b>Te registras y tu cuenta queda esperando aprobación.</li>
-            <li><b>02</b>Un administrador la aprueba: recibes tu wallet y 1000 de saldo.</li>
-            <li><b>03</b>Envías a otros usuarios; cada envío se agrupa en un bloque de la cadena.</li>
+            <li><b>01</b>{{ t("Te registras y tu cuenta queda esperando aprobación.") }}</li>
+            <li><b>02</b>{{ t("Un administrador la aprueba y recibes 1000 de saldo para empezar.") }}</li>
+            <li><b>03</b>{{ t("Envías dinero a otras personas y cada movimiento queda registrado y protegido.") }}</li>
         </ol>
     </aside>
 </div>

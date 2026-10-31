@@ -15,7 +15,7 @@ import secrets
 # ayuda visible se arman de ellos: cambiarlos en un solo lado no los desincroniza.
 LARGO_MINIMO_DE_USUARIO = 3
 LARGO_MAXIMO_DE_USUARIO = 20
-PATRON_DE_USUARIO = rf"[a-z0-9_.-]{{{LARGO_MINIMO_DE_USUARIO},{LARGO_MAXIMO_DE_USUARIO}}}"
+PATRON_DE_USUARIO = rf"[a-z0-9_.\-]{{{LARGO_MINIMO_DE_USUARIO},{LARGO_MAXIMO_DE_USUARIO}}}"
 
 # El motivo repite la regla del patrón porque es el texto que lee la persona; si
 # el patrón cambia, este mensaje cambia con él.

@@ -1,34 +1,36 @@
-{% extends "base.html" %}
-{% block titulo %}Verificar cadena{% endblock %}
-{% block cuerpo %}
+{% extends "base.html" %} {% block titulo %}{{ t("Verificar cadena") }}{% endblock %} {% block cuerpo %}
 <div class="rejilla">
     <main id="contenido" tabindex="-1" class="mosaico columna-principal">
         <div class="encabezado-con-accion">
             <div>
-                <p class="antetitulo">Integridad</p>
-                <h1 class="titulo-pagina">Verificar cadena</h1>
+                <p class="antetitulo">{{ t("Integridad") }}</p>
+                <h1 class="titulo-pagina">{{ t("Verificar cadena") }}</h1>
             </div>
             <form method="get" action="/verificar">
-                <button class="boton boton-grande boton-primario" type="submit">Verificar de nuevo</button>
+                <button class="boton boton-grande boton-primario" type="submit">{{ t("Verificar de nuevo") }}</button>
             </form>
         </div>
         {% if dictamen.valid %}
         <section class="veredicto veredicto-valido" role="status">
-            <span class="veredicto-icono" aria-hidden="true"><svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M8 16.5l5 5L24 11" /></svg></span>
+            <span class="veredicto-icono" aria-hidden="true"
+                ><svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M8 16.5l5 5L24 11" /></svg
+            ></span>
             <div>
-                <p class="veredicto-titulo">La cadena es válida.</p>
+                <p class="veredicto-titulo">{{ t("La cadena es válida.") }}</p>
             </div>
         </section>
         {% else %}
         <section class="veredicto veredicto-invalido" role="alert">
-            <span class="veredicto-icono" aria-hidden="true"><svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M10 10l12 12M22 10L10 22" /></svg></span>
+            <span class="veredicto-icono" aria-hidden="true"
+                ><svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M10 10l12 12M22 10L10 22" /></svg
+            ></span>
             <div>
-                <p class="veredicto-titulo">La cadena no es válida.</p>
-                <p>El primer bloque que no encaja es el de índice <code>{{ dictamen.altered_block_index }}</code>.</p>
+                <p class="veredicto-titulo">{{ t("La cadena no es válida.") }}</p>
+                <p>{{ t("El primer bloque que no encaja es el de índice") }} <code>{{ dictamen.altered_block_index }}</code>.</p>
             </div>
         </section>
         <div class="datos-clave">
-            <p><b>Qué hacer</b>Restaura la base desde un respaldo confiable.</p>
+            <p><b>{{ t("Qué hacer") }}</b>{{ t("Restaura la base desde un respaldo confiable para volver a comprobar la integridad de los movimientos.") }}</p>
         </div>
         {% endif %}
     </main>

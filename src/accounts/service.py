@@ -15,6 +15,7 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping, Sequence
 from contextlib import AbstractContextManager
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Protocol
 from uuid import UUID, uuid4
 
@@ -25,17 +26,43 @@ from src.accounts.credentials import (
     validar_usuario,
     verificar_contrasena,
 )
+from src.accounts.fotos import tipo_de_imagen, validar_foto
 from src.accounts.model import (
+    ADMINISTRADOR,
     APROBADO,
     PENDIENTE,
     RECHAZADO,
     USUARIO,
+    SolicitudDeContrasena,
+    SolicitudYaPendiente,
     Usuario,
     UsuarioDuplicado,
 )
-from src.accounts.ports import RepositorioDeUsuarios
+from src.accounts.ports import AlmacenDeFotos, RepositorioDeUsuarios
 from src.domain.blockchain import Blockchain
 from src.emision import CONSTITUYENTE_ID, SALDO_DE_BIENVENIDA
+
+# Los motivos con los que la agenda se niega a agregar a alguien. Una cuenta
+# pendiente, rechazada o de administrador da el mismo texto que una que no existe:
+# la agenda sólo admite a quien puede recibir un envío, y no tiene por qué contar
+# en qué estado está la cuenta de otro.
+MENSAJE_CONTACTO_INEXISTENTE = "No hay un usuario con ese nombre."
+MENSAJE_CONTACTO_PROPIO = "No puedes agregarte a ti mismo."
+MENSAJE_CONTACTO_REPETIDO = "Ya está en tus contactos."
+
+# Cuántos nombres trae la vista previa de un campo de destinatario: los suficientes
+# para elegir y no tantos que la lista sirva para recorrer todas las cuentas.
+LIMITE_DE_SUGERENCIAS = 6
+
+# Los motivos del cambio de contraseña desde el perfil. La contraseña actual se
+# pide siempre: una sesión abierta en una computadora ajena no alcanza para
+# cambiarla.
+MENSAJE_CONTRASENA_ACTUAL_INCORRECTA = "La contraseña actual no es correcta."
+MENSAJE_CONTRASENA_IGUAL = "La contraseña nueva tiene que ser distinta de la actual."
+MENSAJE_SOLICITUD_YA_PENDIENTE = (
+    "Ya tienes un cambio de contraseña esperando aprobación."
+)
+MENSAJE_SOLICITUD_YA_RESUELTA = "Esa solicitud ya no está pendiente."
 
 # El único texto que ve quien no acierta la contraseña. No dice cuál de las dos
 # cosas falló ni si el nombre existe: el ingreso no puede ser un oráculo de
@@ -88,6 +115,18 @@ class UsuarioNoPendiente(Exception):
         super().__init__(mensaje)
 
 
+class ContactoInvalido(Exception):
+    """La cuenta no se puede agendar: no existe, no es un usuario común aprobado o es la propia."""
+
+
+class CambioDeContrasenaInvalido(Exception):
+    """El cambio de contraseña no se puede pedir; el texto dice por qué."""
+
+
+class FotoInvalida(Exception):
+    """La imagen no se puede usar como foto de perfil; el texto dice por qué."""
+
+
 class NoAprobado(Exception):
     """La contraseña es correcta pero la cuenta no está habilitada (REQ-32)."""
 
@@ -122,8 +161,17 @@ class Cuentas:
     sin traducir (REQ-19). El servicio no conoce el driver ni la sesión.
     """
 
-    def __init__(self, transaction: FabricaDeTransacciones) -> None:
+    def __init__(
+        self, transaction: FabricaDeTransacciones, *, fotos: AlmacenDeFotos | None = None
+    ) -> None:
         self._transaction = transaction
+        self._fotos = fotos
+
+    def _almacen(self) -> AlmacenDeFotos:
+        """El almacén de fotos; sin él, el servicio no puede tocar una foto."""
+        if self._fotos is None:
+            raise RuntimeError("Este servicio de cuentas se armó sin almacén de fotos.")
+        return self._fotos
 
     def registrar(self, username: str, contrasena: str) -> Usuario:
         """Registra una cuenta pendiente y la devuelve (REQ-30).
@@ -216,6 +264,191 @@ class Cuentas:
         with self._transaction() as actual:
             return actual.usuarios.nombres_por_wallet()
 
+    def contactos(self, usuario_id: UUID) -> Sequence[Usuario]:
+        """La agenda de esa cuenta, ordenada por nombre de usuario. No escribe."""
+        with self._transaction() as actual:
+            return actual.usuarios.contactos_de(usuario_id)
+
+    def sugerir_destinatarios(
+        self, usuario_id: UUID, texto: str, *, sin_contactos: bool = False
+    ) -> Sequence[str]:
+        """Los nombres que coinciden con lo tecleado, para la vista previa de un campo.
+
+        Sólo aparece quien puede recibir un envío —un usuario común aprobado— y
+        nunca la cuenta que pregunta, que es la misma regla de `agregar_contacto`:
+        la vista previa no ofrece a nadie que el formulario después rechace. Viaja
+        sólo el nombre, que es lo que cualquiera ya puede teclear. Un texto vacío
+        no lista a nadie. No escribe.
+        """
+        if not texto.strip():
+            return []
+        with self._transaction() as actual:
+            return actual.usuarios.destinatarios_parecidos(
+                texto, usuario_id, sin_contactos, LIMITE_DE_SUGERENCIAS
+            )
+
+    def agregar_contacto(self, usuario_id: UUID, username: str) -> Usuario:
+        """Agenda por su nombre de usuario a otra cuenta común aprobada y la devuelve.
+
+        Sólo se admite a quien puede recibir un envío: un usuario común aprobado,
+        que es el único con wallet propia. Levanta `ContactoInvalido` con el motivo
+        si el nombre no es de una cuenta así, si es la propia o si ya estaba.
+        """
+        with self._transaction() as actual:
+            contacto = actual.usuarios.get_by_username(username.strip())
+            if (
+                contacto is None
+                or contacto.role != USUARIO
+                or contacto.estado != APROBADO
+            ):
+                raise ContactoInvalido(MENSAJE_CONTACTO_INEXISTENTE)
+            if contacto.id == usuario_id:
+                raise ContactoInvalido(MENSAJE_CONTACTO_PROPIO)
+            if not actual.usuarios.agregar_contacto(usuario_id, contacto.id):
+                raise ContactoInvalido(MENSAJE_CONTACTO_REPETIDO)
+            actual.commit()
+            return contacto
+
+    def quitar_contacto(self, usuario_id: UUID, contacto_id: UUID) -> bool:
+        """Saca la cuenta de la agenda; `False` si ya no estaba (otra pestaña, doble clic)."""
+        with self._transaction() as actual:
+            quitado = actual.usuarios.quitar_contacto(usuario_id, contacto_id)
+            actual.commit()
+            return quitado
+
+    def cambiar_contrasena(
+        self, usuario_id: UUID, actual: str, nueva: str
+    ) -> SolicitudDeContrasena | None:
+        """Cambia la contraseña desde el perfil, o la deja pendiente de aprobación.
+
+        El usuario común no la cambia por su cuenta: se guarda una solicitud con el
+        hash nuevo y un administrador la aprueba o la rechaza; se devuelve esa
+        solicitud. El administrador no tiene a quién pedírsela, así que la suya se
+        aplica de una vez y se devuelve `None`. En los dos casos se verifica antes
+        la contraseña actual y la nueva cumple la misma regla que el registro.
+
+        Levanta `CambioDeContrasenaInvalido` con el motivo.
+        """
+        motivo = validar_contrasena(nueva)
+        if motivo is not None:
+            raise CambioDeContrasenaInvalido(motivo)
+        with self._transaction() as actual_tx:
+            usuario = actual_tx.usuarios.get(usuario_id)
+            if usuario is None or not verificar_contrasena(actual, usuario.password_hash):
+                raise CambioDeContrasenaInvalido(MENSAJE_CONTRASENA_ACTUAL_INCORRECTA)
+            if verificar_contrasena(nueva, usuario.password_hash):
+                raise CambioDeContrasenaInvalido(MENSAJE_CONTRASENA_IGUAL)
+            if usuario.role == ADMINISTRADOR:
+                actual_tx.usuarios.cambiar_hash(usuario_id, hashear_contrasena(nueva))
+                actual_tx.commit()
+                return None
+            try:
+                solicitud = actual_tx.usuarios.crear_solicitud(
+                    usuario_id, hashear_contrasena(nueva)
+                )
+            except SolicitudYaPendiente as error:
+                raise CambioDeContrasenaInvalido(MENSAJE_SOLICITUD_YA_PENDIENTE) from error
+            actual_tx.commit()
+            return solicitud
+
+    def ultima_solicitud(self, usuario_id: UUID) -> SolicitudDeContrasena | None:
+        """El último cambio de contraseña pedido por la cuenta, para su perfil."""
+        with self._transaction() as actual:
+            return actual.usuarios.ultima_solicitud(usuario_id)
+
+    def solicitudes_pendientes(self) -> Sequence[SolicitudDeContrasena]:
+        """Los cambios de contraseña que esperan al administrador."""
+        with self._transaction() as actual:
+            return actual.usuarios.solicitudes_pendientes()
+
+    def resolver_solicitud(
+        self, id: UUID, *, aprobada: bool, motivo: str = ""
+    ) -> SolicitudDeContrasena:
+        """Aprueba (la contraseña nueva pasa a la cuenta) o rechaza una solicitud.
+
+        El motivo del rechazo es opcional: a diferencia del alta, la persona sigue
+        entrando con su contraseña de siempre. Una solicitud que ya no está
+        pendiente levanta `CambioDeContrasenaInvalido`.
+        """
+        with self._transaction() as actual:
+            resuelta = actual.usuarios.resolver_solicitud(
+                id, aprobada=aprobada, motivo=motivo.strip() or None
+            )
+            if resuelta is None:
+                raise CambioDeContrasenaInvalido(MENSAJE_SOLICITUD_YA_RESUELTA)
+            actual.commit()
+            return resuelta
+
+    def poner_foto(self, usuario_id: UUID, datos: bytes) -> None:
+        """Pone o reemplaza la foto de perfil. Levanta `FotoInvalida` con el motivo.
+
+        La imagen va al almacén como un archivo aparte y la base guarda sólo su
+        nombre. El orden evita que la base apunte a un archivo que no está: primero
+        se escribe el archivo nuevo, después se confirma la referencia —si eso
+        falla, el archivo recién escrito se borra— y recién entonces se borra el
+        archivo de la foto anterior.
+        """
+        motivo = validar_foto(datos)
+        if motivo is not None:
+            raise FotoInvalida(motivo)
+        almacen = self._almacen()
+        nombre = almacen.guardar(datos, tipo_de_imagen(datos))
+        try:
+            with self._transaction() as actual:
+                anterior = actual.usuarios.guardar_foto(
+                    usuario_id, nombre, tipo_de_imagen(datos)
+                )
+                actual.commit()
+        except BaseException:
+            almacen.borrar(nombre)
+            raise
+        if anterior is not None and anterior != nombre:
+            almacen.borrar(anterior)
+
+    def quitar_foto(self, usuario_id: UUID) -> bool:
+        """Vuelve al avatar por defecto; `False` si la cuenta no tenía foto.
+
+        Primero se borra la referencia y después el archivo: si el borrado del
+        archivo fallara, queda un archivo suelto, nunca una fila que no lleva a nada.
+        """
+        with self._transaction() as actual:
+            archivo = actual.usuarios.quitar_foto(usuario_id)
+            actual.commit()
+        if archivo is None:
+            return False
+        self._almacen().borrar(archivo)
+        return True
+
+    def archivo_de_foto(self, username: str) -> tuple[Path, str] | None:
+        """Dónde está el archivo de la foto de esa cuenta y su tipo, para servirla.
+
+        `None` si la cuenta no tiene foto o si su archivo ya no está en el almacén.
+        No escribe.
+        """
+        with self._transaction() as actual:
+            foto = actual.usuarios.foto_de(username)
+        if foto is None:
+            return None
+        ruta = self._almacen().ruta(foto.archivo)
+        return (ruta, foto.tipo) if ruta is not None else None
+
+    def fotos_por_nombre(self) -> Mapping[str, datetime]:
+        """Qué cuentas tienen foto y desde cuándo, para elegir foto o inicial.
+
+        Sólo se devuelven las fotos cuyo archivo sigue en la carpeta. La base
+        guarda la referencia y los bytes viven aparte, así que restaurar la base
+        sin su carpeta dejaría filas apuntando a archivos que no están: sin este
+        filtro la interfaz pintaría una imagen rota en vez de la inicial. No escribe.
+        """
+        with self._transaction() as actual:
+            fotos = actual.usuarios.fotos_por_nombre()
+        almacen = self._almacen()
+        return {
+            username: foto.actualizado_en
+            for username, foto in fotos.items()
+            if almacen.ruta(foto.archivo) is not None
+        }
+
     def aprobar(self, id: UUID) -> Usuario:
         """Abre la cuenta: wallet, saldo de bienvenida y estado en una sola transacción.
 
@@ -278,6 +511,9 @@ class Cuentas:
 # `UsuarioDuplicado` se reexporta porque es la excepción que documenta la
 # interfaz del servicio (REQ-30) y quien lo consume no tiene que conocer el modelo.
 __all__ = [
+    "CambioDeContrasenaInvalido",
+    "ContactoInvalido",
+    "FotoInvalida",
     "CredencialesInvalidas",
     "Cuentas",
     "NoAprobado",

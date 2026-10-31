@@ -31,6 +31,47 @@ class UsuarioDuplicado(Exception):
     """
 
 
+class SolicitudYaPendiente(Exception):
+    """La cuenta ya tiene un cambio de contraseña esperando al administrador.
+
+    La levanta el repositorio al traducir el índice único parcial de las
+    pendientes: dos pestañas no pueden dejar dos solicitudes abiertas.
+    """
+
+
+@dataclass(frozen=True, slots=True)
+class SolicitudDeContrasena:
+    """Un cambio de contraseña pedido por una cuenta (`solicitudes_de_contrasena`).
+
+    `password_hash` es el hash de la contraseña nueva: reemplaza al de la cuenta
+    sólo cuando un administrador aprueba. `username` viaja para la cola del
+    administrador, que lista las solicitudes por nombre.
+    """
+
+    id: UUID
+    usuario_id: UUID
+    username: str
+    password_hash: str
+    estado: str
+    motivo_rechazo: str | None
+    creado_en: datetime
+    resuelto_en: datetime | None
+
+
+@dataclass(frozen=True, slots=True)
+class FotoDePerfil:
+    """La referencia a la foto de una cuenta (`fotos_de_perfil`).
+
+    La imagen no está acá: `archivo` es el nombre del archivo en la carpeta de
+    fotos. `actualizado_en` versiona la dirección de la imagen, así el navegador
+    puede guardarla en caché sin mostrar una foto vieja después de cambiarla.
+    """
+
+    archivo: str
+    tipo: str
+    actualizado_en: datetime
+
+
 @dataclass(frozen=True, slots=True)
 class Usuario:
     """Una cuenta del sistema, tal como vive en `users` (REQ-30, REQ-31).

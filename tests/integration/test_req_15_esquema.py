@@ -2,8 +2,9 @@
 
 Aquí viven las dos comprobaciones del requisito: que ninguna ruta del código
 contiene sentencias de definición de datos, y que el esquema que sí se aplica
-—el de `db/init.sql`— tiene las cuatro tablas del modelo —las tres del eje y
-`users`— y el índice único sobre `transactions.signature` de la decisión 4.
+—el de `db/init.sql`— tiene las siete tablas del modelo —las tres del eje,
+`users`, `contactos`, `solicitudes_de_contrasena` y `fotos_de_perfil`— y el
+índice único sobre `transactions.signature` de la decisión 4.
 """
 import pathlib
 import re
@@ -71,10 +72,10 @@ def test_req_15_no_hay_ddl_en_el_codigo():
     assert ofensores == []
 
 
-def test_req_15_el_esquema_aplicado_tiene_las_cuatro_tablas_y_el_indice_unico(
+def test_req_15_el_esquema_aplicado_tiene_las_siete_tablas_y_el_indice_unico(
     conexion, base_limpia
 ):
-    """El esquema aplicado tiene las cuatro tablas y `signature` es única."""
+    """El esquema aplicado tiene las siete tablas y `signature` es única."""
     with conexion.cursor(row_factory=dict_row) as cursor:
         cursor.execute(
             """
@@ -84,7 +85,15 @@ def test_req_15_el_esquema_aplicado_tiene_las_cuatro_tablas_y_el_indice_unico(
             """
         )
         tablas = {fila["table_name"] for fila in cursor.fetchall()}
-    assert tablas == {"wallets", "blocks", "transactions", "users"}
+    assert tablas == {
+        "wallets",
+        "blocks",
+        "transactions",
+        "users",
+        "contactos",
+        "solicitudes_de_contrasena",
+        "fotos_de_perfil",
+    }
 
     # El catálogo se consulta en vez de reaplicar `db/init.sql`: reaplicarlo
     # sería DDL desde la prueba, que es justo lo que REQ-15 prohíbe.

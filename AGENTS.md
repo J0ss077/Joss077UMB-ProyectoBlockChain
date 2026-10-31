@@ -32,4 +32,4 @@ La suite con base necesita `DATABASE_URL`, `SESSION_SECRET` y `ADMIN_PASSWORD` e
 - `docs/superpowers/plans/`: los planes de implementación. La convención del proceso exige que vivan bajo `docs/superpowers/`.
 - `README.md`: cómo se levanta, se apaga y se limpia el proyecto.
 
-Si además tenés la carpeta local `.superpowers/` —no se versiona—, ahí están el registro de ejecución con las decisiones y el porqué de cada una, y los reportes de cada tarea: es lo primero que conviene leer al retomar.
+Si además existe la carpeta local `.superpowers/` —no se versiona—, ahí están el registro de ejecución con las decisiones y el porqué de cada una, y los reportes de cada tarea: es lo primero que conviene leer al retomar.
