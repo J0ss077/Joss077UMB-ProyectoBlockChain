@@ -22,9 +22,11 @@ Instrucciones para cualquiera que trabaje en este repositorio, sea una persona o
 env -u DATABASE_URL .venv/bin/pytest tests/unit -q   # las que no necesitan base
 ```
 
-La suite con base necesita `DATABASE_URL`, `SESSION_SECRET` y `ADMIN_PASSWORD` en el entorno. La base de desarrollo vive en el puerto 55432; las pruebas de integración no deben usarla.
+La suite con base necesita `DATABASE_URL`, `SESSION_SECRET` y `ADMIN_PASSWORD` en el entorno. La base de desarrollo vive en el puerto 55432; las pruebas de integración no deben usarla: con `TEST_DATABASE_URL` apuntan a otra base y no la tocan. Las pruebas vacían las tablas en cada caso, así que una base desechable es lo correcto.
 
 **No sobrescribir `.env`**: lleva la `MASTER_KEY` con la que están cifradas las llaves de las wallets sembradas, y sin ella esas wallets quedan ilegibles.
+
+Las fotos de perfil son archivos en `FOTOS_DIR` (por defecto `datos/fotos/`, que git ignora) y la base sólo guarda la referencia: el respaldo son la base **y** la carpeta.
 
 ## Documentos
 
