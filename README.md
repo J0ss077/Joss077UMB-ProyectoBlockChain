@@ -1,6 +1,3 @@
-
-
-
 # Prototipo transaccional basado en blockchain
 
 Nodo único de un ledger transaccional: wallets con par de llaves ECDSA, transacciones
@@ -15,7 +12,8 @@ El eje del proyecto es el documento académico **`documentacion_proyecto_transac
 29 requerimientos (REQ) con su criterio de aceptación, los 5 casos de uso (CU), las
 clases del dominio, la arquitectura en capas, las rutas HTTP y el modelo relacional.
 Este repositorio agrega los diez requerimientos del sistema de usuarios (REQ-30 a
-REQ-39), que también tienen su prueba.
+REQ-39) y los seis del perfil, los contactos, las fotos, el idioma y el ayudante
+(REQ-40 a REQ-45), todos con su prueba.
 **Este repositorio no vuelve a decidir nada de eso: existe para hacer verdadero lo que
 el eje describe como prototipo.** Su página 43 afirma que "el núcleo del prototipo ya
 está implementado y probado"; este repositorio es la evidencia de ese párrafo.
@@ -25,7 +23,8 @@ demostración) está declarada y numerada en
 `docs/superpowers/specs/2026-10-10-blockchain-transaccional-design.md`, y el orden en
 que se construyó, en `docs/superpowers/plans/2026-10-10-blockchain-transaccional-plan.md`.
 La explicación de cómo se ejecuta cada caso de uso está en
-`docs/recorrido-de-casos-de-uso.md`.
+`docs/recorrido-de-casos-de-uso.md`, y el marco teórico que sostiene las decisiones
+—blockchain, ledgers verificables, la curva y el hash— está en `docs/estado-del-arte.md`.
 
 ## Requisitos previos
 
@@ -157,9 +156,11 @@ cuentas de demostración»). También es idempotente con ellas: una segunda corr
 duplica cuentas ni wallets. Imprime el hash del génesis, el estado del ledger y
 cuántas cuentas creó.
 
-Si el volumen es anterior a esta versión no tiene la tabla `users`, y el proyecto no
-tiene migraciones: el arranque falla con el mensaje que indica recrear el volumen y
-volver a sembrar.
+Si el volumen es anterior a esta versión no tiene todas las tablas del esquema —le
+faltan `contactos`, `solicitudes_de_contrasena` o `fotos_de_perfil`, o incluso
+`users`—, y el proyecto no tiene migraciones: el arranque comprueba el catálogo
+antes de sembrar, nombra las tablas que faltan y falla con el mensaje que indica
+recrear el volumen y volver a sembrar.
 
 ### 5. Levantar la aplicación
 
@@ -173,6 +174,21 @@ La barra superior con los enlaces del administrador y el panel con las wallets e
 la vista en todas las páginas de trabajo; el saldo solo se consulta en la portada. La
 aplicación arranca sin el depurador interactivo ni el recargador de código; se activan
 con `FLASK_DEBUG=1` en el entorno, solo para desarrollo local.
+
+Cada cuenta con sesión tiene además una pestaña **Ayudante**, que explica en palabras
+simples qué está pasando con su dinero. Sin configurar nada contesta con una guía local
+que funciona sin red; con `ASISTENTE_API_KEY` en `.env` una pregunta escrita a mano la
+responde un servicio de IA (sección «El ayudante y la IA»).
+
+### Las fotos de perfil
+
+La foto de cada cuenta es un archivo aparte: la base guarda su nombre, su tipo y su
+fecha, y los bytes viven en la carpeta de `FOTOS_DIR` (por defecto `datos/fotos/`,
+que git ignora). Consecuencia para el respaldo: **son dos piezas**, la base y la
+carpeta; restaurar sólo la base deja las filas apuntando a archivos que no están, y
+la interfaz pinta la inicial del nombre en vez de una imagen rota. Cambiar
+`FOTOS_DIR` no mueve los archivos que ya existen: hay que copiarlos a la carpeta
+nueva.
 
 ## Problemas conocidos
 
@@ -232,6 +248,40 @@ valor completo en el atributo `title` y un botón que lo copia, además del enla
 historial. En la portada del administrador el panel muestra también el saldo disponible
 de cada wallet, que es la celda de la matriz de permisos del diseño §8. El CU-05 se
 alcanza desde ese panel: no hay que teclear el identificador a mano.
+
+### Las rutas de la cuenta y del ayudante
+
+Además de las cinco del eje, la entrega del perfil y los contactos agrega estas, todas
+con sesión y con el dueño tomado de la sesión, nunca de la URL:
+
+| Ruta                                                                              | Para qué                                                                                     |
+| --------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `GET /perfil`                                                                     | Los datos de la cuenta, su foto y el estado de su último cambio de contraseña.               |
+| `POST /perfil/contrasena`                                                         | Pide el cambio; el usuario común queda pendiente de aprobación y el administrador lo aplica. |
+| `POST /perfil/foto`, `POST /perfil/foto/quitar`                                   | Pone o quita la foto (JPEG, PNG o WebP de hasta 2 MB, reconocidos por sus bytes).            |
+| `GET /foto/<username>`                                                            | Sirve la foto a quien tiene sesión, con `nosniff` y política de contenido vacía.             |
+| `GET /mis-contactos`, `POST /mis-contactos/agregar`, `POST /mis-contactos/quitar` | La agenda del usuario común, por nombre de usuario.                                          |
+| `GET /asistente`, `GET /asistente/ahora`, `POST /asistente/preguntar`             | El ayudante en su pestaña: guía local y, si hay clave, IA.                                   |
+| `POST /idioma`                                                                    | Cambia el idioma de la interfaz (español o inglés).                                          |
+| `GET /admin/pendientes`                                                           | La cola del administrador: cuentas por aprobar y cambios de contraseña pendientes.           |
+| `POST /admin/contrasenas/<id>/<accion>`                                           | Aprueba o rechaza un cambio de contraseña, con motivo opcional.                              |
+
+### El ayudante y la IA
+
+El ayudante es de sólo lectura: explica lo que la cuenta tiene y lo que la pantalla
+muestra, y no escribe, no firma ni mueve dinero. Sin configurar nada contesta con su
+**guía local**, escrita a mano, que funciona sin red y sin gastar nada; los botones de
+sugerencia siempre usan esa guía.
+
+Con `ASISTENTE_API_KEY` en `.env`, una pregunta **escrita a mano** se responde con un
+servicio de IA. El proveedor se reconoce por el comienzo de la clave (`sk-ant-`, `sk-or-`,
+`gsk_`, `AIza`, `xai-`); una clave `sk-` es ambigua y exige `ASISTENTE_PROVEEDOR`
+(`deepseek`, `mistral`, etc.), porque si no el proyecto no sabe a quién mandarla y no
+manda nada. `ASISTENTE_URL` permite cualquier servicio compatible con la API de OpenAI y
+`ASISTENTE_MODELO` cambia el modelo. En ese modo, la pregunta y el resumen de la cuenta
+—saldo y últimos movimientos, con el nombre de las contrapartes— salen hacia ese
+servicio, y la página lo advierte antes de preguntar. El límite de preguntas por minuto
+está en el propio ayudante.
 
 ## Los datos de demostración
 
@@ -418,8 +468,10 @@ pruebas van siempre a una carpeta temporal, nunca a `FOTOS_DIR`.
 
 La suite incluye las pruebas de reglas, las de integración contra PostgreSQL y
 `tests/test_explicacion.py`, que comprueba que cada caso de uso está en el recorrido y
-que cada uno de los 39 requerimientos tiene una prueba `test_req_NN_` (REQ-17, REQ-20
-y REQ-23 incluidos).
+que cada uno de los 39 requerimientos del eje tiene una prueba `test_req_NN_` (REQ-17,
+REQ-20 y REQ-23 incluidos). Los de esta entrega (REQ-40 a REQ-45) se prueban en
+`test_perfil.py`, `test_foto.py`, `test_contactos.py`, `test_idioma.py` y
+`test_asistente.py`.
 
 Para correr solo la integración:
 
@@ -570,7 +622,7 @@ confirmó completa o no ocurrió.
 **Apagar PostgreSQL 16.** `docker compose down` (o `podman compose down`) quita el
 contenedor **y conserva los datos**: el volumen `postgres_data` sigue en el equipo, así
 que el próximo `docker compose up -d` levanta el mismo ledger. `docker compose down -v`
-es el que borra el volumen y, con él, las cuatro tablas. Tras borrarlo, el esquema de
+es el que borra el volumen y, con él, las siete tablas. Tras borrarlo, el esquema de
 `db/init.sql` se vuelve a aplicar solo en el próximo `up` (el punto de entrada de la
 imagen lo lee al crear el volumen de nuevo), la base queda vacía y hay que volver a
 sembrar la demostración:
@@ -610,13 +662,14 @@ con la clave nueva. El arranque solo siembra cuando la tabla de wallets está va
 
 - **El esquema en PostgreSQL 16**, la versión del piso: `db/init.sql` se aplicó como
   guion de inicialización de un contenedor `postgres:16-alpine` (PostgreSQL 16.15) y
-  quedaron las cuatro tablas, `uuid-ossp`, los once índices y todos los `CHECK` del eje;
+  quedaron las siete tablas, `uuid-ossp`, sus índices y todos los `CHECK` del eje;
   una transacción de una wallet a sí misma la rechazó el motor.
 - **Las reglas sin base de datos (REQ-17)**: `pytest tests/unit` pasa con
   `DATABASE_URL` sin definir y sin contenedor, porque el dominio no importa el driver.
-- **La suite completa** contra el clúster PostgreSQL del equipo de desarrollo: las
-  reglas, la integración y la coherencia de la explicación. La cobertura de los 39
-  requerimientos no se cuenta a mano: la exige `tests/test_explicacion.py`.
+- **La suite completa** contra un clúster PostgreSQL 16 desechable: las reglas, la
+  integración y la coherencia de la explicación. La cobertura de los 39 requerimientos
+  del eje no se cuenta a mano: la exige `tests/test_explicacion.py`; la de REQ-40 a
+  REQ-45 vive en sus archivos de prueba.
 - **La suite completa dentro del contenedor del piso de Python** (`python:3.11-slim`):
   con el repositorio montado en solo lectura, `requirements.txt` instalado y `pytest`
   corriendo contra el contenedor PostgreSQL 16, el veredicto fue el código de salida 0.

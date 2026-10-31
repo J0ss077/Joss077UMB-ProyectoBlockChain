@@ -433,9 +433,21 @@ class Cuentas:
         return (ruta, foto.tipo) if ruta is not None else None
 
     def fotos_por_nombre(self) -> Mapping[str, datetime]:
-        """Qué cuentas tienen foto y desde cuándo, para elegir foto o inicial. No escribe."""
+        """Qué cuentas tienen foto y desde cuándo, para elegir foto o inicial.
+
+        Sólo se devuelven las fotos cuyo archivo sigue en la carpeta. La base
+        guarda la referencia y los bytes viven aparte, así que restaurar la base
+        sin su carpeta dejaría filas apuntando a archivos que no están: sin este
+        filtro la interfaz pintaría una imagen rota en vez de la inicial. No escribe.
+        """
         with self._transaction() as actual:
-            return actual.usuarios.fotos_por_nombre()
+            fotos = actual.usuarios.fotos_por_nombre()
+        almacen = self._almacen()
+        return {
+            username: foto.actualizado_en
+            for username, foto in fotos.items()
+            if almacen.ruta(foto.archivo) is not None
+        }
 
     def aprobar(self, id: UUID) -> Usuario:
         """Abre la cuenta: wallet, saldo de bienvenida y estado en una sola transacción.

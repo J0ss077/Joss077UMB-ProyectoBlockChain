@@ -139,6 +139,30 @@ def test_req_30_un_volumen_viejo_falla_con_el_mensaje(
     assert "Traceback" not in proceso.stderr
 
 
+def test_req_30_un_volumen_sin_las_tablas_nuevas_tambien_falla(
+    base_vacia_ejecutando_bootstrap, conexion
+):
+    """Criterio: si falta una tabla de las funciones nuevas, el arranque lo dice antes.
+
+    Un volumen creado antes del perfil y los contactos tiene `users` y no tiene
+    `fotos_de_perfil`; sin esta comprobación el arranque terminaría «sin cambios» y
+    la aplicación respondería 500 en la primera página con sesión, porque la cabecera
+    consulta la foto de la cuenta en todas. El arranque nombra la tabla que falta.
+    """
+    conexion.execute("ALTER TABLE fotos_de_perfil RENAME TO fotos_de_perfil_anterior")
+    try:
+        proceso = subprocess.run(
+            [sys.executable, "-m", "src.bootstrap"], capture_output=True, text=True
+        )
+    finally:
+        conexion.execute("ALTER TABLE fotos_de_perfil_anterior RENAME TO fotos_de_perfil")
+
+    assert proceso.returncode == 1, proceso.stdout
+    assert "faltan tablas: fotos_de_perfil" in proceso.stderr
+    assert MENSAJE_DE_VOLUMEN_VIEJO in proceso.stderr
+    assert "Traceback" not in proceso.stderr
+
+
 def test_req_33_el_recorrido_de_demostracion_completo(
     base_vacia_ejecutando_bootstrap, cliente
 ):

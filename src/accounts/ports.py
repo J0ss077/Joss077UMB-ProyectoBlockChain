@@ -6,7 +6,6 @@ cumple vive en `postgres.py`. La lista de pendientes se devuelve como `Sequence`
 igual que las listas de los repositorios del ledger.
 """
 from collections.abc import Mapping, Sequence
-from datetime import datetime
 from pathlib import Path
 from typing import Protocol
 from uuid import UUID
@@ -67,7 +66,7 @@ class RepositorioDeUsuarios(Protocol):
 
     def foto_de(self, username: str) -> FotoDePerfil | None: ...
 
-    def fotos_por_nombre(self) -> Mapping[str, datetime]: ...
+    def fotos_por_nombre(self) -> Mapping[str, FotoDePerfil]: ...
 
 
 class AlmacenDeFotos(Protocol):

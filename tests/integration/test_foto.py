@@ -86,6 +86,23 @@ def test_reemplazar_la_foto_cambia_el_tipo(cliente_comun):
     assert respuesta.mimetype == "image/jpeg"
 
 
+def test_si_el_archivo_no_esta_la_interfaz_pinta_la_inicial(cliente_comun):
+    """La foto es un artefacto aparte: sin su archivo, la fila no alcanza.
+
+    Restaurar sólo la base deja filas de `fotos_de_perfil` apuntando a archivos
+    que ya no están. La página tiene que caer a la inicial en vez de pintar una
+    imagen rota, que es lo que se vería en el navegador con un 404.
+    """
+    _subir(cliente_comun, PNG)
+    for archivo in _archivos():
+        archivo.unlink()
+
+    cuerpo = cliente_comun.get("/perfil").get_data(as_text=True)
+
+    assert '<span class="inicial inicial-grande" aria-hidden="true">A</span>' in cuerpo
+    assert "/foto/ana" not in cuerpo
+
+
 def test_quitar_la_foto_vuelve_a_la_inicial(cliente_comun):
     _subir(cliente_comun, PNG)
 

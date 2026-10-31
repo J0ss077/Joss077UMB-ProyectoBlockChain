@@ -13,7 +13,6 @@ El nombre se normaliza en el repositorio, al escribir y al buscar, para que
 ningún llamador pueda saltarse la regla de REQ-30.
 """
 from collections.abc import Sequence
-from datetime import datetime
 from typing import Any
 from uuid import UUID
 
@@ -471,17 +470,22 @@ class PostgresAccountsRepository:
         archivo, tipo, actualizado_en = fila
         return FotoDePerfil(archivo=archivo, tipo=tipo, actualizado_en=actualizado_en)
 
-    def fotos_por_nombre(self) -> dict[str, datetime]:
-        """Cuándo cambió la foto de cada cuenta que tiene una, por nombre de usuario.
+    def fotos_por_nombre(self) -> dict[str, FotoDePerfil]:
+        """La foto de cada cuenta que tiene una, por nombre de usuario.
 
         Es lo que necesita una página para decidir, sin traer los bytes, a quién
-        pintar con foto y a quién con su inicial.
+        pintar con foto y a quién con su inicial. Devuelve la referencia completa
+        —archivo, tipo y fecha— y no sólo la fecha, porque quien decide si sirve
+        es el servicio: una fila cuyo archivo ya no está en la carpeta no se pinta.
         """
         filas = self._connection.execute(
             """
-            SELECT u.username, f.actualizado_en
+            SELECT u.username, f.archivo, f.tipo, f.actualizado_en
             FROM fotos_de_perfil f
             JOIN users u ON u.id = f.usuario_id
             """
         ).fetchall()
-        return {username: actualizado_en for username, actualizado_en in filas}
+        return {
+            username: FotoDePerfil(archivo=archivo, tipo=tipo, actualizado_en=actualizado_en)
+            for username, archivo, tipo, actualizado_en in filas
+        }
