@@ -1,0 +1,37 @@
+{
+  "fecha": "2026-11-04T18:05:21+00:00",
+  "campos": [
+    "gasto_relativo",
+    "movimientos_30d",
+    "neto_relativo",
+    "colchon",
+    "movimientos_previos",
+    "recibido_escala",
+    "mes_seno",
+    "mes_coseno"
+  ],
+  "neuronas_ocultas": 8,
+  "meses_de_la_serie": 240,
+  "ejemplos": 238,
+  "ejemplos_de_entrenamiento": 190,
+  "ejemplos_de_validacion": 48,
+  "epocas": 600,
+  "epocas_corridas": 244,
+  "lote": 16,
+  "semilla": 2026,
+  "perdida_validacion": 0.0078,
+  "error_absoluto_medio_pesos": 140.45,
+  "error_recibido_pesos": 151.18,
+  "error_enviado_pesos": 129.72,
+  "error_ingenuo_mes_anterior": [
+    496.94,
+    618.02
+  ],
+  "error_ingenuo_promedio": [
+    322.76,
+    266.17
+  ],
+  "monto_medio_validacion_pesos": 1746.11,
+  "error_relativo": 0.08,
+  "modelo": "red_neuronal/modelos/proyeccion.keras"
+}

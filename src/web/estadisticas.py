@@ -39,6 +39,7 @@ from src.domain.blockchain import Blockchain
 from src.domain.transaction import Transaction, TransactionStatus
 from src.emision import CONSTITUYENTE_ID
 from src.web.auth import requiere_administrador, requiere_usuario_comun
+from src.web.proyeccion import proyectar
 from src.web.user import _wallet_de_la_sesion
 
 FabricaDeCadenas = Callable[[], AbstractContextManager[Blockchain]]
@@ -80,7 +81,8 @@ def crear_blueprint_de_estadisticas(
             nombres = cuentas.nombres_por_wallet()
         with abrir_cadena() as chain:
             historial = chain.wallet_history(wallet_id)
-        return _pintar(historial, wallet_id, nombres)
+            proyeccion = proyectar(historial, chain.available_balance(wallet_id), wallet_id)
+        return _pintar(historial, wallet_id, nombres, proyeccion=proyeccion)
 
     @estadisticas.get("/admin/estadisticas")
     @requiere_administrador
@@ -107,7 +109,17 @@ def crear_blueprint_de_estadisticas(
             abort(404, description=MENSAJE_USUARIO_SIN_ESTADISTICAS)
         with abrir_cadena() as chain:
             historial = chain.wallet_history(elegido.wallet_id)
-        return _pintar(historial, elegido.wallet_id, nombres, usuarios=usuarios, elegido=elegido)
+            proyeccion = proyectar(
+                historial, chain.available_balance(elegido.wallet_id), elegido.wallet_id
+            )
+        return _pintar(
+            historial,
+            elegido.wallet_id,
+            nombres,
+            proyeccion=proyeccion,
+            usuarios=usuarios,
+            elegido=elegido,
+        )
 
     return estadisticas
 

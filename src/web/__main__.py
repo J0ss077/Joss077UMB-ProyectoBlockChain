@@ -7,6 +7,7 @@ La clave de la cookie también se resuelve acá, con el lector que sabe mirar el
 entorno y el `.env` (REQ-37).
 """
 import os
+import threading
 from contextlib import contextmanager
 
 from src.accounts.almacen import CarpetaDeFotos
@@ -41,12 +42,34 @@ app = create_app(
 )
 
 
+def _precargar_proyeccion() -> None:
+    """Carga el modelo de la proyección en un hilo, sin retrasar el arranque.
+
+    Importar TensorFlow tarda unos segundos. Si se hiciera en la primera visita a las
+    estadísticas, esa persona esperaría; adelantarlo en un hilo de fondo deja el
+    servidor atendiendo desde el primer segundo y el modelo listo cuando se pida.
+
+    Si TensorFlow no está instalado, la terminal lo dice y la página sigue mostrando
+    lo descriptivo sin la tarjeta de proyección.
+    """
+    from src.web.proyeccion import precargar
+
+    def cargar() -> None:
+        if precargar():
+            print(" * Proyección: modelo cargado")
+        else:
+            print(" * Proyección: sin TensorFlow o sin modelo entrenado")
+
+    threading.Thread(target=cargar, daemon=True).start()
+
+
 if __name__ == "__main__":
     conector = app.extensions.get("asistente")
     if conector is None:
         print(" * Ayudante: sin IA configurada, contesta con su guía local")
     else:
         print(f" * Ayudante: conectado a {conector.proveedor.nombre} ({conector.modelo})")
+    _precargar_proyeccion()
     # El depurador interactivo y el recargador no van por defecto: el primero deja
     # ejecutar código desde el navegador y el segundo reinicia el proceso en cada
     # cambio. Se activan con `FLASK_DEBUG=1` en el entorno, para desarrollo local.
