@@ -1,0 +1,106 @@
+Evidencia de consulta sobre la base de datos que usa la aplicación.
+Fecha: 2026-11-04 12:33:46 -05
+Comando: psql "$DATABASE_URL" -f db/consultas.sql
+Servidor: PostgreSQL 18.6 on x86_64-pc-linux-gnu
+
+--- Registro hecho desde el formulario público (POST /registrarme) ---
+    username     |  role   |  estado   | wallet_id |           creado_en           
+-----------------+---------+-----------+-----------+-------------------------------
+ evidencia-fase4 | usuario | pendiente |           | 2026-11-04 12:19:02.608528-05
+(1 row)
+
+
+--- La wallet y la transacción del flujo de la sección 7 ---
+                  id                  |     publica      |   amount    |  status   | block_index 
+--------------------------------------+------------------+-------------+-----------+-------------
+ d2e15839-cbaf-4f91-b5ee-18063dabb669 | 036ff2ff614507d9 | 25.00000000 | confirmed |           4
+(1 row)
+
+
+--- Consultas de db/consultas.sql ---
+=== 1. Cuántas filas hay en cada tabla del ledger ===
+           tabla           | count 
+---------------------------+-------
+ blocks                    |     5
+ contactos                 |     0
+ solicitudes_de_contrasena |     0
+ transactions              |    11
+ users                     |     7
+ wallets                   |     6
+(6 rows)
+
+=== 2. Wallets con su saldo disponible (la misma cuenta de la aplicación) ===
+                             public_key                             |   disponible   
+--------------------------------------------------------------------+----------------
+ 02b5c69ef71ad01c3af08c820f68a98ba5a496d90c04bea18121b6f129bc3f6a98 | -3000.00000000
+ 036ff2ff614507d9a3d7433049feb8b0e7ebd7f93d0b0f20d900237837e67023ac |    25.00000000
+ 02bd272854e707a6dbe337c10085ac3982eaffbc74be98897f14e0d6f844a51658 |   275.00000000
+ 038e6c31366aa9ba8a09c8030aa918b89acb1028759e8715edfafe096894ad30f9 |   900.00000000
+ 0347b0d014a3c05df6aeb067a13ea2a5a355ac4e9ab6f6e4a6b92f6f57bcf3a9da |   900.00000000
+ 0247f2dee3d3060c90db04b16def7985b361b7d0b5e423e811270cd036709f1a20 |   900.00000000
+(6 rows)
+
+=== 3. La cadena: cada bloque con el hash del anterior ===
+ block_index |           timestamp           |                          previous_hash                           |                               hash                               
+-------------+-------------------------------+------------------------------------------------------------------+------------------------------------------------------------------
+           0 | 2026-11-04 12:16:29.529075-05 | 0000000000000000000000000000000000000000000000000000000000000000 | 385fe258b82ff495f5451e3945a0ca36f42fda59c5e3503f411c91e660bcc6e5
+           1 | 2026-11-04 12:16:29.563129-05 | 385fe258b82ff495f5451e3945a0ca36f42fda59c5e3503f411c91e660bcc6e5 | b010b278750a8d74556b4332b2cd0c8a2c95639ec0591fc7ecf355e6aef6d947
+           2 | 2026-11-04 12:16:29.593737-05 | b010b278750a8d74556b4332b2cd0c8a2c95639ec0591fc7ecf355e6aef6d947 | 6a02573f67229e67d8edc82d297abfa37edc35588ea6386edd5c44f70b6da65c
+           3 | 2026-11-04 12:16:29.630168-05 | 6a02573f67229e67d8edc82d297abfa37edc35588ea6386edd5c44f70b6da65c | b32f0a09dd6f7122559f433c46e677e3470e15b8e081b406ae3e6f5928d3b0c2
+           4 | 2026-11-04 12:31:19.40015-05  | b32f0a09dd6f7122559f433c46e677e3470e15b8e081b406ae3e6f5928d3b0c2 | 9d5527eb1d0d1a8bb7a90c79618ae2a4fe4fa59b850516bc11a49d57050e0112
+(5 rows)
+
+=== 4. Los bloques eslabonados sin huecos (no debería devolver filas) ===
+ block_index | hash_esperado | previous_hash 
+-------------+---------------+---------------
+(0 rows)
+
+=== 5. Transacciones con el nombre de cada lado, la más nueva primero ===
+          created_at           |     envia     |  recibe   |    amount     |  status   |               block_id               
+-------------------------------+---------------+-----------+---------------+-----------+--------------------------------------
+ 2026-11-04 12:31:19.326416-05 | fondo         |           |   25.00000000 | confirmed | 0b64f5ad-439e-499d-93ee-894b71fa3810
+ 2026-11-04 12:16:29.65799-05  | fondo         | asociado1 |  600.00000000 | confirmed | 0b64f5ad-439e-499d-93ee-894b71fa3810
+ 2026-11-04 12:16:29.651429-05 | fondo         | asociado2 |  600.00000000 | confirmed | 0b64f5ad-439e-499d-93ee-894b71fa3810
+ 2026-11-04 12:16:29.644485-05 | fondo         | asociado3 |  600.00000000 | confirmed | 0b64f5ad-439e-499d-93ee-894b71fa3810
+ 2026-11-04 12:16:29.621977-05 | asociado1     | fondo     |  700.00000000 | confirmed | 88ea557d-f7f2-44cd-9775-7106da4ccb88
+ 2026-11-04 12:16:29.614655-05 | asociado2     | fondo     |  700.00000000 | confirmed | 88ea557d-f7f2-44cd-9775-7106da4ccb88
+ 2026-11-04 12:16:29.605734-05 | asociado3     | fondo     |  700.00000000 | confirmed | 88ea557d-f7f2-44cd-9775-7106da4ccb88
+ 2026-11-04 12:16:29.587975-05 | fondo         | asociado1 | 1000.00000000 | confirmed | a029de6c-d815-4e0e-86d6-694d88a96d6b
+ 2026-11-04 12:16:29.582646-05 | fondo         | asociado2 | 1000.00000000 | confirmed | a029de6c-d815-4e0e-86d6-694d88a96d6b
+ 2026-11-04 12:16:29.577181-05 | fondo         | asociado3 | 1000.00000000 | confirmed | a029de6c-d815-4e0e-86d6-694d88a96d6b
+ 2026-11-04 12:16:29.555393-05 | constituyente | fondo     | 3000.00000000 | confirmed | 9a8c1aff-e7d3-4279-99b7-f23aa3ed1ec3
+(11 rows)
+
+=== 6. El pool: lo que está en espera de entrar a un bloque ===
+ created_at | sender_id | receiver_id | amount 
+------------+-----------+-------------+--------
+(0 rows)
+
+=== 7. Las cuentas y su estado de alta moderada ===
+    username     |     role      |  estado   | tiene_wallet |           creado_en           |          aprobado_en          | motivo_rechazo 
+-----------------+---------------+-----------+--------------+-------------------------------+-------------------------------+----------------
+ admin           | administrador | aprobado  | f            | 2026-11-04 12:16:29.673786-05 | 2026-11-04 12:16:29.673786-05 | 
+ constituyente   | usuario       | aprobado  | t            | 2026-11-04 12:16:29.7633-05   | 2026-11-04 12:16:29.7633-05   | 
+ fondo           | usuario       | aprobado  | t            | 2026-11-04 12:16:29.837983-05 | 2026-11-04 12:16:29.837983-05 | 
+ asociado1       | usuario       | aprobado  | t            | 2026-11-04 12:16:29.909926-05 | 2026-11-04 12:16:29.909926-05 | 
+ asociado2       | usuario       | aprobado  | t            | 2026-11-04 12:16:29.982112-05 | 2026-11-04 12:16:29.982112-05 | 
+ asociado3       | usuario       | aprobado  | t            | 2026-11-04 12:16:30.056137-05 | 2026-11-04 12:16:30.056137-05 | 
+ evidencia-fase4 | usuario       | pendiente | f            | 2026-11-04 12:19:02.608528-05 |                               | 
+(7 rows)
+
+=== 8. La última fila escrita: la evidencia del registro hecho en la interfaz ===
+          created_at           |                  id                  |              sender_id               |             receiver_id              |   amount    |  status   
+-------------------------------+--------------------------------------+--------------------------------------+--------------------------------------+-------------+-----------
+ 2026-11-04 12:31:19.326416-05 | f410a916-b5c6-4f09-8ee0-132a0ab263f4 | 59d745dc-77de-5654-86f2-35bc8d52b0a1 | d2e15839-cbaf-4f91-b5ee-18063dabb669 | 25.00000000 | confirmed
+(1 row)
+
+=== 9. Cuentas pendientes de aprobación y solicitudes de contraseña pendientes ===
+    username     |  estado   |           creado_en           
+-----------------+-----------+-------------------------------
+ evidencia-fase4 | pendiente | 2026-11-04 12:19:02.608528-05
+(1 row)
+
+ username | pedida_en 
+----------+-----------
+(0 rows)
+

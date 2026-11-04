@@ -188,6 +188,14 @@ motor en vez de esperar lo que decida el sistema operativo. El tiempo de espera 
 `database_url()` cuando la cadena no lo trae; si usted pasa su propia cadena con otro
 `connect_timeout`, ese manda.
 
+**La aplicación responde 503.** Cuando el motor no contesta, la aplicación no muestra el
+error genérico del servidor: pinta una página propia que dice qué revisar —el
+contenedor, `DATABASE_URL`— y ofrece un botón de reintentar. El arranque
+(`python -m src.bootstrap`) termina en ese mismo caso con la instrucción en la terminal.
+La traducción la hace `src/persistence/conexion.py` y la página la registra
+`src/web/app.py`; las pruebas de ese camino están en `tests/integration/test_conexion.py`
+y no necesitan PostgreSQL.
+
 ## Las cinco rutas
 
 | Ruta                      | Caso de uso | Qué hace                                                           | Rol que exige |
@@ -212,6 +220,102 @@ valor completo en el atributo `title` y un botón que lo copia, además del enla
 historial. En la portada del administrador el panel muestra también el saldo disponible
 de cada wallet, que es la celda de la matriz de permisos del diseño §8. El CU-05 se
 alcanza desde ese panel: no hay que teclear el identificador a mano.
+
+### Las rutas de la sesión y del usuario común
+
+La barra superior es el menú principal: cambia sus enlaces según el rol de la sesión
+—el logo vuelve a la portada y el botón de tema claro/oscuro queda al final—, y la
+pestaña del ayudante viaja con `?desde=` la pantalla de origen para explicarla.
+
+| Ruta | Qué hace | Quién entra |
+| ---- | -------- | ----------- |
+| `GET,POST /ingresar` | Abre la sesión con usuario y contraseña (REQ-32) | cualquiera |
+| `GET,POST /registrarme` | Alta moderada: la cuenta queda pendiente de aprobación (REQ-30) | cualquiera |
+| `POST /salir` | Cierra la sesión (REQ-37) | con sesión |
+| `GET /mi-tablero` | Saldo, formulario de envío y últimos movimientos | usuario común |
+| `POST /mi-envio` | Firma y registra un envío de la wallet de la sesión (REQ-34) | usuario común |
+| `GET /mi-historial` | Historial de la wallet de la sesión, con verificación (REQ-39) | usuario común |
+| `GET /mi-verificacion` | Dictamen de la cadena en palabras simples | usuario común |
+| `GET,POST /mis-contactos` | Agenda de a quién le envía, por nombre (REQ-35) | usuario común |
+| `POST /mis-contactos/<id>/quitar` | Borra un contacto de la agenda | usuario común |
+| `GET /mis-estadisticas` | Gráficas y filtros de la propia cuenta | usuario común |
+| `GET /perfil`, `POST /perfil/contrasena`, `POST /perfil/foto`, `POST /perfil/foto/quitar` | Datos, foto e idioma de la cuenta | con sesión |
+| `GET /admin/estadisticas?usuario=<nombre>` | El administrador elige a qué usuario común mirar | administrador |
+| `GET /admin/pendientes`, `POST /admin/pendientes/<id>/aprobar`, `.../rechazar` | Cola de altas pendientes (REQ-31) | administrador |
+| `POST /admin/contrasenas/<id>/<accion>` | Aprobar o rechazar un cambio de contraseña (REQ-36) | administrador |
+| `GET /asistente`, `POST /asistente/preguntar`, `GET /asistente/ahora` | El ayudante en palabras simples | con sesión |
+| `POST /idioma` | Guarda el idioma elegido | cualquiera |
+
+## La conexión con la base de datos
+
+La aplicación no escribe SQL: la capa de presentación recibe fábricas y habla con el
+dominio. Quién abre la conexión y con qué cadena está repartido en cuatro archivos, y
+sólo el primero toca el motor:
+
+| Archivo | Qué resuelve |
+| ------- | ------------ |
+| `src/persistence/conexion.py` | **El módulo de la conexión.** Abre la conexión con `psycopg` y deja la sesión en UTC; si el motor no responde, levanta `NoHayConexion` con el mensaje que la aplicación sabe mostrar |
+| `src/persistence/factory.py` | De dónde sale `DATABASE_URL` —entorno o `.env`—, la clave maestra, el secreto de sesión y la contraseña del administrador; arma el ledger con los repositorios |
+| `src/persistence/postgres.py` y `src/accounts/postgres.py` | Los repositorios: el SQL de wallets, bloques, transacciones, cuentas, contactos, fotos y solicitudes |
+| `db/init.sql` | El esquema: tablas, `CHECK`, claves foráneas e índices (la aplicación nunca ejecuta DDL) |
+
+Todas las conexiones pasan por `conexion.py`: la del ledger, la de la transacción que
+comparten el ledger y las cuentas, y la de la unidad de trabajo que hace atómica la
+agrupación. `database_url()` agrega `connect_timeout=5` cuando la cadena no lo trae,
+así que un puerto mal puesto se ve como un error en cinco segundos y no como un cuelgue.
+La configuración sensible vive en `.env`, que no se versiona; `.env.example` sólo trae
+valores de plantilla que los lectores rechazan.
+
+## Cómo comprobar los datos en la base
+
+`db/consultas.sql` reúne las consultas de evidencia —conteos por tabla, saldo disponible
+por wallet, la cadena eslabonada, el pool y las últimas filas escritas— y se puede
+ejecutar entero:
+
+```text
+docker compose exec -T postgres psql -U blockchain_user -d blockchain_db < db/consultas.sql
+```
+
+o, con el cliente del equipo:
+
+```text
+psql "$DATABASE_URL" -f db/consultas.sql
+```
+
+Es el camino recomendado para la evidencia de la Fase 4: registrar algo desde la
+interfaz y comprobar la fila con la consulta 8 del archivo. El detalle de qué se hizo y
+qué evidencias acompañan la entrega está en `docs/evidencias-fase4.md`.
+
+## La proyección de las estadísticas
+
+La página de estadísticas suma, cuenta y grafica con aritmética exacta sobre el
+historial; eso no lo calcula ningún modelo. Encima de eso muestra una **proyección del
+próximo mes** (cuánto se espera recibir y enviar) que la estima una red neuronal
+entrenada con TensorFlow y ejecutada **dentro de la aplicación**, en cada visita.
+
+| Archivo | Qué hace |
+| ------- | -------- |
+| `red_neuronal/caracteristicas.py` | Las ocho características de entrada y la escala con la que se vuelve a pesos |
+| `red_neuronal/serie.py` | La serie sintética de 240 meses con la que se entrena |
+| `red_neuronal/modelo.py` | La red 8 → 8 → 2 (TensorFlow/Keras) |
+| `red_neuronal/entrenar.py` | Entrena, compara con dos predicciones ingenuas y guarda el modelo |
+| `src/web/proyeccion.py` | Carga el modelo, resume el historial de la cuenta y proyecta |
+
+TensorFlow va en `red_neuronal/requirements.txt` y **no** en el `requirements.txt` del
+proyecto: el prototipo se instala y se prueba sin él, y en ese caso la tarjeta de
+proyección simplemente no aparece. Para tenerla:
+
+```text
+python3.14 -m venv .venv-tf
+.venv-tf/bin/python -m pip install -r red_neuronal/requirements.txt
+.venv-tf/bin/python -m red_neuronal.entrenar
+.venv-tf/bin/python -m src.web
+```
+
+El modelo entrenado queda en `red_neuronal/modelos/proyeccion.keras` y viaja con el
+repositorio, así que no hace falta entrenar para ver la tarjeta. El apartado del
+documento que explica la red está en `docs/red-neuronal.md` (y su versión para pegar,
+`docs/red-neuronal.docx`).
 
 ## Los datos de demostración
 
@@ -616,9 +720,10 @@ con la clave nueva. El arranque solo siembra cuando la tabla de wallets está va
 5. `src/domain/block.py` y `src/domain/blockchain.py`: el hash del contenido agrupado,
    el saldo disponible, el pool, la agrupación atómica, la verificación que localiza
    la alteración y el génesis (REQ-05 a REQ-10, REQ-14, REQ-18, REQ-22).
-6. `src/persistence/ports.py` y `src/persistence/postgres.py`: los protocolos que
-   aíslan al dominio del motor (REQ-16) y los adaptadores que no traducen los errores
-   de PostgreSQL (REQ-19).
+6. `src/persistence/conexion.py`, `src/persistence/ports.py` y
+   `src/persistence/postgres.py`: el módulo que abre la conexión y la deja en UTC, los
+   protocolos que aíslan al dominio del motor (REQ-16) y los adaptadores que no traducen
+   los errores de PostgreSQL (REQ-19).
 7. `src/web/app.py` y `src/web/templates/`: las cinco rutas y sus plantillas, sin
    reglas de negocio ni SQL (REQ-24 a REQ-29).
 8. `tests/`: la explicación ejecutable. Cada prueba se llama `test_req_NN_*` y lleva

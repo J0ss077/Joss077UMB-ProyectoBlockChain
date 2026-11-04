@@ -1,0 +1,40 @@
+Recorrido por HTTP contra la aplicación en ejecución
+Fecha: 2026-11-04 12:18:56
+Servidor: http://127.0.0.1:5000
+
+## Público (sin sesión)
+200  /ingresar                              Ingresar
+200  /registrarme                           Crear cuenta
+
+## Ingreso como administrador
+302  POST /ingresar                          -> /
+
+## Administrador (sesión abierta)
+200  /                                      Estado del ledger
+200  /admin/pendientes                      Pendientes de aprobación
+200  /wallets                               Registrar wallet
+200  /transacciones                         Nueva transacción
+200  /bloques                               Cerrar bloque
+200  /verificar                             Verificar cadena
+200  /admin/estadisticas                    Elige a quién mirar
+200  /admin/estadisticas?usuario=asociado1  Los movimientos de asociado1
+200  /asistente                             Ayudante
+200  /perfil                                admin
+
+## Cierre de sesión
+302  POST /salir                            -> /ingresar
+
+## Ingreso como usuario común (asociado1, la contraseña de la semilla)
+302  POST /ingresar                          -> /mi-tablero
+
+## Usuario común (sesión abierta)
+200  /mi-tablero                            Enviar dinero
+200  /mi-historial                          Mi historial
+200  /mis-contactos                         Mis contactos
+200  /mis-estadisticas                      Cómo se mueve tu dinero
+200  /asistente                             Ayudante
+200  /perfil                                asociado1
+
+## Rutas que no existen
+404  GET /no-existe                          No se encontró lo que buscaba
+404  GET /wallet/6f2c5b1e-0000-0000-0000-000000000000 No se encontró lo que buscaba

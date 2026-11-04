@@ -1,0 +1,28 @@
+Resultados de las pruebas automáticas del proyecto
+Fecha: 2026-11-04 13:01:13 -05
+Comando: TEST_DATABASE_URL=<base aparte> <venv> -m pytest -q
+Entorno: PostgreSQL 18.6, esquema de db/init.sql, base distinta de la de la aplicación
+
+=== Suite completa ===
+........................................................................ [ 61%]
+........................................................................ [ 82%]
+..............................................................           [100%]
+350 passed in 109.76s (0:01:49)
+
+=== Pruebas de seguridad: firma, firma repetida y alteración ===
+tests/integration/test_req_11_rechazo_en_base.py::test_req_11_la_wallet_inexistente_se_informa_sin_fila PASSED [ 89%]
+tests/integration/test_req_11_rechazo_en_base.py::test_req_11_la_firma_repetida_se_informa_sin_fila PASSED [ 94%]
+tests/integration/test_req_11_rechazo_en_base.py::test_req_11_la_firma_repetida_con_saldo_insuficiente_no_llega_al_motor PASSED [100%]
+============================== 19 passed in 0.68s ==============================
+
+=== Pruebas de la proyección y de la red (sin TensorFlow) ===
+tests/unit/test_proyeccion.py::test_el_resumen_separa_lo_que_entra_de_lo_que_sale PASSED [ 11%]
+tests/unit/test_proyeccion.py::test_las_pendientes_y_las_rechazadas_no_cuentan PASSED [ 22%]
+tests/unit/test_proyeccion.py::test_la_ventana_no_mira_mas_alla_de_sesenta_dias PASSED [ 33%]
+tests/unit/test_proyeccion.py::test_la_entrada_son_proporciones_y_el_mes_del_anio PASSED [ 44%]
+tests/unit/test_proyeccion.py::test_sin_recibido_la_escala_es_el_saldo PASSED [ 55%]
+tests/unit/test_proyeccion.py::test_sin_modelo_la_pagina_se_queda_sin_proyeccion PASSED [ 66%]
+tests/unit/test_proyeccion.py::test_con_modelo_devuelve_los_tres_montos_como_decimal PASSED [ 77%]
+tests/unit/test_proyeccion.py::test_el_envio_estimado_no_supera_lo_que_hay PASSED [ 88%]
+tests/unit/test_proyeccion.py::test_una_prediccion_negativa_se_recorta_a_cero PASSED [100%]
+============================== 9 passed in 0.04s ===============================

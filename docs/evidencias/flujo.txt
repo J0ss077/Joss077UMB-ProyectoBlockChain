@@ -1,0 +1,57 @@
+Flujo completo ejecutado contra la aplicación levantada y su PostgreSQL
+=======================================================================
+Fecha: 2026-11-04 12:31 -05
+Aplicación: python -m src.web  (http://127.0.0.1:5000)
+Base: la de DATABASE_URL (PostgreSQL 18.6)
+
+Las capturas 14 a 19 de docs/evidencias/capturas/ son las pantallas de estos pasos,
+en este orden.
+
+1. Registrar una wallet (CU-01, POST /wallets)  -> HTTP 200
+   Wallet registrada: d2e15839-cbaf-4f91-b5ee-18063dabb669
+   Clave pública:     036ff2ff614507d9...
+   Saldo disponible:  0
+   Captura: 14-flujo-wallet-creada.png
+
+2. Proponer una transacción (CU-02, POST /transacciones)  -> HTTP 200
+   Emisor:  fondo            (02bd2728...)
+   Destino: la wallet nueva  (d2e15839...)
+   Monto:   25
+   Estado:  En el pool  -> "Quedará confirmada cuando se cierre el próximo bloque."
+   Captura: 15-flujo-transaccion-pool.png
+
+3. Agrupar el pool en un bloque (CU-03, POST /bloques)  -> HTTP 200
+   "Bloque creado y encadenado con el último."
+   Índice:      4
+   Hash:        9d5527eb1d0d...
+   Hash previo: b32f0a09dd6f...  (el hash del bloque #3)
+   Captura: 16-flujo-bloque-creado.png
+
+4. Verificar la cadena (CU-04, GET /verificar)  -> HTTP 200
+   "La cadena es válida. Cada hash coincide con su contenido y con el del bloque anterior."
+   Captura: 17-flujo-cadena-verificada.png
+
+5. Alterar una fila por fuera de la aplicación (psql, no la app)
+   UPDATE transactions SET amount = amount + 100 WHERE id = 'f410a916-...';
+   Monto 25 -> 125 en una transacción ya confirmada del bloque #4.
+   GET /verificar  ->  "La cadena no es válida. El primer bloque que no encaja es el
+   de índice 4."  (el bloque donde está la transacción alterada)
+   Captura: 18-alteracion-detectada.png
+
+6. Reponer el monto original
+   UPDATE transactions SET amount = 25 WHERE id = 'f410a916-...';
+   GET /verificar  ->  "La cadena es válida" otra vez.
+   Captura: 19-alteracion-revertida.png
+
+   Ese ida y vuelta es la prueba de que la verificación recalcula los hashes y no
+   devuelve un resultado fijo: con el dato alterado falla y con el dato original
+   vuelve a pasar, sin reiniciar la aplicación ni volver a sembrar.
+
+Comandos, tal como se ejecutaron (con el cliente del equipo):
+
+   psql "$DATABASE_URL" -c "UPDATE transactions SET amount = amount + 100 WHERE id = 'f410a916-b5c6-4f09-8ee0-132a0ab263f4';"
+   psql "$DATABASE_URL" -c "UPDATE transactions SET amount = 25 WHERE id = 'f410a916-b5c6-4f09-8ee0-132a0ab263f4';"
+
+Estado de la base después del flujo: 6 wallets, 5 bloques, 11 transacciones, 7 cuentas
+(la de evidencia sigue pendiente de aprobación). El bloque #4 quedó con el hash
+9d5527eb1d0d... y contiene la transacción de 25.
