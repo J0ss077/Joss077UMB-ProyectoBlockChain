@@ -51,16 +51,16 @@
             {% if g.user %}
             <header class="barra-superior">
                 <a class="marca" href="/"><span class="marca-cuadro" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span>Ledger</span></a>
-                {# Las rutas del eje son del administrador: el común sólo tiene su tablero, su historial y su agenda. Los dos tienen la pestaña del ayudante, que lleva en `desde` la pantalla de origen para explicarla. El rol se lee de la sesión recargada, no de la cookie. #}
+                {# Las rutas del eje son del administrador: el común sólo tiene su tablero, su historial, su agenda y sus estadísticas. Los dos tienen la pestaña del ayudante, que lleva en `desde` la pantalla de origen para explicarla. El rol se lee de la sesión recargada, no de la cookie. #}
                 {% if g.user.role == rol_administrador %}
                 <nav class="navegacion" aria-label="{{ t('Administración') }}">
-                    {% for ruta, texto in [("/", "Resumen"), ("/admin/pendientes", "Pendientes"), ("/wallets", "Wallets"), ("/transacciones", "Transacciones"), ("/bloques", "Bloques"), ("/verificar", "Verificar"), ("/asistente", "Ayudante")] %}
+                    {% for ruta, texto in [("/", "Resumen"), ("/admin/pendientes", "Pendientes"), ("/wallets", "Wallets"), ("/transacciones", "Transacciones"), ("/bloques", "Bloques"), ("/verificar", "Verificar"), ("/admin/estadisticas", "Estadísticas"), ("/asistente", "Ayudante")] %}
                     <a href="{{ ruta }}{% if ruta == '/asistente' and request.path != ruta %}?desde={{ request.path|urlencode }}{% endif %}"{% if request.path == ruta %} aria-current="page"{% endif %}>{{ t(texto) }}</a>
                     {% endfor %}
                 </nav>
                 {% else %}
                 <nav class="navegacion" aria-label="{{ t('Mi cuenta') }}">
-                    {% for ruta, texto in [("/mi-tablero", "Mi tablero"), ("/mi-historial", "Mi historial"), ("/mis-contactos", "Mis contactos"), ("/asistente", "Ayudante")] %}
+                    {% for ruta, texto in [("/mi-tablero", "Mi tablero"), ("/mi-historial", "Mi historial"), ("/mis-contactos", "Mis contactos"), ("/mis-estadisticas", "Estadísticas"), ("/asistente", "Ayudante")] %}
                     <a href="{{ ruta }}{% if ruta == '/asistente' and request.path != ruta %}?desde={{ request.path|urlencode }}{% endif %}"{% if request.path == ruta %} aria-current="page"{% endif %}>{{ t(texto) }}</a>
                     {% endfor %}
                 </nav>

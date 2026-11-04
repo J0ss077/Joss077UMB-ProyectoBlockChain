@@ -57,6 +57,7 @@ from src.web.auth import (
     sesion_vigente,
     usuario_de_la_sesion,
 )
+from src.web.estadisticas import crear_blueprint_de_estadisticas
 from src.web.forms import a_monto, a_uuid
 from src.web.ia import crear_conector
 from src.web.idioma import (
@@ -145,6 +146,9 @@ def create_app(
     # es la que alimenta el panel de wallets con saldos que comparten sus páginas
     # (REQ-29, REQ-31).
     app.register_blueprint(crear_blueprint_de_la_cola(abrir_cuentas, abrir_cadena))
+    # Las estadísticas también: el común ve las suyas y el administrador elige de
+    # quién; las dos leen con las mismas fábricas y no abren conexiones propias.
+    app.register_blueprint(crear_blueprint_de_estadisticas(abrir_cadena, abrir_cuentas))
     # El perfil es de las dos clases de cuenta: datos, idioma y contraseña.
     app.register_blueprint(crear_blueprint_del_perfil(abrir_cuentas))
     # El ayudante, con su pestaña en la barra, lee la cadena y las cuentas para explicar,
