@@ -1,118 +1,118 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="820" viewBox="0 0 1600 820" font-family="DejaVu Sans, Arial, sans-serif">
-<rect width="1600" height="820" fill="#ffffff"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" font-family="DejaVu Sans, Arial, sans-serif">
+<rect width="1600" height="900" fill="#ffffff"/>
 <text x="60" y="72" font-size="34" font-weight="700" fill="#10131a">Red neuronal de la proyección</text>
 <text x="60" y="108" font-size="20" fill="#6b7280">8 entradas · 8 neuronas ocultas con ReLU · 2 salidas lineales</text>
-<rect x="60" y="400" width="230" height="120" rx="16" fill="#f4f6ff" stroke="#c7d2fe" stroke-width="2"/>
-<text x="82" y="438" font-size="17" fill="#6b7280">movimientos</text>
-<text x="82" y="468" font-size="18" font-weight="600" fill="#10131a">de los últimos</text>
-<text x="82" y="494" font-size="18" font-weight="600" fill="#10131a">30 y 60 días</text>
-<line x1="292" y1="460" x2="338" y2="460" stroke="#1b3bd8" stroke-width="2.5" marker-end="url(#flecha)"/>
+<rect x="60" y="430" width="230" height="120" rx="16" fill="#f4f6ff" stroke="#c7d2fe" stroke-width="2"/>
+<text x="82" y="470" font-size="17" fill="#6b7280">movimientos</text>
+<text x="82" y="500" font-size="18" font-weight="600" fill="#10131a">de los últimos</text>
+<text x="82" y="526" font-size="18" font-weight="600" fill="#10131a">30 y 60 días</text>
+<line x1="296" y1="490" x2="358" y2="490" stroke="#1b3bd8" stroke-width="2.5" marker-end="url(#flecha)"/>
 <defs><marker id="flecha" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#1b3bd8"/></marker></defs>
-<line x1="360" y1="280" x2="820" y2="280" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="360" y1="280" x2="820" y2="350" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="360" y1="280" x2="820" y2="420" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="360" y1="280" x2="820" y2="490" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="360" y1="280" x2="820" y2="560" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="360" y1="280" x2="820" y2="630" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="360" y1="280" x2="820" y2="700" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="360" y1="280" x2="820" y2="770" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="360" y1="350" x2="820" y2="280" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="360" y1="350" x2="820" y2="350" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="360" y1="350" x2="820" y2="420" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="360" y1="350" x2="820" y2="490" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="360" y1="350" x2="820" y2="560" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="360" y1="350" x2="820" y2="630" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="360" y1="350" x2="820" y2="700" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="360" y1="350" x2="820" y2="770" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="360" y1="420" x2="820" y2="280" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="360" y1="420" x2="820" y2="350" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="360" y1="420" x2="820" y2="420" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="360" y1="420" x2="820" y2="490" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="360" y1="420" x2="820" y2="560" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="360" y1="420" x2="820" y2="630" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="360" y1="420" x2="820" y2="700" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="360" y1="420" x2="820" y2="770" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="360" y1="490" x2="820" y2="280" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="360" y1="490" x2="820" y2="350" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="360" y1="490" x2="820" y2="420" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="360" y1="490" x2="820" y2="490" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="360" y1="490" x2="820" y2="560" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="360" y1="490" x2="820" y2="630" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="360" y1="490" x2="820" y2="700" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="360" y1="490" x2="820" y2="770" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="360" y1="560" x2="820" y2="280" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="360" y1="560" x2="820" y2="350" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="360" y1="560" x2="820" y2="420" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="360" y1="560" x2="820" y2="490" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="360" y1="560" x2="820" y2="560" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="360" y1="560" x2="820" y2="630" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="360" y1="560" x2="820" y2="700" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="360" y1="560" x2="820" y2="770" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="360" y1="630" x2="820" y2="280" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="360" y1="630" x2="820" y2="350" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="360" y1="630" x2="820" y2="420" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="360" y1="630" x2="820" y2="490" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="360" y1="630" x2="820" y2="560" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="360" y1="630" x2="820" y2="630" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="360" y1="630" x2="820" y2="700" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="360" y1="630" x2="820" y2="770" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="360" y1="700" x2="820" y2="280" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="360" y1="700" x2="820" y2="350" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="360" y1="700" x2="820" y2="420" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="360" y1="700" x2="820" y2="490" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="360" y1="700" x2="820" y2="560" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="360" y1="700" x2="820" y2="630" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="360" y1="700" x2="820" y2="700" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="360" y1="700" x2="820" y2="770" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="360" y1="770" x2="820" y2="280" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="360" y1="770" x2="820" y2="350" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="360" y1="770" x2="820" y2="420" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="360" y1="770" x2="820" y2="490" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="360" y1="770" x2="820" y2="560" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="360" y1="770" x2="820" y2="630" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="360" y1="770" x2="820" y2="700" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="360" y1="770" x2="820" y2="770" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="820" y1="280" x2="1260" y2="350" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="820" y1="280" x2="1260" y2="470" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="820" y1="350" x2="1260" y2="350" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="820" y1="350" x2="1260" y2="470" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="820" y1="420" x2="1260" y2="350" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="820" y1="420" x2="1260" y2="470" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="820" y1="490" x2="1260" y2="350" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="820" y1="490" x2="1260" y2="470" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="820" y1="560" x2="1260" y2="350" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="820" y1="560" x2="1260" y2="470" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="820" y1="630" x2="1260" y2="350" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="820" y1="630" x2="1260" y2="470" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="820" y1="700" x2="1260" y2="350" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="820" y1="700" x2="1260" y2="470" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="820" y1="770" x2="1260" y2="350" stroke="#c7d2fe" stroke-width="1.1"/>
-<line x1="820" y1="770" x2="1260" y2="470" stroke="#c7d2fe" stroke-width="1.1"/>
-<circle cx="360" cy="280" r="14" fill="#1b3bd8" opacity="0.85"/>
-<circle cx="360" cy="350" r="14" fill="#1b3bd8" opacity="0.85"/>
-<circle cx="360" cy="420" r="14" fill="#1b3bd8" opacity="0.85"/>
-<circle cx="360" cy="490" r="14" fill="#1b3bd8" opacity="0.85"/>
-<circle cx="360" cy="560" r="14" fill="#1b3bd8" opacity="0.85"/>
-<circle cx="360" cy="630" r="14" fill="#1b3bd8" opacity="0.85"/>
-<circle cx="360" cy="700" r="14" fill="#1b3bd8" opacity="0.85"/>
-<circle cx="360" cy="770" r="14" fill="#1b3bd8" opacity="0.85"/>
-<circle cx="820" cy="280" r="15" fill="#1b3bd8"/>
-<circle cx="820" cy="350" r="15" fill="#1b3bd8"/>
-<circle cx="820" cy="420" r="15" fill="#1b3bd8"/>
-<circle cx="820" cy="490" r="15" fill="#1b3bd8"/>
-<circle cx="820" cy="560" r="15" fill="#1b3bd8"/>
-<circle cx="820" cy="630" r="15" fill="#1b3bd8"/>
-<circle cx="820" cy="700" r="15" fill="#1b3bd8"/>
-<circle cx="820" cy="770" r="15" fill="#1b3bd8"/>
-<circle cx="1260" cy="350" r="17" fill="#b8e000" stroke="#10131a" stroke-width="2"/>
-<circle cx="1260" cy="470" r="17" fill="#b8e000" stroke="#10131a" stroke-width="2"/>
-<text x="360" y="200" text-anchor="middle" font-size="24" font-weight="700" fill="#10131a">Entrada</text>
-<text x="360" y="232" text-anchor="middle" font-size="17" fill="#6b7280">8 características</text>
-<text x="820" y="200" text-anchor="middle" font-size="24" font-weight="700" fill="#10131a">Capa oculta</text>
-<text x="820" y="232" text-anchor="middle" font-size="17" fill="#6b7280">8 neuronas · ReLU</text>
-<text x="1260" y="200" text-anchor="middle" font-size="24" font-weight="700" fill="#10131a">Salida</text>
-<text x="1260" y="232" text-anchor="middle" font-size="17" fill="#6b7280">2 montos</text>
-<text x="1300" y="357" font-size="20" fill="#10131a">recibido</text>
-<text x="1300" y="477" font-size="20" fill="#10131a">enviado</text>
-<text x="60" y="770" font-size="18" fill="#6b7280">Cada línea es un peso: 8 × 8 = 64 en la primera capa y 8 × 2 = 16 en la segunda.</text>
+<line x1="380" y1="270" x2="840" y2="270" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="380" y1="270" x2="840" y2="334" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="380" y1="270" x2="840" y2="398" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="380" y1="270" x2="840" y2="462" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="380" y1="270" x2="840" y2="526" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="380" y1="270" x2="840" y2="590" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="380" y1="270" x2="840" y2="654" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="380" y1="270" x2="840" y2="718" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="380" y1="334" x2="840" y2="270" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="380" y1="334" x2="840" y2="334" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="380" y1="334" x2="840" y2="398" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="380" y1="334" x2="840" y2="462" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="380" y1="334" x2="840" y2="526" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="380" y1="334" x2="840" y2="590" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="380" y1="334" x2="840" y2="654" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="380" y1="334" x2="840" y2="718" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="380" y1="398" x2="840" y2="270" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="380" y1="398" x2="840" y2="334" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="380" y1="398" x2="840" y2="398" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="380" y1="398" x2="840" y2="462" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="380" y1="398" x2="840" y2="526" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="380" y1="398" x2="840" y2="590" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="380" y1="398" x2="840" y2="654" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="380" y1="398" x2="840" y2="718" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="380" y1="462" x2="840" y2="270" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="380" y1="462" x2="840" y2="334" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="380" y1="462" x2="840" y2="398" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="380" y1="462" x2="840" y2="462" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="380" y1="462" x2="840" y2="526" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="380" y1="462" x2="840" y2="590" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="380" y1="462" x2="840" y2="654" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="380" y1="462" x2="840" y2="718" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="380" y1="526" x2="840" y2="270" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="380" y1="526" x2="840" y2="334" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="380" y1="526" x2="840" y2="398" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="380" y1="526" x2="840" y2="462" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="380" y1="526" x2="840" y2="526" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="380" y1="526" x2="840" y2="590" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="380" y1="526" x2="840" y2="654" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="380" y1="526" x2="840" y2="718" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="380" y1="590" x2="840" y2="270" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="380" y1="590" x2="840" y2="334" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="380" y1="590" x2="840" y2="398" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="380" y1="590" x2="840" y2="462" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="380" y1="590" x2="840" y2="526" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="380" y1="590" x2="840" y2="590" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="380" y1="590" x2="840" y2="654" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="380" y1="590" x2="840" y2="718" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="380" y1="654" x2="840" y2="270" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="380" y1="654" x2="840" y2="334" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="380" y1="654" x2="840" y2="398" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="380" y1="654" x2="840" y2="462" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="380" y1="654" x2="840" y2="526" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="380" y1="654" x2="840" y2="590" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="380" y1="654" x2="840" y2="654" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="380" y1="654" x2="840" y2="718" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="380" y1="718" x2="840" y2="270" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="380" y1="718" x2="840" y2="334" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="380" y1="718" x2="840" y2="398" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="380" y1="718" x2="840" y2="462" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="380" y1="718" x2="840" y2="526" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="380" y1="718" x2="840" y2="590" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="380" y1="718" x2="840" y2="654" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="380" y1="718" x2="840" y2="718" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="840" y1="270" x2="1270" y2="340" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="840" y1="270" x2="1270" y2="500" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="840" y1="334" x2="1270" y2="340" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="840" y1="334" x2="1270" y2="500" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="840" y1="398" x2="1270" y2="340" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="840" y1="398" x2="1270" y2="500" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="840" y1="462" x2="1270" y2="340" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="840" y1="462" x2="1270" y2="500" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="840" y1="526" x2="1270" y2="340" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="840" y1="526" x2="1270" y2="500" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="840" y1="590" x2="1270" y2="340" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="840" y1="590" x2="1270" y2="500" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="840" y1="654" x2="1270" y2="340" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="840" y1="654" x2="1270" y2="500" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="840" y1="718" x2="1270" y2="340" stroke="#c7d2fe" stroke-width="1.1"/>
+<line x1="840" y1="718" x2="1270" y2="500" stroke="#c7d2fe" stroke-width="1.1"/>
+<circle cx="380" cy="270" r="14" fill="#1b3bd8" opacity="0.85"/>
+<circle cx="380" cy="334" r="14" fill="#1b3bd8" opacity="0.85"/>
+<circle cx="380" cy="398" r="14" fill="#1b3bd8" opacity="0.85"/>
+<circle cx="380" cy="462" r="14" fill="#1b3bd8" opacity="0.85"/>
+<circle cx="380" cy="526" r="14" fill="#1b3bd8" opacity="0.85"/>
+<circle cx="380" cy="590" r="14" fill="#1b3bd8" opacity="0.85"/>
+<circle cx="380" cy="654" r="14" fill="#1b3bd8" opacity="0.85"/>
+<circle cx="380" cy="718" r="14" fill="#1b3bd8" opacity="0.85"/>
+<circle cx="840" cy="270" r="15" fill="#1b3bd8"/>
+<circle cx="840" cy="334" r="15" fill="#1b3bd8"/>
+<circle cx="840" cy="398" r="15" fill="#1b3bd8"/>
+<circle cx="840" cy="462" r="15" fill="#1b3bd8"/>
+<circle cx="840" cy="526" r="15" fill="#1b3bd8"/>
+<circle cx="840" cy="590" r="15" fill="#1b3bd8"/>
+<circle cx="840" cy="654" r="15" fill="#1b3bd8"/>
+<circle cx="840" cy="718" r="15" fill="#1b3bd8"/>
+<circle cx="1270" cy="340" r="17" fill="#b8e000" stroke="#10131a" stroke-width="2"/>
+<circle cx="1270" cy="500" r="17" fill="#b8e000" stroke="#10131a" stroke-width="2"/>
+<text x="380" y="190" text-anchor="middle" font-size="24" font-weight="700" fill="#10131a">Entrada</text>
+<text x="380" y="222" text-anchor="middle" font-size="17" fill="#6b7280">8 características</text>
+<text x="840" y="190" text-anchor="middle" font-size="24" font-weight="700" fill="#10131a">Capa oculta</text>
+<text x="840" y="222" text-anchor="middle" font-size="17" fill="#6b7280">8 neuronas · ReLU</text>
+<text x="1270" y="190" text-anchor="middle" font-size="24" font-weight="700" fill="#10131a">Salida</text>
+<text x="1270" y="222" text-anchor="middle" font-size="17" fill="#6b7280">2 montos</text>
+<text x="1310" y="348" font-size="20" fill="#10131a">recibido</text>
+<text x="1310" y="508" font-size="20" fill="#10131a">enviado</text>
+<text x="60" y="836" font-size="18" fill="#6b7280">Cada línea es un peso: 8 × 8 = 64 en la primera capa y 8 × 2 = 16 en la segunda.</text>
 </svg>

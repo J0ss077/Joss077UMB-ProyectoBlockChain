@@ -64,23 +64,23 @@ def figura_general() -> str:
     """Las tres capas y el camino de los movimientos a la proyección."""
     lineas = _cabecera(
         1600,
-        820,
+        900,
         "Red neuronal de la proyección",
         "8 entradas · 8 neuronas ocultas con ReLU · 2 salidas lineales",
     )
-    entrada = [(360, 280 + 70 * i) for i in range(8)]
-    oculta = [(820, 280 + 70 * i) for i in range(8)]
-    salida = [(1260, 350 + 120 * i) for i in range(2)]
+    entrada = [(380, 270 + 64 * i) for i in range(8)]
+    oculta = [(840, 270 + 64 * i) for i in range(8)]
+    salida = [(1270, 340 + 160 * i) for i in range(2)]
 
     lineas += [
-        f'<rect x="60" y="400" width="230" height="120" rx="16" fill="#f4f6ff" '
+        f'<rect x="60" y="430" width="230" height="120" rx="16" fill="#f4f6ff" '
         f'stroke="{COBALTO_CLARO}" stroke-width="2"/>',
-        f'<text x="82" y="438" font-size="17" fill="{GRIS}">movimientos</text>',
-        f'<text x="82" y="468" font-size="18" font-weight="600" fill="{TINTA}">'
+        f'<text x="82" y="470" font-size="17" fill="{GRIS}">movimientos</text>',
+        f'<text x="82" y="500" font-size="18" font-weight="600" fill="{TINTA}">'
         "de los últimos</text>",
-        f'<text x="82" y="494" font-size="18" font-weight="600" fill="{TINTA}">'
+        f'<text x="82" y="526" font-size="18" font-weight="600" fill="{TINTA}">'
         "30 y 60 días</text>",
-        f'<line x1="292" y1="460" x2="338" y2="460" stroke="{COBALTO}" '
+        f'<line x1="296" y1="490" x2="358" y2="490" stroke="{COBALTO}" '
         'stroke-width="2.5" marker-end="url(#flecha)"/>',
         '<defs><marker id="flecha" markerWidth="10" markerHeight="10" refX="8" '
         f'refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="{COBALTO}"/></marker></defs>',
@@ -96,21 +96,21 @@ def figura_general() -> str:
     ]
 
     for x, texto, sub in [
-        (360, "Entrada", "8 características"),
-        (820, "Capa oculta", "8 neuronas · ReLU"),
-        (1260, "Salida", "2 montos"),
+        (380, "Entrada", "8 características"),
+        (840, "Capa oculta", "8 neuronas · ReLU"),
+        (1270, "Salida", "2 montos"),
     ]:
         lineas += [
-            f'<text x="{x}" y="200" text-anchor="middle" font-size="24" '
+            f'<text x="{x}" y="190" text-anchor="middle" font-size="24" '
             f'font-weight="700" fill="{TINTA}">{texto}</text>',
-            f'<text x="{x}" y="232" text-anchor="middle" font-size="17" '
+            f'<text x="{x}" y="222" text-anchor="middle" font-size="17" '
             f'fill="{GRIS}">{sub}</text>',
         ]
 
     lineas += [
-        f'<text x="1300" y="357" font-size="20" fill="{TINTA}">recibido</text>',
-        f'<text x="1300" y="477" font-size="20" fill="{TINTA}">enviado</text>',
-        f'<text x="60" y="770" font-size="18" fill="{GRIS}">Cada línea es un peso: '
+        f'<text x="1310" y="348" font-size="20" fill="{TINTA}">recibido</text>',
+        f'<text x="1310" y="508" font-size="20" fill="{TINTA}">enviado</text>',
+        f'<text x="60" y="836" font-size="18" fill="{GRIS}">Cada línea es un peso: '
         "8 × 8 = 64 en la primera capa y 8 × 2 = 16 en la segunda.</text>",
     ]
     lineas.append("</svg>")

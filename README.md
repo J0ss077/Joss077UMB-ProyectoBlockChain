@@ -21,9 +21,9 @@ el eje describe como prototipo.** Su página 43 afirma que "el núcleo del proto
 está implementado y probado"; este repositorio es la evidencia de ese párrafo.
 
 Toda decisión que el eje no fija (curva, cifrado, contenido del hash, datos de
-demostración) está declarada y numerada en
-`docs/specs/2026-10-10-blockchain-transaccional-design.md`, y el orden en
-que se construyó, en `docs/plans/2026-10-10-blockchain-transaccional-plan.md`.
+demostración) está declarada en `docs/arquitectura-y-decisiones.md`, y el recorrido de
+la construcción, con lo que queda afuera y los límites declarados, en
+`docs/proceso-y-alcance.md`.
 La explicación de cómo se ejecuta cada caso de uso está en
 `docs/recorrido-de-casos-de-uso.md`.
 

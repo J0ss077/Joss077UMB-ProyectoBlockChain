@@ -21,3 +21,6 @@ __pycache__/
 # Restos de intentar darle a `podman` un runtime escribible, que en este entorno
 # no sirve: `podman` necesita su almacén y sus espacios de nombres.
 .tmp-podman/
+
+# Cerrojos de LibreOffice mientras hay un documento abierto en docs/
+.~lock.*#
