@@ -32,6 +32,7 @@ from src.domain.blockchain import Blockchain, ensure_genesis
 from src.domain.transaction import Transaction, TransactionStatus
 from src.domain.wallet import CURVE, Wallet, encrypt_private_key, public_key_hex, sign_payload
 from src.emision import CONSTITUYENTE_ID, CONSTITUYENTE_SEED
+from src.errores import NoHayConexion
 from src.persistence.factory import admin_password, ledger, transaction
 
 # Semilla del par de llaves del fondo: fijarla hace que su clave pública sea la
@@ -327,7 +328,19 @@ def _mensaje_de_admin_ocupado(usuario: Usuario) -> str:
 
 
 def main() -> None:
-    """Asegura el génesis, siembra la demostración si hace falta e informa el estado."""
+    """Asegura el génesis, siembra la demostración si hace falta e informa el estado.
+
+    Un motor que no responde no llega como traza: `abrir_en_utc` lo levanta como
+    `NoHayConexion` y acá se convierte en la salida con la instrucción, igual que
+    el volumen viejo de más abajo.
+    """
+    try:
+        _sembrar_todo()
+    except NoHayConexion as error:
+        raise SystemExit(str(error)) from error
+
+
+def _sembrar_todo() -> None:
     with ledger() as chain:
         genesis = ensure_genesis(chain)
         bloque = run(chain)
