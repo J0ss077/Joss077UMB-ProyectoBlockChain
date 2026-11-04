@@ -314,8 +314,9 @@ python3.14 -m venv .venv-tf
 
 El modelo entrenado queda en `red_neuronal/modelos/proyeccion.keras` y viaja con el
 repositorio, así que no hace falta entrenar para ver la tarjeta. El apartado del
-documento que explica la red está en `docs/red-neuronal.md` (y su versión para pegar,
-`docs/red-neuronal.docx`).
+documento que explica la red está en `docs/red-neuronal.md`, y el presupuesto y el
+cronograma en `docs/presupuesto-y-cronograma.md`; las versiones en `.docx` para pegar en
+el documento maestro se entregan aparte, no se versionan acá.
 
 ## Los datos de demostración
 
