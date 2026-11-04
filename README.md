@@ -324,7 +324,9 @@ el documento maestro se entregan aparte, no se versionan acá.
 (las de la sección siguiente). De las transacciones, 7 quedan confirmadas y 3
 pendientes, que son los retiros que `POST /bloques` agruparía a continuación. El
 ciclo es el del eje: el capital de constitución entra al ledger, el fondo reparte el
-capital de asociación, los asociados aportan y el fondo les gira retiros.
+capital de asociación, los asociados aportan y el fondo les gira retiros. Si después
+se corre `python -m src.historial_demo`, se suman **12 bloques y 72 transacciones**
+repartidas en doce meses (ver la sección anterior).
 
 | Actor          | Movimiento                                                                                               | Resultado                   |
 | -------------- | -------------------------------------------------------------------------------------------------------- | --------------------------- |
@@ -396,6 +398,24 @@ La clave pública del fondo se imprime con:
 ```text
 <venv> -c "from src.bootstrap import FONDO; print(FONDO)"
 ```
+
+## Más historial para las estadísticas
+
+La semilla deja movimientos de un solo día, que alcanzan para ver la cadena pero no una
+tendencia. Para que la página de estadísticas y la proyección tengan qué mostrar hay un
+segundo paso opcional que agrega **doce meses de aportes y retiros** a las cuentas de
+demostración, con el mismo camino que la aplicación (firma, validación de saldo y bloque
+encadenado):
+
+```text
+<venv> -m src.historial_demo
+```
+
+Es idempotente: si el fondo ya tiene movimientos de hace más de 45 días, no hace nada.
+La historia se agrega al final de la cadena con fechas del pasado, así que los bloques
+nuevos quedan con marcas de tiempo anteriores a las del último bloque que ya existía; la
+verificación sigue siendo válida porque comprueba el encadenamiento, no el orden
+cronológico.
 
 ## Las cuentas de demostración
 

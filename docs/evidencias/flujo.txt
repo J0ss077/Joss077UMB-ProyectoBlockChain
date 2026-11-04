@@ -55,3 +55,9 @@ Comandos, tal como se ejecutaron (con el cliente del equipo):
 Estado de la base después del flujo: 6 wallets, 5 bloques, 11 transacciones, 7 cuentas
 (la de evidencia sigue pendiente de aprobación). El bloque #4 quedó con el hash
 9d5527eb1d0d... y contiene la transacción de 25.
+
+Nota posterior. Después de esta transcripción se sembró el historial de doce meses
+descrito en `src/historial_demo.py` para que la página de estadísticas y la proyección
+tuvieran datos: la base quedó con 17 bloques y 107 transacciones. Los identificadores de
+este documento siguen siendo válidos (la wallet d2e15839 y el bloque #4 no cambiaron);
+sólo cambiaron los conteos.
