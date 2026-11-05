@@ -12,7 +12,7 @@
     <main id="contenido" tabindex="-1" class="acceso-formulario">
         <div>
             <h1 class="titulo-pagina">{{ t("Ingresar") }}</h1>
-            <p class="entradilla">{{ t("Entra con la cuenta que aprobó un administrador.") }}</p>
+            {% if not sesion_abierta %}<p class="entradilla">{{ t("Entra con la cuenta que aprobó un administrador.") }}</p>{% endif %}
         </div>
         {% if error %}
         <div class="motivo" id="error-de-ingreso" role="alert"{% if cuenta_no_habilitada %} data-tono="{{ 'rechazo' if cuenta_rechazada else 'pendiente' }}"{% endif %}>
@@ -24,6 +24,15 @@
             {% endif %}
         </div>
         {% endif %}
+        {% if sesion_abierta %}
+        <div class="motivo" role="status">
+            <p>{{ t("Ya iniciaste sesión.") }}</p>
+            <p>{{ t("Para entrar con otra cuenta, cierra sesión o abre una ventana privada.") }}</p>
+        </div>
+        <form class="formulario" method="post" action="{{ url_for('salir') }}">
+            <button class="boton boton-grande boton-primario" type="submit">{{ t("Cerrar sesión") }}</button>
+        </form>
+        {% else %}
         <form class="formulario" method="post" action="{{ url_for('ingresar') }}">
             <div class="campo">
                 <label for="usuario">{{ t("Usuario") }}</label>
@@ -37,7 +46,10 @@
             </div>
             <button class="boton boton-grande boton-primario" type="submit">{{ t("Ingresar") }}</button>
         </form>
+        {% endif %}
+        {% if not sesion_abierta %}
         <p class="alternativa">{{ t("¿Todavía no tienes cuenta?") }} <a href="{{ url_for('registrarme') }}">{{ t("Regístrate") }}</a></p>
+        {% endif %}
     </main>
     <aside class="acceso-arte arte-cobalto" aria-label="{{ t('Cómo funciona') }}">
         <div>

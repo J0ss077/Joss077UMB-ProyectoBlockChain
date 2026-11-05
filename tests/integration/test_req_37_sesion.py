@@ -248,25 +248,33 @@ def test_req_37_el_administrador_va_a_la_portada_y_el_comun_a_su_tablero(
     assert "Salir" in cuerpo
 
 
-def test_req_37_con_sesion_de_administrador_el_ingreso_lleva_a_la_portada(cliente_admin):
-    """Criterio: con sesión abierta no se vuelve a ver el formulario de ingreso.
+def test_req_37_con_sesion_de_administrador_el_ingreso_avisa_y_no_muestra_el_formulario(
+    cliente_admin,
+):
+    """Criterio: con sesión abierta se avisa y se ofrece cerrarla, sin formulario.
 
     Dos pestañas del mismo navegador comparten la cookie: la segunda no es otra
     cuenta, es la misma sesión. Dejar el formulario a la vista hace que un ingreso
     ajeno —con su motivo de rechazo— se pinte sobre la sesión que no es la suya.
+    El aviso no nombra la cuenta: sólo dice que ya hay una sesión.
     """
     respuesta = cliente_admin.get("/ingresar")
-    assert respuesta.status_code == 302
-    assert respuesta.headers["Location"] == "/"
+    assert respuesta.status_code == 200
+    cuerpo = respuesta.get_data(as_text=True)
+    assert "Ya iniciaste sesión." in cuerpo
+    assert "cierra sesión o abre una ventana privada" in cuerpo
+    assert 'name="usuario"' not in cuerpo
     # El registro sigue abierto para el administrador: da de alta cuentas desde ahí.
     assert cliente_admin.get("/registrarme").status_code == 200
 
 
-def test_req_37_con_sesion_comun_el_ingreso_lleva_al_tablero(cliente_comun):
-    """Criterio: el común tampoco vuelve al ingreso ni al registro."""
+def test_req_37_con_sesion_comun_el_ingreso_avisa_y_no_muestra_el_formulario(cliente_comun):
+    """Criterio: el común ve el mismo aviso, y el registro lo devuelve a su tablero."""
     respuesta = cliente_comun.get("/ingresar")
-    assert respuesta.status_code == 302
-    assert respuesta.headers["Location"] == "/mi-tablero"
+    assert respuesta.status_code == 200
+    cuerpo = respuesta.get_data(as_text=True)
+    assert "Ya iniciaste sesión." in cuerpo
+    assert 'name="usuario"' not in cuerpo
     assert cliente_comun.get("/registrarme").headers["Location"] == "/mi-tablero"
 
 
@@ -280,8 +288,8 @@ def test_req_37_el_ingreso_ajeno_no_reemplaza_la_sesion_abierta(cliente_comun, c
         "/ingresar", data={"usuario": "beto", "contrasena": CONTRASENA_DE_PRUEBA}
     )
 
-    assert respuesta.status_code == 302
-    assert respuesta.headers["Location"] == "/mi-tablero"
+    assert respuesta.status_code == 200
+    assert "Ya iniciaste sesión." in respuesta.get_data(as_text=True)
     # Sigue siendo la misma cuenta: el ingreso no reemplazó la sesión.
     cuerpo = cliente_comun.get("/mi-tablero").get_data(as_text=True)
     assert "ana" in cuerpo

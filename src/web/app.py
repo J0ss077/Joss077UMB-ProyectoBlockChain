@@ -321,11 +321,12 @@ def create_app(
         decide a qué pantalla se va después, y la sesión no se abre hasta después
         de autenticar.
 
-        Con la sesión ya abierta no se muestra: se vuelve a la pantalla del rol, y
-        así el motivo de rechazo de otra cuenta no aparece sobre una sesión ajena.
+        Con la sesión ya abierta no se muestra el formulario: se avisa que ya hay
+        sesión y se ofrece cerrarla. Así el motivo de rechazo de otra cuenta no
+        aparece sobre una sesión ajena.
         """
         if g.user is not None:
-            return redirect(_inicio_de(g.user))
+            return render_template("ingreso.html", error=None, usuario="", sesion_abierta=True)
         if request.method == "GET":
             return render_template("ingreso.html", error=None, usuario="")
         nombre = request.form.get("usuario", "")
