@@ -29,8 +29,12 @@ TASA_DE_APRENDIZAJE = 0.003
 TASA_DE_ABANDONO = 0.05
 
 # El modelo entrenado viaja con el repositorio: es chico y así la aplicación puede
-# proyectar sin que nadie tenga que entrenar antes.
-RUTA_DEL_MODELO = Path("red_neuronal") / "modelos" / "proyeccion.keras"
+# proyectar sin que nadie tenga que entrenar antes. La ruta se arma desde este archivo
+# y no desde el directorio de trabajo: lanzada desde otra carpeta, la proyección
+# desaparecía en silencio.
+RUTA_DEL_MODELO = (
+    Path(__file__).resolve().parents[1] / "red_neuronal" / "modelos" / "proyeccion.keras"
+)
 
 
 def construir_modelo(
@@ -77,7 +81,12 @@ def construir_modelo(
 
 
 def cargar_modelo(ruta: Path | None = None):
-    """Carga el modelo entrenado de `red_neuronal/modelos/proyeccion.keras`."""
+    """Carga el modelo entrenado de `red_neuronal/modelos/proyeccion.keras`.
+
+    `safe_mode=True` se declara en vez de confiar en el valor por defecto de Keras:
+    el archivo es un zip con pesos y configuración, y esta llamada no debe aceptar
+    capas que ejecuten código. Es el único lugar del proyecto que abre el modelo.
+    """
     import tensorflow as tf
 
-    return tf.keras.models.load_model(ruta or RUTA_DEL_MODELO)
+    return tf.keras.models.load_model(ruta or RUTA_DEL_MODELO, safe_mode=True)

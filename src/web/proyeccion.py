@@ -18,6 +18,9 @@ de IA.
 from __future__ import annotations
 
 import json
+import logging
+import threading
+import zipfile
 from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
@@ -27,19 +30,20 @@ from uuid import UUID
 from red_neuronal.caracteristicas import Movimiento, vector
 from src.domain.transaction import Transaction, TransactionStatus
 
-# El modelo entrenado viaja con el repositorio. La ruta es la misma que usa el
-# entrenamiento, así que no hay dos nombres para el mismo archivo.
-RUTA_DEL_MODELO = "red_neuronal/modelos/proyeccion.keras"
+registro = logging.getLogger(__name__)
 
 # El modelo se cachea en el proceso. `_no_disponible` evita reintentar la carga en cada
 # petición cuando falta TensorFlow o el archivo: sin esa bandera, cada visita pagaría
 # el mismo error.
 _modelo: Any | None = None
 _no_disponible = False
+# La precarga del arranque y la primera visita pueden coincidir: sin el cerrojo se
+# cargaría TensorFlow dos veces y una de las dos copias quedaría sin usar.
+_cerrojo = threading.Lock()
 
 # El resumen que deja el entrenamiento. La tarjeta cita de ahí cuántas cuentas y meses
 # tiene el dataset, para que el texto no quede desactualizado si se regenera.
-RUTA_DE_RESULTADOS = Path("red_neuronal") / "resultados.json"
+RUTA_DE_RESULTADOS = Path(__file__).resolve().parents[2] / "red_neuronal" / "resultados.json"
 _origen: dict[str, int] | None = None
 
 
@@ -70,15 +74,20 @@ def _cargar() -> Any | None:
     global _modelo, _no_disponible
     if _modelo is not None or _no_disponible:
         return _modelo
-    try:
-        from red_neuronal.modelo import cargar_modelo
+    with _cerrojo:
+        if _modelo is not None or _no_disponible:
+            return _modelo
+        try:
+            from red_neuronal.modelo import cargar_modelo
 
-        _modelo = cargar_modelo()
-    except (ImportError, OSError, ValueError):
-        # Sin TensorFlow, sin archivo o con un modelo de otra versión: la página sigue
-        # sin proyección en vez de romperse.
-        _no_disponible = True
-        _modelo = None
+            _modelo = cargar_modelo()
+        except (ImportError, OSError, ValueError, zipfile.BadZipFile) as error:
+            # Sin TensorFlow, sin archivo, con un modelo de otra versión o con un zip
+            # truncado: la página sigue sin proyección en vez de romperse. `BadZipFile`
+            # no hereda de `OSError`, y sin él cada visita reintentaba y devolvía 500.
+            registro.warning("el modelo no se pudo cargar: %s", error)
+            _no_disponible = True
+            _modelo = None
     return _modelo
 
 
@@ -127,13 +136,20 @@ def proyectar(
     # Las proporciones se vuelven a pesos con la escala de esta cuenta, que es lo que
     # permite que el mismo modelo sirva para un fondo y para una persona.
     caracteristicas, escala = vector(movimientos_de(historial, propia), saldo, ahora)
-    prediccion = modelo.predict(_entrada(caracteristicas), verbose=0)[0]
+    try:
+        prediccion = modelo.predict(_entrada(caracteristicas), verbose=0)[0]
+    except Exception:
+        registro.warning("el modelo no pudo predecir; la página sigue sin tarjeta")
+        return None
     recibido = max(0.0, float(prediccion[0]) * escala)
     enviado = max(0.0, float(prediccion[1]) * escala)
     # La misma regla que aplica el envío (REQ-05): no se puede girar más de lo que hay.
     # Sin este tope, la red puede estimar un envío mayor que el saldo y la tarjeta
     # mostraría algo que el sistema nunca permitiría.
-    enviado = min(enviado, float(saldo) + recibido)
+    # El tope puede dar negativo cuando el saldo lo es: la cuenta del constituyente
+    # queda en negativo a propósito, y sin el `max` la tarjeta mostraría un envío
+    # estimado de menos tres mil. El mínimo es cero, como el de arriba.
+    enviado = max(0.0, min(enviado, float(saldo) + recibido))
     return {
         "recibido": Decimal(f"{recibido:.2f}"),
         "enviado": Decimal(f"{enviado:.2f}"),

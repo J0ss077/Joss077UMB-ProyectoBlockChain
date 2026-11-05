@@ -81,7 +81,7 @@ el encabezado de `src/bootstrap.py` y en el paso 4 del README.
 ## 3. Capturas de pantalla
 
 Están en `docs/evidencias/capturas/` y son la aplicación de este repositorio
-funcionando contra PostgreSQL, no un diseño aparte. Las diecinueve de la interfaz se
+funcionando contra PostgreSQL, no un diseño aparte. Las veinte de la interfaz se
 tomaron con un navegador sin interfaz sobre las páginas que sirve la propia aplicación,
 con las animaciones de entrada detenidas para que se vea el estado final; las dos de
 terminal son capturas de pantalla de una sesión real de `psql` contra la base de la
@@ -89,28 +89,28 @@ aplicación. Las veintidós están hechas.
 
 | Archivo | Qué muestra | Estado |
 | --- | --- | --- |
-| `01-ingreso.png` | La pantalla de ingreso con el tema de la aplicación | ✅ |
-| `02-portada-admin.png` | Portada del administrador: conteos, cadena, últimas transacciones y panel de wallets con saldos | ✅ |
-| `03-wallets.png` | La gestión de wallets con la clave pública y el botón de copiar | ✅ |
-| `04-transacciones-rechazo.png` | El formulario de transacción con un monto inválido y el mensaje que explica el rechazo | ✅ |
-| `05-bloques.png` | El cierre de bloque con el pool en espera | ✅ |
-| `06-verificar.png` | El dictamen de integridad de la cadena | ✅ |
-| `07-pendientes.png` | La cola de aprobación con una cuenta pendiente y su fecha de registro | ✅ |
-| `08-tablero-comun.png` | El tablero del usuario común: saldo y envío | ✅ |
-| `09-estadisticas-comun.png` | Las estadísticas propias: filtros, cifras, gráficas y la tarjeta de proyección del próximo mes | ✅ |
-| `10-estadisticas-admin.png` | El selector del administrador y las estadísticas de un usuario, con su proyección | ✅ |
-| `11-asistente.png` | La pestaña del ayudante | ✅ |
-| `12-tema-oscuro.png` | La misma pantalla de estadísticas con el tema oscuro | ✅ |
-| `13-error-503.png` | La página de error cuando la base no responde | ✅ |
-| `14-flujo-wallet-creada.png` | Una wallet recién registrada, con su identificador y su clave pública | ✅ |
-| `15-flujo-transaccion-pool.png` | La transacción recién propuesta, «En el pool» | ✅ |
-| `16-flujo-bloque-creado.png` | El bloque #147 creado y encadenado al hash del #146 | ✅ |
-| `17-flujo-cadena-verificada.png` | La verificación: «La cadena es válida» | ✅ |
-| `18-alteracion-detectada.png` | La misma verificación con una fila alterada por `psql`: «no es válida», bloque #147 | ✅ |
-| `19-alteracion-revertida.png` | Vuelta a «La cadena es válida» después de reponer el dato | ✅ |
-| `20-consulta-psql.png` | La terminal con `psql -f db/consultas.sql`: conteos por tabla, saldos por wallet y la cadena eslabonada | ✅ |
-| `21-registro-en-bd.png` | `SELECT` de la cuenta `evidencia-fase4` con su estado y su fecha de registro | ✅ |
-| `22-mis-contactos.png` | La agenda del usuario común con sus contactos y el movimiento de cada uno | ✅ |
+| `01-ingreso.png` | La pantalla de ingreso con el tema de la aplicación | Hecha |
+| `02-portada-admin.png` | Portada del administrador: conteos, cadena, últimas transacciones y panel de wallets con saldos | Hecha |
+| `03-wallets.png` | La gestión de wallets con la clave pública y el botón de copiar | Hecha |
+| `04-transacciones-rechazo.png` | El formulario de transacción con un monto inválido y el mensaje que explica el rechazo | Hecha |
+| `05-bloques.png` | El cierre de bloque con el pool en espera | Hecha |
+| `06-verificar.png` | El dictamen de integridad de la cadena | Hecha |
+| `07-pendientes.png` | La cola de aprobación con una cuenta pendiente y su fecha de registro | Hecha |
+| `08-tablero-comun.png` | El tablero del usuario común: saldo y envío | Hecha |
+| `09-estadisticas-comun.png` | Las estadísticas propias: filtros, cifras, gráficas y la tarjeta de proyección del próximo mes | Hecha |
+| `10-estadisticas-admin.png` | El selector del administrador y las estadísticas de un usuario, con su proyección | Hecha |
+| `11-asistente.png` | La pestaña del ayudante | Hecha |
+| `12-tema-oscuro.png` | La misma pantalla de estadísticas con el tema oscuro | Hecha |
+| `13-error-503.png` | La página de error cuando la base no responde | Hecha |
+| `14-flujo-wallet-creada.png` | Una wallet recién registrada, con su identificador y su clave pública | Hecha |
+| `15-flujo-transaccion-pool.png` | La transacción recién propuesta, «En el pool» | Hecha |
+| `16-flujo-bloque-creado.png` | El bloque #147 creado y encadenado al hash del #146 | Hecha |
+| `17-flujo-cadena-verificada.png` | La verificación: «La cadena es válida» | Hecha |
+| `18-alteracion-detectada.png` | La misma verificación con una fila alterada por `psql`: «no es válida», bloque #147 | Hecha |
+| `19-alteracion-revertida.png` | Vuelta a «La cadena es válida» después de reponer el dato | Hecha |
+| `20-consulta-psql.png` | La terminal con `psql -f db/consultas.sql`: conteos por tabla, saldos por wallet y la cadena eslabonada | Hecha |
+| `21-registro-en-bd.png` | `SELECT` de la cuenta `evidencia-fase4` con su estado y su fecha de registro | Hecha |
+| `22-mis-contactos.png` | La agenda del usuario común con sus contactos y el movimiento de cada uno | Hecha |
 
 ## 4. Dificultades técnicas encontradas
 
@@ -198,9 +198,9 @@ identificadores está en `docs/evidencias/flujo.txt`.
 
 | Paso | Ruta | Qué quedó | Captura |
 | --- | --- | --- | --- |
-| Registrar wallet | `POST /wallets` | Wallet `ffa65493…` con su clave pública `034d25fe…` y saldo 0 | `14-flujo-wallet-creada.png` |
+| Registrar wallet | `POST /wallets` | Wallet `f441b231…` con su clave pública `028cdfa1…` y saldo 0 | `14-flujo-wallet-creada.png` |
 | Proponer transacción | `POST /transacciones` | 25 desde `fondo` hacia la wallet nueva, estado «En el pool» | `15-flujo-transaccion-pool.png` |
-| Cerrar bloque | `POST /bloques` | Bloque **#147**, hash `b6f747ce…`, encadenado al `73e55de1…` del #146 | `16-flujo-bloque-creado.png` |
+| Cerrar bloque | `POST /bloques` | Bloque **#147**, hash `83b6a21e…`, encadenado al `b6f747ce…` del #146 | `16-flujo-bloque-creado.png` |
 | Verificar | `GET /verificar` | «La cadena es válida. Cada hash coincide con su contenido y con el del bloque anterior.» | `17-flujo-cadena-verificada.png` |
 
 Y la respuesta ante una alteración hecha **por fuera de la aplicación** (un `UPDATE` con
@@ -222,17 +222,16 @@ alteración y rechazos, todas en verde (sección 8).
 
 ## 8. Resultados de las pruebas ejecutadas
 
-`docs/evidencias/pruebas.txt` guarda la salida real de la corrida del 4 de noviembre de
-2026, contra una base PostgreSQL aparte (no la de la aplicación) con el esquema de
-`db/init.sql`:
+`docs/evidencias/pruebas.txt` guarda la salida real de la corrida contra una base
+PostgreSQL 16 aparte (no la de la aplicación) con el esquema de `db/init.sql`:
 
 | Prueba | Resultado |
 | --- | --- |
-| Suite completa (`pytest -q`) | **350 passed en 110 s** (incluye las 9 de la proyección) |
+| Suite completa (`pytest -q`) | **386 passed y 1 skipped en 80 s** (incluye las 12 de la proyección; la saltada es la del dataset, que necesita pandas) |
 | Firma del emisor contra una ajena (`test_req_02_firma.py`) | Pasa |
 | Firma repetida rechazada por el motor (`test_req_03_firma_repetida.py`) | Pasa (3) |
 | Alteración y borrado directos detectados (`test_req_10_alteracion.py`) | Pasa (3) |
-| Rechazos del motor y del dominio (`test_req_11_rechazo_en_base.py`) | Pasa (13) |
+| Rechazos del motor y del dominio (`test_req_11_rechazo_en_base.py`) | Pasa (11) |
 
 Para reproducirlas sin tocar los datos de la aplicación hace falta una base aparte:
 `TEST_DATABASE_URL` en el `.env` (ver la dificultad 7).

@@ -99,7 +99,7 @@
     // ── Filtros ───────────────────────────────────────────────────────────────
     const filtros = document.querySelector("[data-filtros]");
     const limpiar = filtros.querySelector("[data-limpiar]");
-    const POR_DEFECTO = { periodo: "todo", tipo: "todo", estado: "todo", persona: "todo" };
+    const POR_DEFECTO = { periodo: "todo", tipo: "todo", estado: "todo", persona: "" };
     const leerFiltros = () => {
         const valores = {};
         for (const nombre of Object.keys(POR_DEFECTO)) {
@@ -524,7 +524,7 @@
         const [desde, hasta] = rango(f.periodo);
         const enTiempo = todos.filter((m) => m.fecha >= desde && m.fecha <= hasta);
         const sinEstado = enTiempo.filter(
-            (m) => (f.tipo === "todo" || m.tipo === f.tipo) && (f.persona === "todo" || m.persona === f.persona),
+            (m) => (f.tipo === "todo" || m.tipo === f.tipo) && (f.persona === "" || m.persona === f.persona),
         );
         const filtrados = sinEstado.filter((m) => f.estado === "todo" || m.estado === f.estado);
         limpiar.hidden = Object.entries(POR_DEFECTO).every(([clave, valor]) => f[clave] === valor);

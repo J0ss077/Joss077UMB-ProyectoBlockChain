@@ -40,5 +40,5 @@ Las capturas 14 a 19 de docs/evidencias/capturas/ son las pantallas de estos pas
    GET /verificar  ->  "La cadena es válida" otra vez.
    Captura: 19-alteracion-revertida.png
 
-Estado de la base después del flujo: 7 wallets, 148 bloques y 237 transacciones.
+Estado de la base después del flujo: 8 wallets, 148 bloques y 237 transacciones.
 El bloque #147 quedó con el hash 83b6a21e6184... y contiene la transacción de 25.

@@ -20,7 +20,13 @@ Uso:
 from __future__ import annotations
 
 from src.accounts.almacen import CarpetaDeFotos
-from src.accounts.service import CambioDeContrasenaInvalido, ContactoInvalido, Cuentas
+from src.accounts.service import (
+    MENSAJE_CONTACTO_REPETIDO,
+    MENSAJE_SOLICITUD_YA_PENDIENTE,
+    CambioDeContrasenaInvalido,
+    ContactoInvalido,
+    Cuentas,
+)
 from src.persistence.factory import carpeta_de_fotos, transaction
 
 # La agenda de cada cuenta de demostración. El fondo no agenda a nadie: es la
@@ -52,9 +58,12 @@ def sembrar(cuentas: Cuentas) -> tuple[int, int]:
             try:
                 cuentas.agregar_contacto(usuario.id, contacto)
                 agregados += 1
-            except ContactoInvalido:
-                # Ya estaba en la agenda o la cuenta no cumple: no es un error de la
-                # semilla, es que este paso ya se hizo.
+            except ContactoInvalido as error:
+                # «Ya está en tus contactos» es el único caso que significa que este
+                # paso ya se hizo. Cualquier otro (la cuenta no existe, no es común,
+                # es la propia) es un fallo de la semilla y no se puede esconder.
+                if str(error) != MENSAJE_CONTACTO_REPETIDO:
+                    raise
                 continue
 
     solicitudes = 0
@@ -65,9 +74,11 @@ def sembrar(cuentas: Cuentas) -> tuple[int, int]:
                 usuario.id, CONTRASENA_ACTUAL, CONTRASENA_NUEVA
             )
             solicitudes = 1
-        except CambioDeContrasenaInvalido:
-            # Ya hay una solicitud pendiente: la cola del administrador ya la muestra.
-            pass
+        except CambioDeContrasenaInvalido as error:
+            # Sólo «ya hay una pendiente» es idempotencia; si la contraseña actual
+            # cambió, el mensaje de la cola sería falso y hay que verlo.
+            if str(error) != MENSAJE_SOLICITUD_YA_PENDIENTE:
+                raise
     return agregados, solicitudes
 
 

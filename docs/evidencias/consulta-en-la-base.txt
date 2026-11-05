@@ -1,6 +1,8 @@
 Evidencia de consulta sobre la base de datos que usa la aplicación.
 Fecha: 2026-11-04 20:51:56 -05
-Comando: psql "$DATABASE_URL" -f db/consultas.sql
+Comando: psql "$DATABASE_URL" -f db/consultas.sql para las consultas del archivo.
+         El registro, la wallet del flujo y los usuarios de demostración se
+         consultaron a mano con psql, en la misma sesión.
 Servidor: PostgreSQL 18.6 on x86_64-pc-linux-gnu
 
 --- Registro hecho desde el formulario público (POST /registrarme) ---

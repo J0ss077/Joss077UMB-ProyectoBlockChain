@@ -139,6 +139,27 @@ def test_el_envio_estimado_no_supera_lo_que_hay(monkeypatch):
     assert salida["neto"] == Decimal("-500.00")
 
 
+def test_con_saldo_negativo_el_envio_no_se_vuelve_negativo(monkeypatch):
+    """El constituyente tiene saldo negativo y es una cuenta común elegible.
+
+    El tope del envío es «saldo + lo que entra», y con saldo negativo ese tope es
+    negativo: sin recortarlo, la tarjeta mostraba un envío de menos tres mil y un
+    neto positivo, que es justo lo contrario de lo que el sistema permitiría.
+    """
+    _sin_numpy(monkeypatch)
+
+    class Modelo:
+        def predict(self, entradas, verbose=0):
+            return [[1.8, 9.0]]
+
+    monkeypatch.setattr(proyeccion, "_cargar", lambda: Modelo())
+
+    salida = proyeccion.proyectar([], Decimal("-3000.00"), uuid4(), ahora=AHORA)
+
+    assert salida["enviado"] >= 0, salida
+    assert salida["neto"] == salida["recibido"] - salida["enviado"]
+
+
 def test_una_prediccion_negativa_se_recorta_a_cero(monkeypatch):
     """El modelo puede devolver un valor negativo; un monto recibido no puede serlo."""
     _sin_numpy(monkeypatch)

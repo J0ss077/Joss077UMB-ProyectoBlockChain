@@ -13,6 +13,7 @@
             {% if es_admin %}
             <h1 class="titulo-pagina" id="titulo-estadisticas">{% if elegido %}{{ t("Los movimientos de {nombre}", nombre=elegido.username) }}{% else %}{{ t("Elige a quién mirar") }}{% endif %}</h1>
             <p class="entradilla">{{ t("Mira cómo se mueve el dinero de cada usuario: cuánto recibe, cuánto envía y con quién.") }}</p>
+            {% if elegido %}<p class="ayuda">{{ t("Estás viendo la cuenta de {nombre}: sus movimientos y las personas con las que opera. El administrador puede ver ese detalle; las demás cuentas no.", nombre=elegido.username) }}</p>{% endif %}
             {% else %}
             <h1 class="titulo-pagina" id="titulo-estadisticas">{{ t("Cómo se mueve tu dinero") }}</h1>
             <p class="entradilla">{{ t("Cuánto recibes, cuánto envías y con quién. Usa los filtros para mirar un tiempo o una persona.") }}</p>
@@ -91,7 +92,7 @@
         <div class="campo est-filtro">
             <label for="filtro-persona">{{ t("Persona") }}</label>
             <select id="filtro-persona" name="persona">
-                <option value="todo">{{ t("Todas") }}</option>
+                <option value="">{{ t("Todas") }}</option>
                 {% for persona in movimientos|map(attribute="persona")|unique|sort %}
                 <option value="{{ persona }}">{{ t(persona) }}</option>
                 {% endfor %}
@@ -106,7 +107,7 @@
         <div class="mosaico est-cifra"><p class="mes-etiqueta">{{ t("Diferencia") }}</p><p class="est-numero" data-cifra="balance">{{ cantidad(resumen.balance) }}</p><span class="metadato">{{ t("lo que entró menos lo que salió") }}</span></div>
         <div class="mosaico est-cifra"><p class="mes-etiqueta">{{ t("Movimientos") }}</p><p class="est-numero" data-cifra="movimientos">{{ resumen.movimientos }}</p><span class="metadato" data-nota="movimientos"></span></div>
     </section>
-    <p class="ayuda est-ancho est-nota">{{ t("Las sumas cuentan sólo lo completado: lo que está en espera todavía no se movió y lo rechazado nunca se movió.") }}</p>
+    <p class="ayuda est-ancho est-nota">{{ t("Las sumas cuentan sólo lo completado: lo que está en espera todavía no se movió y lo rechazado nunca se movió.") }}{% if cortado %} {{ t("Las cifras cubren los últimos {n} movimientos de la cuenta; antes de eso hay historial que no entra en la página.", n=tope) }}{% endif %}</p>
 
     {% if proyeccion %}
     {# La proyección la calcula la red entrenada dentro de la aplicación, en cada visita. El texto dice con qué dataset se entrenó, con las cifras de resultados.json. #}
@@ -115,8 +116,8 @@
             <h2 id="titulo-proyeccion">{{ t("Proyección del próximo mes") }}</h2>
         </div>
         <div class="est-cifras">
-            <div class="mosaico est-cifra entra"><p class="mes-etiqueta">{{ t("Recibirías") }}</p><p class="est-numero">{{ cantidad(proyeccion.recibido) }}</p></div>
-            <div class="mosaico est-cifra sale"><p class="mes-etiqueta">{{ t("Enviarías") }}</p><p class="est-numero">{{ cantidad(proyeccion.enviado) }}</p></div>
+            <div class="mosaico est-cifra entra"><p class="mes-etiqueta">{{ t("Recibiría") if es_admin and elegido else t("Recibirías") }}</p><p class="est-numero">{{ cantidad(proyeccion.recibido) }}</p></div>
+            <div class="mosaico est-cifra sale"><p class="mes-etiqueta">{{ t("Enviaría") if es_admin and elegido else t("Enviarías") }}</p><p class="est-numero">{{ cantidad(proyeccion.enviado) }}</p></div>
             <div class="mosaico est-cifra"><p class="mes-etiqueta">{{ t("Neto") }}</p><p class="est-numero">{{ cantidad(proyeccion.neto) }}</p></div>
         </div>
         {% if origen_del_modelo %}

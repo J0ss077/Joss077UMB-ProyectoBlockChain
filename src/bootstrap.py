@@ -34,6 +34,7 @@ from src.domain.transaction import Transaction, TransactionStatus
 from src.domain.wallet import CURVE, Wallet, encrypt_private_key, public_key_hex, sign_payload
 from src.emision import CONSTITUYENTE_ID, CONSTITUYENTE_SEED
 from src.errores import NoHayConexion
+from src.persistence.conexion import abrir
 from src.persistence.factory import admin_password, database_url, ledger, transaction
 
 # Semilla del par de llaves del fondo: fijarla hace que su clave pública sea la
@@ -111,7 +112,7 @@ def tablas_faltantes() -> tuple[str, ...]:
     vacía conecta bien y falla recién en la primera consulta. Abre su propia conexión
     porque el arranque es el punto de composición y no tiene una a mano. No escribe.
     """
-    with psycopg.connect(database_url()) as conexion:
+    with abrir(database_url()) as conexion:
         filas = conexion.execute(
             """
             SELECT table_name

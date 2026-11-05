@@ -58,7 +58,7 @@ macOS y Linux:
 .venv/bin/python -m pip install -r requirements.txt
 ```
 
-Si su instalación de Python no dejó `pip` dentro del entorno virtual, ejecute una vez
+Si la instalación de Python no dejó `pip` dentro del entorno virtual, hay que ejecutar una vez
 `<venv> -m ensurepip --upgrade` y repita la instalación.
 
 ### 2. Crear el archivo `.env`
@@ -136,7 +136,7 @@ Para comprobar que el contenedor está sano:
 docker compose ps
 ```
 
-Si el contenedor no llega a estar sano, revise que `db/init.sql` sea legible por el
+Si el contenedor no llega a estar sano, conviene comprobar que `db/init.sql` sea legible por el
 usuario `postgres` del contenedor: el punto de entrada lee el guion con ese usuario y,
 si el archivo quedó con permisos `600` (un `git checkout` bajo un `umask` restrictivo
 los reproduce), falla con `psql: error: /docker-entrypoint-initdb.d/01_init.sql:
@@ -230,7 +230,7 @@ pantalla (RF-5).
 lista las wallets registradas: la clave pública en forma corta y monoespaciada, con el
 valor completo en el atributo `title` y un botón que lo copia, además del enlace a su
 historial. En la portada del administrador el panel muestra también el saldo disponible
-de cada wallet, que es la celda de la matriz de permisos del diseño §8. El CU-05 se
+de cada wallet, que es la celda de la matriz de permisos del diseño de usuarios. El CU-05 se
 alcanza desde ese panel: no hay que teclear el identificador a mano.
 
 ### Las rutas de la sesión y del usuario común
@@ -319,8 +319,11 @@ qué evidencias acompañan la entrega está en `docs/evidencias-fase4.md`.
 
 ## La proyección de las estadísticas
 
-La página de estadísticas suma, cuenta y grafica con aritmética exacta sobre el
-historial; eso no lo calcula ningún modelo. Encima de eso muestra una **proyección del
+La página de estadísticas suma, cuenta y grafica sobre el historial con `Decimal` en el
+servidor; eso no lo calcula ningún modelo. Los totales viajan como texto y el resumen
+pintado no pasa por `float`; los filtros que se mueven en el navegador suman en coma
+flotante sobre esos montos, que a la escala del proyecto no pierde centavos pero no es
+exacto de punta a punta. Encima de eso muestra una **proyección del
 próximo mes** (cuánto se espera recibir y enviar) que la estima una red neuronal
 entrenada con TensorFlow y ejecutada **dentro de la aplicación**, en cada visita.
 
@@ -500,7 +503,7 @@ de las wallets de la semilla.
 
 | Usuario         | Rol             | Wallet que maneja    | Contraseña                          |
 | --------------- | --------------- | -------------------- | ----------------------------------- |
-| `admin`         | `administrador` | ninguna              | la de `ADMIN_PASSWORD` en su `.env` |
+| `admin`         | `administrador` | ninguna              | la de `ADMIN_PASSWORD` en el `.env` |
 | `constituyente` | `usuario`       | la del constituyente | `demostracion`                      |
 | `fondo`         | `usuario`       | la del fondo         | `demostracion`                      |
 | `asociado1`     | `usuario`       | un asociado          | `demostracion`                      |
@@ -529,19 +532,19 @@ Con la base sembrada y la aplicación corriendo en `http://127.0.0.1:5000`:
    ejemplo `persona-demo`) y una contraseña de al menos ocho caracteres. La pantalla
    dice que la cuenta está esperando aprobación y no abre sesión (REQ-30).
 2. **El administrador la aprueba.** Se abre «Ingresar», se entra con el usuario `admin` y la
-   contraseña de `ADMIN_PASSWORD`, y vaya a «Pendientes». La cuenta registrada
-   aparece con su usuario y su fecha; pulse «Aprobar». La aprobación crea su wallet y
+   contraseña de `ADMIN_PASSWORD`, y se abre «Pendientes». La cuenta registrada
+   aparece con su usuario y su fecha; se pulsa «Aprobar». La aprobación crea su wallet y
    le acredita el saldo de bienvenida de 1000 en un bloque nuevo (REQ-33).
 3. **La persona ingresa** con el usuario y la contraseña del registro. Su tablero
    muestra el saldo de bienvenida (`1000.00000000`) y el crédito confirmado.
-4. **Manda un envío.** En el formulario del tablero escriba como destinatario el
+4. **Manda un envío.** En el formulario del tablero se escribe como destinatario el
    usuario de una cuenta de demostración, por ejemplo `fondo`, y un monto menor que su
    saldo, por ejemplo `125.00000000`. El envío queda pendiente y el saldo disponible
    baja a `875.00000000`.
 5. **La persona ve el envío en su historial.** «Mi historial» lista la transacción con
    estado `pending` y sin bloque, debajo del dictamen de la cadena.
 6. **El administrador agrupa el bloque.** Se cierra la sesión de la persona, se entra como
-   `admin`, abra «Cerrar bloque» y agrupe el pool. El envío queda confirmado en un
+   `admin`, se abre «Cerrar bloque» y se agrupa el pool. El envío queda confirmado en un
    eslabón nuevo, junto con las pendientes que ya tenía la semilla.
 7. **La persona vuelve a entrar** y en «Mi historial» ve la misma transacción con
    estado `confirmed` y el índice del bloque que la agrupa.
@@ -556,12 +559,14 @@ Con la base sembrada y la aplicación corriendo en `http://127.0.0.1:5000`:
 - **La autoría no es criptográfica.** Las llaves privadas viven en el servidor,
   cifradas con la `MASTER_KEY`; el administrador puede firmar en nombre de cualquier
   usuario. La integridad del registro no depende de eso —una transacción confirmada
-  que se altere se detecta, firme quien firme—, pero la autoría sí (diseño §12).
+  que se altere se detecta, firme quien firme—, pero la autoría sí (límite declarado en el
+diseño de usuarios).
 - **No hay protección CSRF.** Los formularios no llevan token. La cookie de sesión
   viaja con `SameSite=Lax`, que reduce el riesgo de un POST desde otro sitio, pero no
-  reemplaza una defensa CSRF de verdad (diseño §10).
+  reemplaza una defensa CSRF de verdad (límite declarado en el diseño de usuarios).
 - **No hay límite de intentos de ingreso.** Se puede probar contraseñas sin tope; el
-  costo de `scrypt` encarece cada intento, pero no limita la cantidad (diseño §10).
+  costo de `scrypt` encarece cada intento, pero no limita la cantidad (límite declarado en el
+diseño de usuarios).
 - **El motivo del rechazo de una transacción no se persiste.** La tabla `transactions`
   no tiene columna para el motivo: se muestra en la respuesta del envío que lo produjo
   y, al volver al historial, la fila `rejected` aparece sin él. Los motivos que el
@@ -583,7 +588,7 @@ propios: `DATABASE_URL` apuntando a la base de pruebas, `SESSION_SECRET` y
 vez de omitirse en silencio.
 
 Las pruebas de integración vacían las tablas antes de cada caso. Para no perder los
-datos de la aplicación, defina `TEST_DATABASE_URL` en su `.env` con una base aparte
+datos de la aplicación, se define `TEST_DATABASE_URL` en el `.env` con una base aparte
 en el mismo PostgreSQL (creada una vez y con `db/init.sql` aplicado): con ella, la
 suite usa esa base y no toca la de `DATABASE_URL`. Las fotos de perfil de las
 pruebas van siempre a una carpeta temporal, nunca a `FOTOS_DIR`.
@@ -597,7 +602,7 @@ La suite incluye las pruebas de reglas, las de integración contra PostgreSQL y
 que cada uno de los 39 requerimientos tiene una prueba `test_req_NN_` (REQ-17, REQ-20
 y REQ-23 incluidos).
 
-Si prefiere correr solo la integración:
+Para correr solo la integración:
 
 ```text
 <venv> -m pytest tests/integration -v
@@ -634,7 +639,7 @@ tiene `psql` instalado, el equivalente es
 `psql "$DATABASE_URL" -c "WITH objetivo AS (...) UPDATE ...;"` (en PowerShell,
 `psql $env:DATABASE_URL -c "..."`).
 
-2. Inicie sesión como administrador y abra `http://127.0.0.1:5000/verificar` en el
+2. Se inicia sesión como administrador y se abre `http://127.0.0.1:5000/verificar` en el
    navegador. La ruta exige administrador (REQ-38): sin sesión redirige al ingreso, así
    que un `curl` anónimo no sirve para esta comprobación. La cuenta `admin` y su
    contraseña están en «Las cuentas de demostración».
@@ -645,7 +650,7 @@ verificación recalcula el hash de cada bloque con sus transacciones y lo compar
 el guardado (REQ-10), y no escribe nada (REQ-22).
 
 La alteración deja la base modificada a propósito. Para volver a los datos de
-demostración, borre el volumen y vuelva a sembrar: `docker compose down -v`,
+demostración, se borra el volumen y se vuelve a sembrar: `docker compose down -v`,
 `docker compose up -d` (o con Podman) y `<venv> -m src.bootstrap`.
 
 ## Sabotaje guiado
@@ -746,7 +751,7 @@ confirmó completa o no ocurrió.
 **Apagar PostgreSQL 16.** `docker compose down` (o `podman compose down`) quita el
 contenedor **y conserva los datos**: el volumen `postgres_data` sigue en el equipo, así
 que el próximo `docker compose up -d` levanta el mismo ledger. `docker compose down -v`
-es el que borra el volumen y, con él, las cuatro tablas. Tras borrarlo, el esquema de
+es el que borra el volumen y, con él, las siete tablas. Tras borrarlo, el esquema de
 `db/init.sql` se vuelve a aplicar solo en el próximo `up` (el punto de entrada de la
 imagen lo lee al crear el volumen de nuevo), la base queda vacía y hay que volver a
 sembrar la demostración:
@@ -760,7 +765,7 @@ docker compose up -d
 **Deshacer la alteración de la demostración.** La alteración a mano del apartado anterior
 cambia una fila sin pasar por la cadena, y la aplicación no tiene una operación que la
 deshaga: el camino de vuelta es el reinicio limpio de arriba —borrar el volumen, `up` y
-`<venv> -m src.bootstrap`—. Si lo que quiere es ver el dictamen sin ensuciar la
+`<venv> -m src.bootstrap`—. Para ver el dictamen sin ensuciar la
 demostración, `tests/integration/test_req_10_alteracion.py` hace la misma alteración
 sobre una base desechable.
 
@@ -772,7 +777,7 @@ borrarlo no ensucia el repositorio:
 | `.venv/`           | El entorno virtual con las dependencias fijadas                   | Se recrea con `python -m venv .venv` y la instalación de `requirements.txt`.                             |
 | `.reference/`      | El extracto del documento del eje y el material de consulta       | No rompe nada: no lo importan el código ni las pruebas. Se pierde la copia local del extracto del eje.   |
 | `.legacy-project/` | El prototipo anterior, que solo se conserva como referencia       | No rompe nada: no lo importa nadie. Se pierde el prototipo anterior, que no es el entregable.            |
-| `.env`             | Los secretos locales: `DATABASE_URL`, `POSTGRES_*` y `MASTER_KEY` | Obliga a copiar `.env.example` otra vez y a generar una `MASTER_KEY` nueva; lea la advertencia de abajo. |
+| `.env`             | Los secretos locales: `DATABASE_URL`, `POSTGRES_*`, `MASTER_KEY`, `SESSION_SECRET` y `ADMIN_PASSWORD` | Obliga a copiar `.env.example` otra vez y a generar una `MASTER_KEY` nueva; véase la advertencia de abajo. |
 
 **Antes de borrar `.env`.** `.env` guarda la `MASTER_KEY` con la que se cifra el material
 privado de las wallets (decisión 3 del diseño). Con otra clave, las wallets ya guardadas
@@ -786,7 +791,7 @@ con la clave nueva. El arranque solo siembra cuando la tabla de wallets está va
 
 - **El esquema en PostgreSQL 16**, la versión del piso: `db/init.sql` se aplicó como
   guion de inicialización de un contenedor `postgres:16-alpine` (PostgreSQL 16.15) y
-  quedaron las cuatro tablas, `uuid-ossp`, los once índices y todos los `CHECK` del eje;
+  quedaron las siete tablas, `uuid-ossp`, los veinte índices y todos los `CHECK` del eje;
   una transacción de una wallet a sí misma la rechazó el motor.
 - **Las reglas sin base de datos (REQ-17)**: `pytest tests/unit` pasa con
   `DATABASE_URL` sin definir y sin contenedor, porque el dominio no importa el driver.

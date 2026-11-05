@@ -20,7 +20,9 @@ con reglas explícitas (`dataset/perfiles.py`): siete perfiles de comportamiento
 (ahorrador, frecuente, esporádico, con primas, endeudado, comerciante y que se retira),
 parámetros propios por cuenta, estacionalidad anual, aumentos de ingreso y la regla
 del ledger de que ninguna cuenta gira más de lo que tiene. La semilla es fija
-(`2026`): regenerarlo da los mismos archivos.
+(`2026`): los CSV y los JSON Lines se regeneran idénticos; los `.xlsx` y los `.parquet`
+no, porque cada herramienta escribe metadatos propios (la fecha de creación, entre
+otros). La comparación bit a bit de esos dos formatos no forma parte del contrato.
 
 ## Capas
 
@@ -35,13 +37,13 @@ del ledger de que ninguna cuenta gira más de lo que tiene. La semilla es fija
 Las tablas que en un formato pasarían de 50 MB se parten por año
 (`transacciones_2019.csv`, …), para que el repositorio se pueda subir a GitHub.
 
-| Carpeta | Peso |
+| Carpeta | Peso (MiB) |
 | ------- | ---- |
-| `crudo/` | 201.8 MB |
-| `limpio/` | 187.5 MB |
-| `agregado/` | 50.0 MB |
-| `modelo/` | 103.5 MB |
-| `sqlite/` | 271.0 MB |
+| `crudo/` | 201.8 |
+| `limpio/` | 187.5 |
+| `agregado/` | 50.0 |
+| `modelo/` | 103.5 |
+| `sqlite/` | 271.0 |
 
 ## Calidad
 

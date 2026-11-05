@@ -13,9 +13,9 @@ en la traza de los registros.
 from __future__ import annotations
 
 MENSAJE_SIN_CONEXION = (
-    "No se pudo conectar con la base de datos. Revise que el contenedor de "
+    "No se pudo conectar con la base de datos. Revisa que el contenedor de "
     "PostgreSQL esté arriba (`docker compose up -d` o `podman compose up -d`) y "
-    "que `DATABASE_URL` de su `.env` apunte a esa base. Cuando responda, el botón "
+    "que `DATABASE_URL` de tu `.env` apunte a esa base. Cuando responda, el botón "
     "de reintentar trae la página de nuevo."
 )
 

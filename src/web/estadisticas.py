@@ -13,8 +13,9 @@ El servidor arma los movimientos de la wallet —fecha, si entró o salió, esta
 monto y con quién— y los deja en la página como JSON; los filtros (período, tipo,
 estado y persona) y las gráficas los resuelve `estadisticas.js` en el navegador,
 así cambiar un filtro no recarga la página. El resumen que va pintado desde el
-servidor es el de todo el historial, para que la página diga algo aunque el guion
-no corra.
+servidor es el de todo el historial consultado —hasta el tope de
+`MOVIMIENTOS_DE_LAS_ESTADISTICAS`, y la página lo avisa cuando lo alcanza—, para que
+diga algo aunque el guion no corra.
 
 Las contrapartes salen con el mismo nombre que ya muestra el historial de la
 persona; el saldo de bienvenida lleva su nombre y una wallet sin dueño se dice
@@ -60,7 +61,7 @@ MOVIMIENTOS_DE_LAS_ESTADISTICAS = 5000
 
 @dataclass(frozen=True, slots=True)
 class ResumenDeEstadisticas:
-    """Lo que se pinta antes de los filtros: lo completado de todo el historial y
+    """Lo que se pinta antes de los filtros: lo completado del historial consultado y
     cuántos movimientos hay, en cualquier estado."""
 
     recibido: Decimal
@@ -87,7 +88,10 @@ def crear_blueprint_de_estadisticas(
             nombres = cuentas.nombres_por_wallet()
         with abrir_cadena() as chain:
             historial = chain.wallet_history(wallet_id, limit=MOVIMIENTOS_DE_LAS_ESTADISTICAS)
-            proyeccion = proyectar(historial, chain.available_balance(wallet_id), wallet_id)
+            saldo = chain.available_balance(wallet_id)
+        # La predicción va fuera del `with`: la primera carga del modelo tarda
+        # segundos y no hay razón para retener la conexión mientras tanto.
+        proyeccion = proyectar(historial, saldo, wallet_id)
         return _pintar(historial, wallet_id, nombres, proyeccion=proyeccion)
 
     @estadisticas.get("/admin/estadisticas")
@@ -117,9 +121,8 @@ def crear_blueprint_de_estadisticas(
             historial = chain.wallet_history(
                 elegido.wallet_id, limit=MOVIMIENTOS_DE_LAS_ESTADISTICAS
             )
-            proyeccion = proyectar(
-                historial, chain.available_balance(elegido.wallet_id), elegido.wallet_id
-            )
+            saldo = chain.available_balance(elegido.wallet_id)
+        proyeccion = proyectar(historial, saldo, elegido.wallet_id)
         return _pintar(
             historial,
             elegido.wallet_id,
@@ -138,11 +141,16 @@ def _pintar(
     nombres: Mapping[UUID, str],
     **contexto: object,
 ) -> str:
+    # Cuando el historial llega justo al tope es probable que haya más: la página lo
+    # dice en vez de llamar «todo» a lo que es «lo último que se consultó».
+    cortado = len(historial) >= MOVIMIENTOS_DE_LAS_ESTADISTICAS
     return render_template(
         "estadisticas.html",
         origen_del_modelo=origen_del_modelo(),
         movimientos=movimientos_para_graficas(historial, propia, nombres),
         resumen=resumen_de_estadisticas(historial, propia),
+        cortado=cortado,
+        tope=MOVIMIENTOS_DE_LAS_ESTADISTICAS,
         **contexto,
     )
 
@@ -179,7 +187,7 @@ def movimientos_para_graficas(
 def resumen_de_estadisticas(
     historial: Sequence[Transaction], propia: UUID
 ) -> ResumenDeEstadisticas:
-    """Suma lo completado de todo el historial: lo que está en espera todavía no se
+    """Suma lo completado del historial consultado: lo que está en espera todavía no se
     movió y lo rechazado nunca movió dinero. La cuenta incluye todos los estados."""
     recibido = enviado = Decimal(0)
     for transaction in historial:

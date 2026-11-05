@@ -22,7 +22,8 @@
 
 {# Un monto sin los ceros que sobran: 1000.00000000 se lee 1000 y 12.50000000 se lee 12.5. El valor exacto, con sus ocho decimales, queda en el `title`. #}
 {% macro cantidad(valor) -%}
-{%- set exacto = "%.8f"|format(valor) -%}
+{#- `str.format` sobre el `Decimal` no pasa por `float`; el filtro `format` de Jinja, sí. -#}
+{%- set exacto = "{:.8f}".format(valor) -%}
 <span class="cantidad" title="{{ exacto }}">{{ exacto.rstrip("0").rstrip(".") }}</span>
 {%- endmacro %}
 

@@ -31,14 +31,16 @@ def abrir(dsn: str, *, autocommit: bool = False) -> psycopg.Connection:
     las pruebas piden `autocommit=True`, porque cada lectura tiene que ver lo
     último confirmado.
 
-    Sólo se traduce `OperationalError`, que es el fallo de conexión —host, puerto,
-    credenciales, motor apagado—. Un error de otra clase sigue subiendo sin
-    traducir (REQ-19): si el motor responde y falla una restricción, eso es un
+    Se traducen los dos fallos que ocurren al conectar: `OperationalError` —host,
+    puerto, credenciales, motor apagado— y `ProgrammingError`, que es el que levanta
+    una cadena mal escrita. Los dos los explica la misma página 503, y su mensaje
+    nombra justamente el contenedor y la cadena. Cualquier otro error sigue subiendo
+    sin traducir (REQ-19): si el motor responde y falla una restricción, eso es un
     problema del dato y la traza completa hace falta para diagnosticarlo.
     """
     try:
         return psycopg.connect(dsn, autocommit=autocommit)
-    except psycopg.OperationalError as error:
+    except (psycopg.OperationalError, psycopg.ProgrammingError) as error:
         raise NoHayConexion(MENSAJE_SIN_CONEXION) from error
 
 

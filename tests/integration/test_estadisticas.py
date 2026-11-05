@@ -56,13 +56,22 @@ def test_el_comun_ve_sus_estadisticas_y_no_las_de_otros(
 def test_el_administrador_no_entra_a_las_estadisticas_del_comun(cliente_admin):
     respuesta = cliente_admin.get("/mis-estadisticas")
 
+    # El administrador no tiene wallet propia: la puerta lo devuelve a su tablero
+    # en vez de mostrarle estadísticas de una cuenta que no es la suya.
     assert respuesta.status_code in (302, 403)
+    if respuesta.status_code == 302:
+        destino = respuesta.headers["Location"]
+        assert "/mis-estadisticas" not in destino, destino
+        assert "/admin" in destino or destino.endswith("/"), destino
+    else:
+        assert "No tienes permiso para esta operación" in respuesta.get_data(as_text=True)
 
 
 def test_el_comun_no_entra_a_las_del_administrador(cliente_comun):
     respuesta = cliente_comun.get("/admin/estadisticas?usuario=ana")
 
-    assert respuesta.status_code in (302, 403)
+    assert respuesta.status_code == 403, "una redirección al ingreso también pasaría"
+    assert "No tienes permiso para esta operación" in respuesta.get_data(as_text=True)
 
 
 def test_el_administrador_elige_a_un_usuario_comun(cliente_admin, usuario_comun):

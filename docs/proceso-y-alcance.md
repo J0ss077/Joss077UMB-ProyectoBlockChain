@@ -16,17 +16,18 @@ están las decisiones.
 | 5. Usuarios y roles | Registro moderado, aprobación, ingreso, sesión, perfil, contactos, foto y solicitudes de contraseña | Diez requerimientos nuevos, cada uno con su prueba |
 | 6. Interfaz | Sistema de diseño «Bloques», tema claro y oscuro, navegación por rol, mensajes de éxito y de error | Capturas de todas las pantallas y pruebas de navegación |
 | 7. Ayudante | Asistente que explica el sistema en palabras simples, con API externa y guía local de respaldo | Pruebas de que sólo consulta y de que nunca escribe |
-| 8. Fase 4 | Estadísticas con filtros y gráficas, proyección del próximo mes con red neuronal, manejo del error de conexión y evidencias | 21 capturas, pruebas de navegación, de conexión y de la proyección |
+| 8. Fase 4 | Estadísticas con filtros y gráficas, proyección del próximo mes con red neuronal, manejo del error de conexión y evidencias | 22 capturas, pruebas de navegación, de conexión, de estadísticas y de la proyección |
 
 El orden no fue casual: cada etapa se apoyó en la anterior y ninguna avanzó sin sus
-pruebas. La etapa 5 es la única que agregó una tabla al modelo del eje (`users`), y lo hizo
-sin tocar las tres originales.
+pruebas. La etapa 5 agregó `users` sin tocar las tres originales del eje, y las etapas 6 y 7
+sumaron `contactos`, `solicitudes_de_contrasena` y `fotos_de_perfil`.
 
 ## 2. Cómo se verifica
 
 - **Las pruebas se llaman por requerimiento** (`test_req_NN_*`) y llevan el criterio de
   aceptación en el docstring: para explicar una regla alcanza con mostrar la prueba que la
-  demuestra. Hoy son **350**.
+  demuestra. Hoy son **386** en la suite completa, más una que se salta cuando no está
+pandas (las del dataset).
 - **Las guardas automáticas** sostienen la arquitectura: una falla si la presentación nombra
   el motor o la capa de datos, y otra si el dominio importa `psycopg`.
 - **La herramienta de sabotaje** (`python -m src.sabotaje`) muestra en una sola corrida qué
@@ -55,7 +56,7 @@ Está declarado para que no se lea como olvido:
 | El clúster del equipo es PostgreSQL 18 y el destino es 16 | El esquema se validó contra 16 en contenedor: `uuid-ossp`, `CHAR(64)`, los CHECK con expresiones regulares y `NUMERIC(18,8)` se comportan igual |
 | La explicación se separa del código | Los docstrings viven junto al código, las pruebas se llaman por requerimiento y la prueba de coherencia falla si el recorrido pierde un caso |
 | La cadena crece con cada aprobación (un bloque por saldo de bienvenida) | Se midió la verificación: 1,4 ms con 4 bloques y 84 ms con 1.000 |
-| La proyección se apoya en una serie sintética | Se declara en la tarjeta de la página y en `docs/red-neuronal.md`; con historial real se reentrena |
+| La proyección se apoya en un dataset generado con reglas explícitas | Lo dice `docs/red-neuronal.md` y las cifras de la tarjeta salen de `resultados.json`; con historial real se reentrena |
 
 ## 5. Por dónde empezar a leer
 

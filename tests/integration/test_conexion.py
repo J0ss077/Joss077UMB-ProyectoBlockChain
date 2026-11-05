@@ -8,14 +8,20 @@ la aplicación lo pinta con la misma página de error que ya usan el 403 y el 40
 Estas pruebas no necesitan PostgreSQL: la fábrica que se inyecta no abre nada y el
 motor que se intenta de verdad es un puerto cerrado de `127.0.0.1`.
 """
+import os
+import subprocess
+import sys
 from contextlib import contextmanager
+from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
 
 import src.bootstrap as arranque
+from src.accounts.model import ADMINISTRADOR, APROBADO, Usuario
 from src.errores import MENSAJE_SIN_CONEXION, NoHayConexion
-from src.persistence.conexion import abrir
+from src.persistence.conexion import abrir, abrir_en_utc
+from src.persistence.factory import database_url
 from src.web.app import create_app
 from src.web.auth import CLAVE_DEL_USUARIO
 from src.web.traducciones import EN
@@ -81,8 +87,10 @@ def test_el_503_ofrece_reintentar_cuando_la_peticion_fue_una_consulta():
     with cliente.session_transaction() as sesion:
         sesion[CLAVE_DEL_USUARIO] = str(uuid4())
 
-    cuerpo = cliente.get("/verificar").get_data(as_text=True)
+    respuesta = cliente.get("/verificar")
+    cuerpo = respuesta.get_data(as_text=True)
 
+    assert respuesta.status_code == 503
     assert 'href="/verificar"' in cuerpo
     assert "Reintentar" in cuerpo
 
@@ -116,3 +124,88 @@ def test_el_arranque_avisa_en_vez_de_mostrar_una_traza(monkeypatch):
         arranque.main()
 
     assert "No se pudo conectar con la base de datos" in str(salida.value.code)
+
+
+def test_el_503_se_pinta_con_sesion_aunque_el_avatar_no_pueda_leer():
+    """Con la sesión cargada, la cabecera pide la foto y volvería a abrir cuentas.
+
+    La página de error tiene que salir igual: si el avatar no puede leer, se pinta
+    la inicial. Antes de cubrirlo, el 503 se convertía en un 500 justo para quien
+    tenía sesión, que es el caso de una base que se cae a mitad de la visita.
+    """
+    usuario = Usuario(
+        id=uuid4(),
+        username="ana",
+        password_hash="hash-de-prueba",
+        role=ADMINISTRADOR,
+        estado=APROBADO,
+        motivo_rechazo=None,
+        wallet_id=uuid4(),
+        creado_en=datetime(2026, 11, 1, tzinfo=UTC),
+        aprobado_en=datetime(2026, 11, 1, tzinfo=UTC),
+    )
+
+    class CuentasSinFotos:
+        """La cuenta de la sesión se lee; la foto de la cabecera no."""
+
+        def por_id(self, identificador):
+            return usuario if str(identificador) == str(usuario.id) else None
+
+        def fotos_por_nombre(self):
+            raise NoHayConexion(MENSAJE_SIN_CONEXION)
+
+    @contextmanager
+    def fabrica_de_cuentas():
+        yield CuentasSinFotos()
+
+    @contextmanager
+    def cadena_caida():
+        raise NoHayConexion(MENSAJE_SIN_CONEXION)
+        yield  # pragma: no cover
+
+    app = create_app(cadena_caida, fabrica_de_cuentas, secret_key=CLAVE_DE_PRUEBA)
+    cliente = app.test_client()
+    with cliente.session_transaction() as sesion:
+        sesion[CLAVE_DEL_USUARIO] = str(usuario.id)
+
+    respuesta = cliente.get("/verificar")
+    cuerpo = respuesta.get_data(as_text=True)
+
+    assert respuesta.status_code == 503, cuerpo[:400]
+    assert "No se pudo conectar con la base de datos" in cuerpo
+    assert 'class="inicial' in cuerpo, "el avatar tiene que caer a la inicial"
+
+
+def test_abrir_en_utc_deja_la_sesion_en_utc():
+    """El hash del bloque cubre la marca de tiempo: la sesión tiene que ser UTC."""
+    with abrir_en_utc(database_url()) as conexion:
+        zona = conexion.execute("SHOW TIME ZONE").fetchone()[0]
+
+    assert zona.upper() == "UTC"
+
+
+def test_el_arranque_con_la_base_caida_termina_con_el_mensaje_y_sin_traza(tmp_path):
+    """`python -m src.bootstrap` contra un puerto cerrado no imprime el error crudo."""
+    entorno = dict(os.environ)
+    entorno.update(
+        {
+            "DATABASE_URL": (
+                "postgresql://blockchain_user:blockchain_password@127.0.0.1:1/"
+                "blockchain_db?connect_timeout=1"
+            ),
+            "SESSION_SECRET": "clave-de-prueba-para-el-arranque",
+            "ADMIN_PASSWORD": "clave-de-prueba-para-el-arranque",
+            "HOME": str(tmp_path),
+        }
+    )
+    proceso = subprocess.run(
+        [sys.executable, "-m", "src.bootstrap"],
+        capture_output=True,
+        text=True,
+        env=entorno,
+        cwd=os.getcwd(),
+    )
+
+    assert proceso.returncode == 1, proceso.stdout
+    assert MENSAJE_SIN_CONEXION in proceso.stderr
+    assert "Traceback" not in proceso.stderr

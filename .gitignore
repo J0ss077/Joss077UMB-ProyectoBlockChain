@@ -1,6 +1,9 @@
 # Secretos y entorno local (REQ-21)
 .env
 .venv/
+# El entorno de la red neuronal (TensorFlow) se crea aparte y no se versiona.
+.venv-tf/
+.venv-*/
 
 # Material de referencia: no es parte del entregable
 .legacy-project/

@@ -91,9 +91,9 @@ def test_el_menu_del_comun_abre_todas_sus_pantallas(cliente_comun):
 def test_el_comun_no_ve_opciones_del_administrador(cliente_comun):
     enlaces = {_ruta_de(enlace) for enlace in _enlaces_del_menu(cliente_comun, "/mi-tablero")}
 
-    # `"/"` no se cuenta: es la portada del administrador y para el común redirige
-    # a su tablero, pero el menú del común no la enlaza en ningún lado.
-    assert enlaces.isdisjoint(SOLO_DEL_ADMINISTRADOR - {"/"})
+    # La portada del administrador también queda fuera: si el menú del común la
+    # enlazara, el enlace sería una opción que su rol no puede abrir.
+    assert enlaces.isdisjoint(SOLO_DEL_ADMINISTRADOR)
 
 
 def test_el_logo_vuelve_a_la_portada_del_administrador(cliente_admin):

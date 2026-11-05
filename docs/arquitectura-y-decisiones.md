@@ -1,7 +1,9 @@
 # Arquitectura y decisiones de diseño
 
-Este documento reemplaza los documentos de diseño que se usaban durante la construcción
-del prototipo. Acá quedan las decisiones que el eje académico no fija y que el código
+Este documento es el mapa de conjunto: qué piezas tiene el prototipo y qué decisiones las
+sostienen. Los requerimientos y su criterio de aceptación viven en
+`docs/superpowers/specs/`, que siguen siendo la referencia de cada función. Acá quedan
+las decisiones que el eje académico no fija y que el código
 necesita justificar: qué se firma, con qué curva, qué cubre el hash de un bloque, por qué
 hay una tabla de usuarios y dónde vive cada regla. El detalle de cada caso de uso está en
 [recorrido-de-casos-de-uso.md](recorrido-de-casos-de-uso.md) y el de la interfaz en

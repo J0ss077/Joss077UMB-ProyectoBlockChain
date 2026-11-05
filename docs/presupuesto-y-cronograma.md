@@ -26,12 +26,11 @@ comparables.
 | Imprevistos (10 %) | $40.909 | |
 | Total | **$450.000** | |
 
-*Nota. Valores en pesos colombianos (COP). El detalle por actividad está más abajo y en
-el Anexo B.*
+*Nota. Valores en pesos colombianos (COP). El detalle por actividad está más abajo.*
 
 ## Recursos humanos y tiempo de desarrollo
 
-El equipo son tres integrantes que trabajaron en paralelo durante las once semanas del
+El equipo son tres integrantes que trabajaron en paralelo durante las diez semanas del
 proyecto. Ese tiempo **no se cobra**, pero se declara porque es el recurso principal del
 proyecto y la guía pide estimarlo. La dedicación es una estimación de trabajo efectivo
 —reuniones, desarrollo, pruebas y documentación— y no incluye el tiempo de espera entre
@@ -79,11 +78,11 @@ equipo.*
 *Nota. Los recursos con valor $0 son software de código abierto, planes gratuitos o
 equipos propios del equipo. La API del asistente funciona con la cuenta gratuita del
 equipo y, sin clave, el ayudante responde con su guía local: no es un costo obligatorio
-para ejecutar el prototipo. Elaboración propia, ver Anexo B.*
+para ejecutar el prototipo. Elaboración propia, Elaboración propia.*
 
 # Cronograma
 
-El cronograma cubre las once semanas del proyecto, desde el 10 de septiembre de 2026
+El cronograma cubre las diez semanas del proyecto, desde el 10 de septiembre de 2026
 —cuando se presentó la propuesta de la idea con la ficha técnica profesional— hasta el
 19 de noviembre, fecha prevista de entrega y sustentación. Las actividades están
 agrupadas en seis etapas: planeación, diseño, desarrollo, pruebas, implementación y
@@ -130,7 +129,7 @@ actividades terminaron antes.
 
 *Nota. Las actividades 19 a 25 se cerraron al 4 de noviembre, antes de su fecha
 planificada, porque el trabajo se adelantó para llegar a la entrega de la Fase 4 con la
-red neuronal ya integrada. Elaboración propia, ver Anexo C.*
+red neuronal ya integrada. Elaboración propia.*
 
 ## Vista semanal
 
@@ -165,5 +164,5 @@ red neuronal ya integrada. Elaboración propia, ver Anexo C.*
 | 27. Entrega final y sustentación | | | | | | | | | | | ● |
 
 *Nota. Cada punto indica una semana de trabajo; cada semana empieza el jueves, desde el
-10 de septiembre (S1) hasta el 19 de noviembre de 2026 (S11). Elaboración propia, ver
-Anexo C.*
+10 de septiembre (S1) hasta el 19 de noviembre de 2026 (S11): diez semanas de trabajo,
+con una fecha de inicio de semana por columna. Elaboración propia.*

@@ -9,8 +9,8 @@
 
 ![Red neuronal de la proyección](figuras/red-neuronal-general.png)
 
-*Figura 1. La red de la proyección: 8 características de entrada, una capa oculta de 8
-neuronas y 2 salidas, una por monto del próximo mes. Elaboración propia.*
+_Figura 1. La red de la proyección: 8 características de entrada, una capa oculta de 8
+neuronas y 2 salidas, una por monto del próximo mes. Elaboración propia._
 
 ## Propósito de la red neuronal dentro del sistema
 
@@ -40,15 +40,15 @@ leyó y devuelve dos números.
 **Entrada: ocho características de los últimos sesenta días.** Seis son relaciones con
 lo que la cuenta recibió —no montos en pesos— y dos son el mes del año:
 
-| Característica | Qué mide | Por qué |
-| --- | --- | --- |
-| `gasto_relativo` | lo enviado sobre lo recibido | Distingue una cuenta que gasta todo de una que ahorra |
-| `movimientos_30d` | cuántas operaciones hubo | Una cuenta activa no se proyecta igual que una quieta |
-| `neto_relativo` | el neto de los 30 días anteriores | La tendencia del mes previo |
-| `colchon` | el saldo sobre lo recibido | Cuántos meses de gasto tiene disponibles |
-| `movimientos_previos` | operaciones de los 30 días anteriores | Si la actividad sube o baja |
-| `recibido_escala` | lo recibido, dividido por 10.000 | Conserva el tamaño de la cuenta |
-| `mes_seno` y `mes_coseno` | el mes del año | Diciembre y enero quedan juntos, como en el calendario |
+| Característica            | Qué mide                              | Por qué                                                |
+| ------------------------- | ------------------------------------- | ------------------------------------------------------ |
+| `gasto_relativo`          | lo enviado sobre lo recibido          | Distingue una cuenta que gasta todo de una que ahorra  |
+| `movimientos_30d`         | cuántas operaciones hubo              | Una cuenta activa no se proyecta igual que una quieta  |
+| `neto_relativo`           | el neto de los 30 días anteriores     | La tendencia del mes previo                            |
+| `colchon`                 | el saldo sobre lo recibido            | Cuántos meses de gasto tiene disponibles               |
+| `movimientos_previos`     | operaciones de los 30 días anteriores | Si la actividad sube o baja                            |
+| `recibido_escala`         | lo recibido, dividido por 10.000      | Conserva el tamaño de la cuenta                        |
+| `mes_seno` y `mes_coseno` | el mes del año                        | Diciembre y enero quedan juntos, como en el calendario |
 
 Trabajar con proporciones es lo que permite que **un mismo modelo sirva para un fondo
 que mueve 80.000 al mes y para una cuenta que mueve 1.000**: la red aprende la forma del
@@ -68,9 +68,9 @@ no calcula saldos. Es una estimación, y se presenta como tal.
 
 ![Un mes de ejemplo, capa por capa](figuras/red-neuronal-capas.png)
 
-*Figura 2. Un ejemplo de la partición de prueba atravesando la red: las ocho características con su valor,
+_Figura 2. Un ejemplo de la partición de prueba atravesando la red: las ocho características con su valor,
 las ocho activaciones ocultas y los dos montos estimados, calculados con el modelo
-entrenado. Elaboración propia.*
+entrenado. Elaboración propia._
 
 1. **Capa de entrada (8 neuronas).** Una por característica. Una capa de normalización
    la estandariza con la media y la desviación del conjunto de entrenamiento
@@ -122,10 +122,10 @@ mirado una vez.
 Para saber si el modelo sirve, no alcanza con el error: hay que compararlo con dos
 predicciones ingenuas. Sobre los **30.662 ejemplos de prueba**:
 
-| Salida | Modelo | Repetir los últimos 30 días | Predecir el promedio |
-| --- | --- | --- | --- |
-| Recibido del próximo mes | **1.622 pesos** de error | 4.771 pesos | 1.915 pesos |
-| Enviado del próximo mes | **1.268 pesos** de error | 1.622 pesos | 1.479 pesos |
+| Salida                   | Modelo                   | Repetir los últimos 30 días | Predecir el promedio |
+| ------------------------ | ------------------------ | --------------------------- | -------------------- |
+| Recibido del próximo mes | **1.622 pesos** de error | 4.771 pesos                 | 1.915 pesos          |
+| Enviado del próximo mes  | **1.268 pesos** de error | 1.622 pesos                 | 1.479 pesos          |
 
 El error medio es de **1.445 pesos** sobre un monto medio real de 2.733 (53 %), y en las
 dos salidas gana a las dos alternativas. La ingenua de «repetir los últimos 30 días»
@@ -148,14 +148,14 @@ viene va a poder cubrir sus retiros. Es información para decidir, no una decisi
 El modelo está implementado con **TensorFlow y Keras** y corre **dentro de la
 aplicación**, en cada visita a la página de estadísticas:
 
-| Archivo | Qué hace | ¿Necesita TensorFlow? |
-| --- | --- | --- |
-| `red_neuronal/caracteristicas.py` | Las ocho características y la escala | No |
-| `dataset/` | El dataset, sus capas y su generador (`python -m dataset.generar`) | No |
-| `red_neuronal/modelo.py` | La red 8 → 8 → 2 | Sí |
-| `red_neuronal/entrenar.py` | Entrena, compara con las líneas base y guarda | Sí |
-| `red_neuronal/figuras.py` | Genera las figuras 1 y 2 con los valores del modelo | Sí |
-| `src/web/proyeccion.py` | Carga el modelo, resume el historial real y proyecta | Sí, por dentro |
+| Archivo                           | Qué hace                                                           | ¿Necesita TensorFlow? |
+| --------------------------------- | ------------------------------------------------------------------ | --------------------- |
+| `red_neuronal/caracteristicas.py` | Las ocho características y la escala                               | No                    |
+| `dataset/`                        | El dataset, sus capas y su generador (`python -m dataset.generar`) | No                    |
+| `red_neuronal/modelo.py`          | La red 8 → 8 → 2                                                   | Sí                    |
+| `red_neuronal/entrenar.py`        | Entrena, compara con las líneas base y guarda                      | Sí                    |
+| `red_neuronal/figuras.py`         | Genera las figuras 1 y 2 con los valores del modelo                | Sí                    |
+| `src/web/proyeccion.py`           | Carga el modelo, resume el historial real y proyecta               | Sí, por dentro        |
 
 La aplicación importa TensorFlow **sólo cuando hay que proyectar**, y una vez cargado el
 modelo queda en memoria. El arranque adelanta esa carga en un hilo de fondo para que la
@@ -176,35 +176,49 @@ python3.14 -m venv .venv-tf
 
 La salida cruda de esa corrida está guardada en
 `docs/evidencias/red-neuronal-entrenamiento.txt`. Resultados (semilla 2026, hasta 200
-épocas con parada temprana, 53 corridas):
+épocas con parada temprana, 53 épocas corridas):
 
-| Medida | Valor |
-| --- | --- |
-| Cuentas / meses / transacciones | 2.500 / 96 / 814.023 |
-| Entrenamiento / validación / prueba | 125.667 / 31.782 / 30.662 ejemplos |
-| Error absoluto medio en prueba (contra el monto real) | 1.445 pesos (53 % del monto medio) |
-| Error de las líneas base en prueba | 1.915 y 1.479 pesos (promedio); 4.771 y 1.622 (últimos 30 días) |
-| Pesos de la red | 80 (más los sesgos) |
+| Medida                                                | Valor                                                           |
+| ----------------------------------------------------- | --------------------------------------------------------------- |
+| Cuentas / meses / transacciones                       | 2.500 / 96 / 814.023                                            |
+| Entrenamiento / validación / prueba                   | 125.667 / 31.782 / 30.662 ejemplos                              |
+| Error absoluto medio en prueba (contra el monto real) | 1.445 pesos (53 % del monto medio)                              |
+| Error de las líneas base en prueba                    | 1.915 y 1.479 pesos (promedio); 4.771 y 1.622 (últimos 30 días) |
+| Pesos de la red                                       | 80 (más los sesgos)                                             |
 
 **Límites declarados.** El dataset es una simulación: la proyección muestra que el
 método aprende el comportamiento de un fondo con estas reglas, no afirma nada sobre el
 dinero real de una organización. Con historial real, se cambia el dataset, se reentrena
 con `entrenar.py` y las cifras se actualizan desde `resultados.json`.
 
+**El modelo versionado se guardó con un Keras distinto del que fija el archivo de
+dependencias.** El `.keras` que viaja en `red_neuronal/modelos/` se escribió con Keras
+`3.16.0.dev2026110403`, una compilación nocturna, mientras que
+`red_neuronal/requirements.txt` fija `tensorflow==2.22.0rc0`. El modelo carga y proyecta
+igual, pero reconstruirlo byte a byte exige el mismo Keras, que no se instala desde el
+pin. Las cifras de este apartado se obtuvieron con la corrida que quedó guardada en la
+evidencia; una corrida nueva con el pin puede dar valores parecidos y no idénticos,
+porque el entrenamiento tampoco fija el determinismo de las operaciones. Se declara como
+límite en vez de prometer una reproducibilidad que el entorno no sostiene.
+
+**Las figuras del documento son PNG.** `red_neuronal/figuras.py` escribe los SVG; los PNG
+que se ven arriba se exportaron a mano desde ellos, porque convertir SVG a PNG requiere una
+herramienta que el proyecto no declara. Al reentrenar hay que volver a exportarlos.
+
 ## Referencias de este apartado
 
-Goodfellow, I., Bengio, Y. y Courville, A. (2016). *Deep Learning*. MIT Press.
+Goodfellow, I., Bengio, Y. y Courville, A. (2016). _Deep Learning_. MIT Press.
 https://www.deeplearningbook.org/
 
-Nielsen, M. (2015). *Neural Networks and Deep Learning*. Determination Press.
+Nielsen, M. (2015). _Neural Networks and Deep Learning_. Determination Press.
 http://neuralnetworksanddeeplearning.com/
 
 Rosenblatt, F. (1958). The perceptron: A probabilistic model for information storage and
-organization in the brain. *Psychological Review, 65*(6), 386–408.
+organization in the brain. _Psychological Review, 65_(6), 386–408.
 https://doi.org/10.1037/h0042519
 
-TensorFlow. (s. f.). *Keras: the high-level API for TensorFlow*. Recuperado el 4 de
+TensorFlow. (s. f.). _Keras: the high-level API for TensorFlow_. Recuperado el 4 de
 noviembre de 2026, de https://www.tensorflow.org/guide/keras
 
-TensorFlow. (s. f.). *Overfit and underfit*. Recuperado el 4 de noviembre de 2026, de
+TensorFlow. (s. f.). _Overfit and underfit_. Recuperado el 4 de noviembre de 2026, de
 https://www.tensorflow.org/tutorials/keras/overfit_and_underfit

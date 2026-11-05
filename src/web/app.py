@@ -236,8 +236,14 @@ def create_app(
         dirección: al cambiarla, la caché del navegador no muestra la vieja.
         """
         if "fotos_por_nombre" not in g:
-            with abrir_cuentas() as cuentas:
-                g.fotos_por_nombre = cuentas.fotos_por_nombre()
+            # El avatar es lo único que una página puede necesitar de la base
+            # después de pintar el cuerpo. Si el motor se cayó, la página tiene
+            # que salir igual —con la inicial— y no convertir el 503 en un 500.
+            try:
+                with abrir_cuentas() as cuentas:
+                    g.fotos_por_nombre = cuentas.fotos_por_nombre()
+            except NoHayConexion:
+                g.fotos_por_nombre = {}
         actualizada = g.fotos_por_nombre.get(username)
         if actualizada is None:
             return None
