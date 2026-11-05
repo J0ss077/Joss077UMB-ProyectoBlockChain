@@ -264,6 +264,9 @@ def test_req_37_con_sesion_de_administrador_el_ingreso_avisa_y_no_muestra_el_for
     assert "Ya iniciaste sesión." in cuerpo
     assert "cierra sesión o abre una ventana privada" in cuerpo
     assert 'name="usuario"' not in cuerpo
+    # La página no lleva la barra de la sesión: es una pantalla de ingreso.
+    assert 'class="navegacion"' not in cuerpo
+    assert "Cerrar sesión" in cuerpo
     # El registro sigue abierto para el administrador: da de alta cuentas desde ahí.
     assert cliente_admin.get("/registrarme").status_code == 200
 
@@ -275,6 +278,7 @@ def test_req_37_con_sesion_comun_el_ingreso_avisa_y_no_muestra_el_formulario(cli
     cuerpo = respuesta.get_data(as_text=True)
     assert "Ya iniciaste sesión." in cuerpo
     assert 'name="usuario"' not in cuerpo
+    assert 'class="navegacion"' not in cuerpo
     assert cliente_comun.get("/registrarme").headers["Location"] == "/mi-tablero"
 
 

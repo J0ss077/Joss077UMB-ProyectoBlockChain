@@ -326,7 +326,9 @@ def create_app(
         aparece sobre una sesión ajena.
         """
         if g.user is not None:
-            return render_template("ingreso.html", error=None, usuario="", sesion_abierta=True)
+            return render_template(
+                "ingreso.html", error=None, usuario="", sesion_abierta=True, sin_navegacion=True
+            )
         if request.method == "GET":
             return render_template("ingreso.html", error=None, usuario="")
         nombre = request.form.get("usuario", "")
