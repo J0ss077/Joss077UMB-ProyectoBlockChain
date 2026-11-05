@@ -288,7 +288,12 @@ def create_app(
         servicio porque ese dato no es una regla del dominio sino del formulario;
         el resto de las validaciones las decide el servicio y su motivo se muestra
         tal cual para que la persona sepa cómo corregir.
+
+        El administrador sí lo ve: da de alta cuentas desde ahí. Un usuario común
+        con la sesión abierta vuelve a su tablero, igual que en el ingreso.
         """
+        if g.user is not None and g.user.role != ADMINISTRADOR:
+            return redirect(_inicio_de(g.user))
         if request.method == "GET":
             return _formulario_de_registro()
         nombre = request.form.get("usuario", "")
@@ -315,7 +320,12 @@ def create_app(
         inexistente, y el del pendiente o el rechazado dice su estado. El rol
         decide a qué pantalla se va después, y la sesión no se abre hasta después
         de autenticar.
+
+        Con la sesión ya abierta no se muestra: se vuelve a la pantalla del rol, y
+        así el motivo de rechazo de otra cuenta no aparece sobre una sesión ajena.
         """
+        if g.user is not None:
+            return redirect(_inicio_de(g.user))
         if request.method == "GET":
             return render_template("ingreso.html", error=None, usuario="")
         nombre = request.form.get("usuario", "")
@@ -326,9 +336,7 @@ def create_app(
             except (CredencialesInvalidas, NoAprobado) as error:
                 return render_template("ingreso.html", error=str(error), usuario=nombre)
         abrir_sesion(usuario)
-        if usuario.role == ADMINISTRADOR:
-            return redirect(url_for("portada"))
-        return redirect(url_for("usuario.mi_tablero"))
+        return redirect(_inicio_de(usuario))
 
     @app.post("/salir")
     def salir():
@@ -585,6 +593,20 @@ def _secreto_de_sesion() -> str:
             "`.env.example`: reemplázala por una clave propia."
         )
     return valor
+
+
+def _inicio_de(usuario: object) -> str:
+    """La pantalla con la que cada rol trabaja (REQ-32, REQ-37).
+
+    Sirve para dos cosas: aterrizar después del ingreso y devolver a su pantalla a
+    quien ya tiene la sesión abierta y pide el ingreso o el registro. Dos pestañas
+    del mismo navegador comparten la cookie, así que la segunda no es otra cuenta:
+    mostrarle el formulario sólo consigue que el error de un ingreso ajeno se pinte
+    sobre la sesión que no es la suya.
+    """
+    if getattr(usuario, "role", None) == ADMINISTRADOR:
+        return url_for("portada")
+    return url_for("usuario.mi_tablero")
 
 
 def _formulario_de_registro(error: str | None = None, usuario: str = ""):

@@ -243,9 +243,49 @@ def test_req_37_el_administrador_va_a_la_portada_y_el_comun_a_su_tablero(
     # La portada de trabajo es del administrador: el común vuelve a su tablero.
     assert cliente_del_comun.get("/").headers["Location"] == "/mi-tablero"
     # `g.user` está disponible en las plantillas para las páginas del común.
-    cuerpo = cliente_del_comun.get("/ingresar").get_data(as_text=True)
+    cuerpo = cliente_del_comun.get("/mi-tablero").get_data(as_text=True)
     assert usuario_comun.username in cuerpo
     assert "Salir" in cuerpo
+
+
+def test_req_37_con_sesion_de_administrador_el_ingreso_lleva_a_la_portada(cliente_admin):
+    """Criterio: con sesión abierta no se vuelve a ver el formulario de ingreso.
+
+    Dos pestañas del mismo navegador comparten la cookie: la segunda no es otra
+    cuenta, es la misma sesión. Dejar el formulario a la vista hace que un ingreso
+    ajeno —con su motivo de rechazo— se pinte sobre la sesión que no es la suya.
+    """
+    respuesta = cliente_admin.get("/ingresar")
+    assert respuesta.status_code == 302
+    assert respuesta.headers["Location"] == "/"
+    # El registro sigue abierto para el administrador: da de alta cuentas desde ahí.
+    assert cliente_admin.get("/registrarme").status_code == 200
+
+
+def test_req_37_con_sesion_comun_el_ingreso_lleva_al_tablero(cliente_comun):
+    """Criterio: el común tampoco vuelve al ingreso ni al registro."""
+    respuesta = cliente_comun.get("/ingresar")
+    assert respuesta.status_code == 302
+    assert respuesta.headers["Location"] == "/mi-tablero"
+    assert cliente_comun.get("/registrarme").headers["Location"] == "/mi-tablero"
+
+
+def test_req_37_el_ingreso_ajeno_no_reemplaza_la_sesion_abierta(cliente_comun, cuentas):
+    """Criterio: un intento de ingreso con otra cuenta no cambia la sesión de nadie."""
+
+    otra = cuentas.registrar("beto", CONTRASENA_DE_PRUEBA)
+    cuentas.aprobar(otra.id)
+
+    respuesta = cliente_comun.post(
+        "/ingresar", data={"usuario": "beto", "contrasena": CONTRASENA_DE_PRUEBA}
+    )
+
+    assert respuesta.status_code == 302
+    assert respuesta.headers["Location"] == "/mi-tablero"
+    # Sigue siendo la misma cuenta: el ingreso no reemplazó la sesión.
+    cuerpo = cliente_comun.get("/mi-tablero").get_data(as_text=True)
+    assert "ana" in cuerpo
+    assert "beto" not in cuerpo
 
 
 def test_req_32_el_pendiente_no_abre_sesion_y_ve_su_estado(cliente, cuentas):
