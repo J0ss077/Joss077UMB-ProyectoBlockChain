@@ -1,0 +1,47 @@
+tabla,archivo,columna,tipo,unidad,rango_observado,nulos,descripcion
+cuentas,limpio/cuentas,cuenta_id,texto,—,"2,500 valores distintos",0,Identificador de la cuenta (C00001…). Clave primaria.
+cuentas,limpio/cuentas,perfil,categoría,—,"ahorrador, comerciante, con_primas, endeudado, esporadico, frecuente, que_se_retira",0,"Perfil de comportamiento con que se simuló la cuenta: ahorrador, frecuente, esporadico, con_primas, endeudado, comerciante, que_se_retira."
+cuentas,limpio/cuentas,fecha_alta,fecha,AAAA-MM-DD,787 valores distintos,0,Día en que la cuenta se afilió al fondo.
+cuentas,limpio/cuentas,fecha_baja,fecha,AAAA-MM-DD,319 valores distintos,2153,Día en que la cuenta se retiró del fondo; vacío si sigue activa.
+cuentas,limpio/cuentas,ingreso_mensual,decimal,pesos,"356.38 a 6,273.19",0,Ingreso mensual base de la cuenta al inicio; crece entre 2 % y 8 % por año.
+cuentas,limpio/cuentas,ciudad,categoría,—,"Barranquilla, Bogotá, Bucaramanga, Cali, Ipiales, Manizales, Medellín, Pasto, Pereira, Popayán",0,Ciudad de la cuenta.
+cuentas,limpio/cuentas,edad,entero,años,20 a 62,0,Edad de la persona titular al afiliarse.
+transacciones,limpio/transacciones,transaccion_id,texto,—,"814,023 valores distintos",0,Identificador de la transacción (T0000001…). Clave primaria.
+transacciones,limpio/transacciones,fecha,fecha y hora,"ISO 8601, UTC",2018-11-01 a 2026-10-31,0,"Momento en que se hizo la transacción, en UTC."
+transacciones,limpio/transacciones,cuenta_origen,texto,—,"2,501 valores distintos",0,"Cuenta que envía el dinero, o FONDO si sale del fondo."
+transacciones,limpio/transacciones,cuenta_destino,texto,—,"2,501 valores distintos",0,"Cuenta que recibe el dinero, o FONDO si entra al fondo."
+transacciones,limpio/transacciones,monto,decimal,pesos,"1.07 a 50,000",0,"Monto movido, con dos decimales. Siempre positivo."
+transacciones,limpio/transacciones,tipo,categoría,—,"aporte, cuota, liquidacion, prestamo, prima, retiro, transferencia",0,"aporte, retiro, transferencia, prima, prestamo, cuota o liquidacion."
+transacciones,limpio/transacciones,canal,categoría,—,"app, desconocido, oficina, programada, web",0,"app, web, oficina o programada; desconocido si el crudo no lo traía."
+transacciones_crudas,crudo/transacciones_crudas,transaccion_id,texto,—,"817,279 valores distintos",0,Identificador tal como llega del sistema; puede repetirse (duplicados).
+transacciones_crudas,crudo/transacciones_crudas,fecha,texto,ISO 8601,"808,467 valores distintos",0,"Fecha con su zona: casi siempre UTC (+00:00), a veces hora de Colombia (-05:00)."
+transacciones_crudas,crudo/transacciones_crudas,cuenta_origen,texto,—,"2,501 valores distintos",0,"Cuenta que envía, sin validar."
+transacciones_crudas,crudo/transacciones_crudas,cuenta_destino,texto,—,"2,502 valores distintos",0,"Cuenta que recibe, sin validar: puede no existir."
+transacciones_crudas,crudo/transacciones_crudas,monto,texto,pesos,"259,998 valores distintos",0,"Monto sin normalizar: 1234.56, 1.234,56 o $1234.56; puede ser cero o negativo."
+transacciones_crudas,crudo/transacciones_crudas,tipo,texto,—,"aporte, cuota, liquidacion, prestamo, prima, retiro, transferencia",0,Tipo de movimiento.
+transacciones_crudas,crudo/transacciones_crudas,canal,texto,—,"app, oficina, programada, web",9892,Canal; puede venir vacío.
+cuentas_mensual,agregado/cuentas_mensual,cuenta_id,texto,—,"2,500 valores distintos",0,Cuenta. Junto con anio y mes forma la clave primaria.
+cuentas_mensual,agregado/cuentas_mensual,anio,entero,año,"2,018 a 2,026",0,Año calendario.
+cuentas_mensual,agregado/cuentas_mensual,mes,entero,1–12,1 a 12,0,Mes calendario.
+cuentas_mensual,agregado/cuentas_mensual,recibido,decimal,pesos,"0 a 56,760.5",0,Suma de lo que la cuenta recibió en el mes.
+cuentas_mensual,agregado/cuentas_mensual,enviado,decimal,pesos,"0 a 56,054.9",0,Suma de lo que la cuenta envió en el mes.
+cuentas_mensual,agregado/cuentas_mensual,movimientos,entero,transacciones,0 a 28,0,Cuántas transacciones tocaron la cuenta en el mes.
+cuentas_mensual,agregado/cuentas_mensual,saldo_cierre,decimal,pesos,"0 a 296,989",0,Saldo de la cuenta al terminar el mes. Nunca negativo.
+cuentas_mensual,agregado/cuentas_mensual,mes_seno,decimal,−1 a 1,-1 a 1,0,"sen(2π·mes/12): el mes como posición en un círculo, para que diciembre quede junto a enero."
+cuentas_mensual,agregado/cuentas_mensual,mes_coseno,decimal,−1 a 1,-1 a 1,0,"cos(2π·mes/12), la otra coordenada del mes en el círculo."
+ejemplos,"modelo/ejemplos_{entrenamiento,validacion,prueba}",cuenta_id,texto,—,"2,500 valores distintos",0,Cuenta del ejemplo.
+ejemplos,"modelo/ejemplos_{entrenamiento,validacion,prueba}",fecha_corte,fecha y hora,"ISO 8601, UTC",2019-01-01 a 2026-10-01,0,Instante de corte: las entradas miran los 60 días anteriores y los objetivos los 30 siguientes.
+ejemplos,"modelo/ejemplos_{entrenamiento,validacion,prueba}",gasto_relativo,decimal,proporción,0 a 3,0,Lo enviado en los últimos 30 días sobre la escala (tope 3).
+ejemplos,"modelo/ejemplos_{entrenamiento,validacion,prueba}",movimientos_30d,decimal,conteo / 10,0 a 2.8,0,"Movimientos de los últimos 30 días, divididos por 10 (tope 3)."
+ejemplos,"modelo/ejemplos_{entrenamiento,validacion,prueba}",neto_relativo,decimal,proporción,-3 a 3,0,"Neto (recibido − enviado) de los 30 días anteriores a esos, sobre la escala (entre −3 y 3)."
+ejemplos,"modelo/ejemplos_{entrenamiento,validacion,prueba}",colchon,decimal,proporción,-0 a 5,0,Saldo al corte sobre la escala (tope 5).
+ejemplos,"modelo/ejemplos_{entrenamiento,validacion,prueba}",movimientos_previos,decimal,conteo / 10,0 a 2.9,0,"Movimientos de los 30 días anteriores a esos, divididos por 10 (tope 3)."
+ejemplos,"modelo/ejemplos_{entrenamiento,validacion,prueba}",recibido_escala,decimal,"pesos / 10,000",0.0001 a 27.1525,0,La escala dividida por 10.000: el tamaño de la cuenta.
+ejemplos,"modelo/ejemplos_{entrenamiento,validacion,prueba}",mes_seno,decimal,−1 a 1,-1 a 1,0,sen(2π·mes/12) del mes de corte.
+ejemplos,"modelo/ejemplos_{entrenamiento,validacion,prueba}",mes_coseno,decimal,−1 a 1,-1 a 1,0,cos(2π·mes/12) del mes de corte.
+ejemplos,"modelo/ejemplos_{entrenamiento,validacion,prueba}",objetivo_recibido,decimal,proporción,0 a 5,0,"Objetivo: lo recibido en los 30 días siguientes, sobre la escala (tope 5)."
+ejemplos,"modelo/ejemplos_{entrenamiento,validacion,prueba}",objetivo_enviado,decimal,proporción,0 a 5,0,"Objetivo: lo enviado en los 30 días siguientes, sobre la escala (tope 5)."
+ejemplos,"modelo/ejemplos_{entrenamiento,validacion,prueba}",escala,decimal,pesos,"1 a 271,525",0,"Lo recibido en los últimos 30 días (o el saldo, si no recibió nada): multiplica los objetivos para volver a pesos."
+ejemplos,"modelo/ejemplos_{entrenamiento,validacion,prueba}",real_recibido,decimal,pesos,"0 a 56,760.5",0,"Lo que la cuenta recibió de verdad en los 30 días siguientes, sin tope: contra esto se mide el error."
+ejemplos,"modelo/ejemplos_{entrenamiento,validacion,prueba}",real_enviado,decimal,pesos,"0 a 56,054.9",0,"Lo que la cuenta envió de verdad en los 30 días siguientes, sin tope."
+ejemplos,"modelo/ejemplos_{entrenamiento,validacion,prueba}",particion,categoría,—,"entrenamiento, prueba, validacion",0,"entrenamiento, validacion o prueba, según el lugar del corte en el tiempo."

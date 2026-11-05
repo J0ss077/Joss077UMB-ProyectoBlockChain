@@ -1,0 +1,140 @@
+{
+  "filas": {
+    "transacciones_crudas": 823791,
+    "transacciones": 814023,
+    "cuentas": 2500,
+    "cuentas_mensual": 194392,
+    "ejemplos": 188111,
+    "ejemplos_entrenamiento": 125667,
+    "ejemplos_validacion": 31782,
+    "ejemplos_prueba": 30662
+  },
+  "limpieza": {
+    "duplicados_eliminados": 6512,
+    "descartadas_por_otra_causa": 0,
+    "monto_invalido_descartado": 1628,
+    "cuenta_inexistente_descartada": 1628,
+    "monto_normalizado": 12210,
+    "fecha_convertida_a_utc": 8140,
+    "canal_imputado": 9768
+  },
+  "crudo": {
+    "filas": 823791,
+    "duplicadas": 6512,
+    "vacios_por_columna": {
+      "transaccion_id": 0,
+      "fecha": 0,
+      "cuenta_origen": 0,
+      "cuenta_destino": 0,
+      "monto": 0,
+      "tipo": 0,
+      "canal": 9892
+    }
+  },
+  "limpio": {
+    "filas": 814023,
+    "duplicadas": 0,
+    "nulos_por_columna": {
+      "transaccion_id": 0,
+      "fecha": 0,
+      "cuenta_origen": 0,
+      "cuenta_destino": 0,
+      "monto": 0,
+      "tipo": 0,
+      "canal": 0
+    },
+    "transacciones_verdaderas_recuperadas": 814023,
+    "transacciones_verdaderas": 814023,
+    "monto": {
+      "count": 814023.0,
+      "mean": 1029.02,
+      "std": 2139.09,
+      "min": 1.07,
+      "25%": 173.77,
+      "50%": 439.7,
+      "75%": 1108.17,
+      "max": 50000.0
+    },
+    "por_tipo": {
+      "aporte": 287355,
+      "transferencia": 269452,
+      "retiro": 234320,
+      "cuota": 15867,
+      "prima": 5255,
+      "prestamo": 1583,
+      "liquidacion": 191
+    },
+    "por_canal": {
+      "oficina": 216559,
+      "app": 212466,
+      "web": 212274,
+      "programada": 162956,
+      "desconocido": 9768
+    },
+    "desde": "2018-11-01T07:01:25+00:00",
+    "hasta": "2026-10-31T21:58:51+00:00"
+  },
+  "cuentas": {
+    "total": 2500,
+    "por_perfil": {
+      "ahorrador": 590,
+      "con_primas": 393,
+      "frecuente": 352,
+      "esporadico": 333,
+      "endeudado": 328,
+      "que_se_retira": 269,
+      "comerciante": 235
+    },
+    "con_baja": 347
+  },
+  "mensual": {
+    "filas": 194392,
+    "meses_sin_movimiento": 8725,
+    "saldo_cierre_minimo": 0.0
+  },
+  "ejemplos": {
+    "por_particion": {
+      "entrenamiento": 125667,
+      "validacion": 31782,
+      "prueba": 30662
+    },
+    "cortes_por_particion": {
+      "entrenamiento": {
+        "desde": "2019-01-01T00:00:00+00:00",
+        "hasta": "2024-06-01T00:00:00+00:00"
+      },
+      "prueba": {
+        "desde": "2025-09-01T00:00:00+00:00",
+        "hasta": "2026-10-01T00:00:00+00:00"
+      },
+      "validacion": {
+        "desde": "2024-07-01T00:00:00+00:00",
+        "hasta": "2025-08-01T00:00:00+00:00"
+      }
+    },
+    "nulos": 0,
+    "con_objetivo_en_el_tope": 9735,
+    "objetivos": {
+      "objetivo_recibido": {
+        "count": 188111.0,
+        "mean": 1.2125,
+        "std": 1.1,
+        "min": 0.0,
+        "25%": 0.6764,
+        "50%": 0.9742,
+        "75%": 1.3297,
+        "max": 5.0
+      },
+      "objetivo_enviado": {
+        "count": 188111.0,
+        "mean": 0.912,
+        "std": 0.9851,
+        "min": 0.0,
+        "25%": 0.4164,
+        "50%": 0.6934,
+        "75%": 1.0382,
+        "max": 5.0
+      }
+    }
+  }
+}

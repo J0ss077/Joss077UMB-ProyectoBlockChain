@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+{% from "_macros.html" import cantidad, avatar %}
+{% set es_admin = g.user.role == rol_administrador %}
+{% block titulo %}{{ t("Estadísticas") }}{% endblock %}
+{% block cuerpo %}
+{# Los filtros y las gráficas los resuelve `estadisticas.js` con los movimientos que van en el JSON de abajo; lo que se pinta acá es el resumen de todo el historial, para que la página diga algo sin JavaScript. El común sólo ve lo suyo (REQ-35); el administrador elige a quién mirar. #}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/estadisticas.css') }}" />
+<script src="{{ url_for('static', filename='js/estadisticas.js') }}" defer></script>
+<main id="contenido" tabindex="-1" class="rejilla-estadisticas">
+    <section class="mosaico est-cabecera" aria-labelledby="titulo-estadisticas">
+        <div>
+            <p class="antetitulo">{{ t("Estadísticas") }}</p>
+            {% if es_admin %}
+            <h1 class="titulo-pagina" id="titulo-estadisticas">{% if elegido %}{{ t("Los movimientos de {nombre}", nombre=elegido.username) }}{% else %}{{ t("Elige a quién mirar") }}{% endif %}</h1>
+            <p class="entradilla">{{ t("Mira cómo se mueve el dinero de cada usuario: cuánto recibe, cuánto envía y con quién.") }}</p>
+            {% if elegido %}<p class="ayuda">{{ t("Estás viendo la cuenta de {nombre}: sus movimientos y las personas con las que opera. El administrador puede ver ese detalle; las demás cuentas no.", nombre=elegido.username) }}</p>{% endif %}
+            {% else %}
+            <h1 class="titulo-pagina" id="titulo-estadisticas">{{ t("Cómo se mueve tu dinero") }}</h1>
+            <p class="entradilla">{{ t("Cuánto recibes, cuánto envías y con quién. Usa los filtros para mirar un tiempo o una persona.") }}</p>
+            {% endif %}
+        </div>
+        {% if es_admin %}
+        <form class="est-elegir" method="get" action="/admin/estadisticas" data-elegir-usuario>
+            <div class="campo">
+                <label for="usuario">{{ t("Usuario") }}</label>
+                <select id="usuario" name="usuario">
+                    <option value=""{% if not elegido %} selected{% endif %} disabled>{{ t("Elige un usuario") }}</option>
+                    {% for nombre in usuarios %}
+                    <option value="{{ nombre }}"{% if elegido and elegido.username == nombre %} selected{% endif %}>{{ nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button class="boton boton-primario" type="submit">{{ t("Ver") }}</button>
+        </form>
+        {% endif %}
+    </section>
+
+    {% if es_admin and not elegido %}
+    <section class="mosaico est-ancho">
+        <div class="vacio">
+            {% if usuarios %}
+            <p class="vacio-titulo">{{ t("Todavía no elegiste a nadie") }}</p>
+            <p class="ayuda">{{ t("Elige un usuario arriba para ver sus estadísticas.") }}</p>
+            <ul class="est-usuarios">
+                {% for nombre in usuarios %}
+                <li><a class="est-usuario" href="/admin/estadisticas?usuario={{ nombre|urlencode }}">{{ avatar(nombre, "avatar-mini") }}<span>{{ nombre }}</span></a></li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="vacio-titulo">{{ t("Todavía no hay usuarios aprobados") }}</p>
+            <p class="ayuda">{{ t("Cuando apruebes una cuenta, sus estadísticas aparecen acá.") }}</p>
+            {% endif %}
+        </div>
+    </section>
+    {% elif not movimientos %}
+    <section class="mosaico est-ancho">
+        <div class="vacio">
+            <p class="vacio-titulo">{{ t("Todavía no hay movimientos") }}</p>
+            <p class="ayuda">{% if es_admin %}{{ t("Cuando este usuario envíe o reciba dinero, vas a ver sus gráficas acá.") }}{% else %}{{ t("Cuando envíes o recibas dinero, vas a ver tus gráficas acá.") }}{% endif %}</p>
+        </div>
+    </section>
+    {% else %}
+    <script type="application/json" id="datos-estadisticas">{{ movimientos|tojson }}</script>
+
+    {# Los filtros van en una sola fila arriba de las gráficas; sin JavaScript no hacen nada y se ocultan. #}
+    <section class="mosaico est-filtros est-ancho" aria-label="{{ t('Filtros') }}" data-filtros>
+        <fieldset class="est-filtro">
+            <legend>{{ t("Tiempo") }}</legend>
+            <div class="segmentado" role="radiogroup">
+                {% for valor, texto in [("7", "7 días"), ("30", "30 días"), ("90", "3 meses"), ("365", "Un año"), ("todo", "Todo")] %}
+                <label><input type="radio" name="periodo" value="{{ valor }}"{% if valor == "todo" %} checked{% endif %} /><span>{{ t(texto) }}</span></label>
+                {% endfor %}
+            </div>
+        </fieldset>
+        <fieldset class="est-filtro">
+            <legend>{{ t("Tipo") }}</legend>
+            <div class="segmentado" role="radiogroup">
+                {% for valor, texto in [("todo", "Todo"), ("entra", "Recibido"), ("sale", "Enviado")] %}
+                <label><input type="radio" name="tipo" value="{{ valor }}"{% if valor == "todo" %} checked{% endif %} /><span>{{ t(texto) }}</span></label>
+                {% endfor %}
+            </div>
+        </fieldset>
+        <div class="campo est-filtro">
+            <label for="filtro-estado">{{ t("Estado") }}</label>
+            <select id="filtro-estado" name="estado">
+                <option value="todo">{{ t("Todos") }}</option>
+                <option value="confirmed">{{ t("Completada") }}</option>
+                <option value="pending">{{ t("En espera") }}</option>
+                <option value="rejected">{{ t("Rechazada") }}</option>
+            </select>
+        </div>
+        <div class="campo est-filtro">
+            <label for="filtro-persona">{{ t("Persona") }}</label>
+            <select id="filtro-persona" name="persona">
+                <option value="">{{ t("Todas") }}</option>
+                {% for persona in movimientos|map(attribute="persona")|unique|sort %}
+                <option value="{{ persona }}">{{ t(persona) }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button class="boton est-limpiar" type="button" data-limpiar hidden>{{ t("Quitar filtros") }}</button>
+    </section>
+
+    <section class="est-cifras est-ancho" aria-label="{{ t('Resumen') }}" aria-live="polite">
+        <div class="mosaico est-cifra entra"><p class="mes-etiqueta">{{ t("Recibido") }}</p><p class="est-numero" data-cifra="recibido">{{ cantidad(resumen.recibido) }}</p><span class="metadato" data-nota="recibido"></span></div>
+        <div class="mosaico est-cifra sale"><p class="mes-etiqueta">{{ t("Enviado") }}</p><p class="est-numero" data-cifra="enviado">{{ cantidad(resumen.enviado) }}</p><span class="metadato" data-nota="enviado"></span></div>
+        <div class="mosaico est-cifra"><p class="mes-etiqueta">{{ t("Diferencia") }}</p><p class="est-numero" data-cifra="balance">{{ cantidad(resumen.balance) }}</p><span class="metadato">{{ t("lo que entró menos lo que salió") }}</span></div>
+        <div class="mosaico est-cifra"><p class="mes-etiqueta">{{ t("Movimientos") }}</p><p class="est-numero" data-cifra="movimientos">{{ resumen.movimientos }}</p><span class="metadato" data-nota="movimientos"></span></div>
+    </section>
+    <p class="ayuda est-ancho est-nota">{{ t("Las sumas cuentan sólo lo completado: lo que está en espera todavía no se movió y lo rechazado nunca se movió.") }}{% if cortado %} {{ t("Las cifras cubren los últimos {n} movimientos de la cuenta; antes de eso hay historial que no entra en la página.", n=tope) }}{% endif %}</p>
+
+    {% if proyeccion %}
+    {# La proyección la calcula la red entrenada dentro de la aplicación, en cada visita. El texto dice con qué dataset se entrenó, con las cifras de resultados.json. #}
+    <section class="mosaico est-ancho est-proyeccion" aria-labelledby="titulo-proyeccion">
+        <div class="titulo-bloque">
+            <h2 id="titulo-proyeccion">{{ t("Proyección del próximo mes") }}</h2>
+        </div>
+        <div class="est-cifras">
+            <div class="mosaico est-cifra entra"><p class="mes-etiqueta">{{ t("Recibiría") if es_admin and elegido else t("Recibirías") }}</p><p class="est-numero">{{ cantidad(proyeccion.recibido) }}</p></div>
+            <div class="mosaico est-cifra sale"><p class="mes-etiqueta">{{ t("Enviaría") if es_admin and elegido else t("Enviarías") }}</p><p class="est-numero">{{ cantidad(proyeccion.enviado) }}</p></div>
+            <div class="mosaico est-cifra"><p class="mes-etiqueta">{{ t("Neto") }}</p><p class="est-numero">{{ cantidad(proyeccion.neto) }}</p></div>
+        </div>
+        {% if origen_del_modelo %}
+        <p class="ayuda">{{ t("Lo estima una red neuronal (TensorFlow) entrenada con el dataset del proyecto: {cuentas} cuentas y {meses} meses de movimientos.", cuentas=origen_del_modelo.cuentas, meses=origen_del_modelo.meses) }}</p>
+        {% else %}
+        <p class="ayuda">{{ t("Lo estima una red neuronal (TensorFlow) entrenada con el dataset del proyecto.") }}</p>
+        {% endif %}
+    </section>
+    {% endif %}
+
+    <section class="mosaico est-grafica est-ancho" aria-labelledby="titulo-flujo">
+        <div class="titulo-bloque">
+            <h2 id="titulo-flujo">{{ t("Lo que entró y salió") }}</h2>
+            <ul class="est-leyenda">
+                <li><i class="muestra entra" aria-hidden="true"></i>{{ t("Recibido") }}</li>
+                <li><i class="muestra sale" aria-hidden="true"></i>{{ t("Enviado") }}</li>
+            </ul>
+        </div>
+        <div class="est-barras" data-grafica="flujo" role="img" aria-label="{{ t('Lo que entró y salió') }}"></div>
+    </section>
+
+    <section class="mosaico est-grafica" aria-labelledby="titulo-saldo-tiempo">
+        <div class="titulo-bloque"><h2 id="titulo-saldo-tiempo">{{ t("Cómo fue cambiando tu dinero") if not es_admin else t("Cómo fue cambiando su dinero") }}</h2></div>
+        <p class="ayuda">{{ t("El saldo después de cada movimiento completado, con todas las personas.") }}</p>
+        <div class="est-linea" data-grafica="saldo"></div>
+    </section>
+
+    <section class="mosaico est-grafica" aria-labelledby="titulo-estados">
+        <div class="titulo-bloque"><h2 id="titulo-estados">{{ t("Cómo terminaron") }}</h2></div>
+        <div class="est-dona" data-grafica="estados"></div>
+    </section>
+
+    <section class="mosaico est-grafica" aria-labelledby="titulo-personas">
+        <div class="titulo-bloque"><h2 id="titulo-personas">{{ t("Con quién se movió más dinero") }}</h2></div>
+        <ol class="est-personas" data-grafica="personas"></ol>
+    </section>
+
+    <section class="mosaico est-grafica" aria-labelledby="titulo-semana">
+        <div class="titulo-bloque"><h2 id="titulo-semana">{{ t("Qué días hay más movimiento") }}</h2></div>
+        <div class="est-semana" data-grafica="semana"></div>
+    </section>
+
+    <section class="mosaico est-ancho" aria-labelledby="titulo-tabla">
+        <details class="est-detalle">
+            <summary class="titulo-bloque"><h2 id="titulo-tabla">{{ t("Ver los movimientos en una tabla") }}</h2><span class="contador" data-cuenta-tabla>{{ movimientos|length }}</span></summary>
+            <div class="est-tabla-caja">
+                <table class="est-tabla">
+                    <thead><tr><th scope="col">{{ t("Fecha") }}</th><th scope="col">{{ t("Tipo") }}</th><th scope="col">{{ t("Persona") }}</th><th scope="col">{{ t("Estado") }}</th><th scope="col" class="numero">{{ t("Monto") }}</th></tr></thead>
+                    <tbody data-tabla></tbody>
+                </table>
+            </div>
+        </details>
+    </section>
+    <div class="est-globo" data-globo role="status" hidden></div>
+    {% endif %}
+</main>
+{% endblock %}

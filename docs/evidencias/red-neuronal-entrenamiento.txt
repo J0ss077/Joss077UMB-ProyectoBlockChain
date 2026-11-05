@@ -1,0 +1,16 @@
+Entrenamiento de la red de proyección de estadísticas (actividad 4)
+Fecha: 2026-11-04 18:56:57 -05
+Comando: .venv-tf/bin/python -m red_neuronal.entrenar
+TensorFlow: 2.22.0-rc0
+Dataset: dataset/ (generado con .venv-tf/bin/python -m dataset.generar)
+El error se mide contra los montos reales del mes siguiente, sin tope.
+
+red: 8 entradas -> normalización -> 8 ocultas -> 2 salidas
+ejemplos: entrenamiento 125,667 | validación 31,782 | prueba 30,662
+épocas corridas: 53 de 200
+error absoluto medio en prueba: 1444.72 pesos
+  recibido: modelo  1621.75 | últimos 30 días  4770.69 | promedio  1915.36 pesos
+   enviado: modelo  1267.70 | últimos 30 días  1621.51 | promedio  1478.94 pesos
+error relativo del modelo: 53 %
+modelo guardado en red_neuronal/modelos/proyeccion.keras
+resumen guardado en red_neuronal/resultados.json

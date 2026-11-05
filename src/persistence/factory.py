@@ -22,6 +22,7 @@ from psycopg.conninfo import conninfo_to_dict, make_conninfo
 from src.accounts.ports import RepositorioDeUsuarios
 from src.accounts.postgres import PostgresAccountsRepository
 from src.domain.blockchain import Blockchain
+from src.persistence.conexion import abrir_en_utc
 from src.persistence.postgres import (
     PostgresBlockRepository,
     PostgresTransactionRepository,
@@ -316,9 +317,8 @@ def transaction() -> Iterator[TransaccionDeCuentas]:
     que no necesita el ledger sobre su conexión.
     """
     dsn = database_url()
-    connection = psycopg.connect(dsn)
+    connection = abrir_en_utc(dsn)
     try:
-        connection.execute("SET TIME ZONE 'UTC'")
         yield TransaccionDeCuentas(
             ledger=open_ledger(
                 connection, encryption_key=master_key(), database_dsn=dsn
@@ -344,10 +344,9 @@ def ledger() -> Iterator[Blockchain]:
     abre y la unidad de trabajo usan el mismo destino.
     """
     dsn = database_url()
-    with psycopg.connect(dsn, autocommit=True) as connection:
-        # La zona de la sesión decide cómo se leen las columnas `TIMESTAMPTZ`, y el
-        # hash del bloque cubre `datetime.isoformat()`: sin UTC, la misma fila se
-        # leería con otro desplazamiento y una cadena válida se verificaría como
-        # alterada. Toda conexión del ledger queda en UTC por esta razón.
-        connection.execute("SET TIME ZONE 'UTC'")
+    # `abrir_en_utc` deja la sesión en UTC antes de entregarla: la zona decide cómo
+    # se leen las columnas `TIMESTAMPTZ`, y el hash del bloque cubre
+    # `datetime.isoformat()`, así que sin UTC una cadena válida se verificaría como
+    # alterada. La conexión es de lectura y por eso va en autocommit.
+    with abrir_en_utc(dsn, autocommit=True) as connection:
         yield open_ledger(connection, encryption_key=master_key(), database_dsn=dsn)

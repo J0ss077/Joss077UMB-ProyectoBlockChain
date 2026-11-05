@@ -1,0 +1,24 @@
+Resultados de las pruebas automáticas del proyecto
+Fecha: 2026-11-04 22:41
+Comando: <venv> -m pytest -q (con DATABASE_URL a una base desechable propia)
+Entorno: PostgreSQL 16 (postgres:16-alpine), esquema de db/init.sql, base distinta de la de la aplicación
+
+=== Suite completa ===
+........................................................................ [ 18%]
+........................................................................ [ 37%]
+........................................................................ [ 55%]
+........................................................................ [ 74%]
+........................................................................ [ 93%]
+..........................                                               [100%]
+386 passed, 1 skipped in 80.27s (0:01:20)
+
+=== Pruebas de seguridad: firma, firma repetida y alteración ===
+...........                                                              [100%]
+11 passed in 0.31s
+
+=== Pruebas de la proyección y de la red (sin TensorFlow) ===
+............                                                             [100%]
+12 passed in 0.03s
+
+=== Pruebas del dataset (requieren pandas; se omiten sin él) ===
+1 skipped in 0.01s

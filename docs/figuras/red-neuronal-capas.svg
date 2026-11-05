@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="820" viewBox="0 0 1600 820" font-family="DejaVu Sans, Arial, sans-serif">
+<rect width="1600" height="820" fill="#ffffff"/>
+<text x="60" y="72" font-size="34" font-weight="700" fill="#10131a">Un mes de ejemplo, capa por capa</text>
+<text x="60" y="108" font-size="20" fill="#6b7280">las ocho características, las ocho activaciones ocultas y los dos montos estimados</text>
+<text x="80" y="274" font-size="18" fill="#10131a">gasto / recibido</text>
+<rect x="520" y="250" width="220" height="34" rx="8" fill="#eef2ff"/>
+<rect x="520" y="250" width="96" height="34" rx="8" fill="#1b3bd8" opacity="0.58"/>
+<text x="760" y="274" font-size="16" fill="#6b7280">+0.906</text>
+<text x="80" y="342" font-size="18" fill="#10131a">movimientos (30 d)</text>
+<rect x="520" y="318" width="220" height="34" rx="8" fill="#eef2ff"/>
+<rect x="520" y="318" width="76" height="34" rx="8" fill="#1b3bd8" opacity="0.45"/>
+<text x="760" y="342" font-size="16" fill="#6b7280">+0.400</text>
+<text x="80" y="410" font-size="18" fill="#10131a">neto del mes previo</text>
+<rect x="520" y="386" width="220" height="34" rx="8" fill="#eef2ff"/>
+<rect x="520" y="386" width="82" height="34" rx="8" fill="#1b3bd8" opacity="0.49"/>
+<text x="760" y="410" font-size="16" fill="#6b7280">+0.540</text>
+<text x="80" y="478" font-size="18" fill="#10131a">saldo / recibido</text>
+<rect x="520" y="454" width="220" height="34" rx="8" fill="#eef2ff"/>
+<rect x="520" y="454" width="220" height="34" rx="8" fill="#1b3bd8" opacity="1.00"/>
+<text x="760" y="478" font-size="16" fill="#6b7280">+5.000</text>
+<text x="80" y="546" font-size="18" fill="#10131a">movimientos previos</text>
+<rect x="520" y="522" width="220" height="34" rx="8" fill="#eef2ff"/>
+<rect x="520" y="522" width="84" height="34" rx="8" fill="#1b3bd8" opacity="0.50"/>
+<text x="760" y="546" font-size="16" fill="#6b7280">+0.600</text>
+<text x="80" y="614" font-size="18" fill="#10131a">recibido (escala)</text>
+<rect x="520" y="590" width="220" height="34" rx="8" fill="#eef2ff"/>
+<rect x="520" y="590" width="65" height="34" rx="8" fill="#1b3bd8" opacity="0.38"/>
+<text x="760" y="614" font-size="16" fill="#6b7280">+0.122</text>
+<text x="80" y="682" font-size="18" fill="#10131a">mes (seno)</text>
+<rect x="520" y="658" width="220" height="34" rx="8" fill="#eef2ff"/>
+<rect x="520" y="658" width="95" height="34" rx="8" fill="#1b3bd8" opacity="0.57"/>
+<text x="760" y="682" font-size="16" fill="#6b7280">-0.866</text>
+<text x="80" y="750" font-size="18" fill="#10131a">mes (coseno)</text>
+<rect x="520" y="726" width="220" height="34" rx="8" fill="#eef2ff"/>
+<rect x="520" y="726" width="80" height="34" rx="8" fill="#1b3bd8" opacity="0.47"/>
+<text x="760" y="750" font-size="16" fill="#6b7280">+0.500</text>
+<text x="80" y="212" font-size="21" font-weight="700" fill="#10131a">Entrada · 8</text>
+<rect x="900" y="280" width="70" height="70" rx="14" fill="#1b3bd8" opacity="0.06"/>
+<rect x="982" y="280" width="70" height="70" rx="14" fill="#1b3bd8" opacity="0.06"/>
+<rect x="1064" y="280" width="70" height="70" rx="14" fill="#1b3bd8" opacity="0.777"/>
+<rect x="1146" y="280" width="70" height="70" rx="14" fill="#1b3bd8" opacity="0.06"/>
+<rect x="900" y="362" width="70" height="70" rx="14" fill="#1b3bd8" opacity="0.06"/>
+<rect x="982" y="362" width="70" height="70" rx="14" fill="#1b3bd8" opacity="0.783"/>
+<rect x="1064" y="362" width="70" height="70" rx="14" fill="#1b3bd8" opacity="1.0"/>
+<rect x="1146" y="362" width="70" height="70" rx="14" fill="#1b3bd8" opacity="0.503"/>
+<text x="900" y="212" font-size="21" font-weight="700" fill="#10131a">Oculta · 8 (ReLU)</text>
+<text x="900" y="600" font-size="16" fill="#6b7280">lo que la red combina antes de estimar</text>
+<text x="1300" y="304" font-size="19" fill="#10131a">recibido</text>
+<text x="1300" y="342" font-size="26" font-weight="700" fill="#1b3bd8">1,485</text>
+<text x="1300" y="366" font-size="15" fill="#6b7280">1.22 × escala</text>
+<text x="1300" y="454" font-size="19" fill="#10131a">enviado</text>
+<text x="1300" y="492" font-size="26" font-weight="700" fill="#1b3bd8">1,097</text>
+<text x="1300" y="516" font-size="15" fill="#6b7280">0.90 × escala</text>
+<text x="1300" y="212" font-size="21" font-weight="700" fill="#10131a">Salida · 2</text>
+<text x="1300" y="600" font-size="16" fill="#6b7280">montos del próximo mes</text>
+</svg>
