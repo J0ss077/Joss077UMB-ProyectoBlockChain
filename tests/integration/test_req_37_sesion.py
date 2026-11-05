@@ -267,6 +267,9 @@ def test_req_37_con_sesion_de_administrador_el_ingreso_avisa_y_no_muestra_el_for
     # La página no lleva la barra de la sesión: es una pantalla de ingreso.
     assert 'class="navegacion"' not in cuerpo
     assert "Cerrar sesión" in cuerpo
+    # El botón cierra de una vez y hay un enlace para volver a la pantalla del rol.
+    assert 'action="/salir"' in cuerpo
+    assert 'href="/"' in cuerpo
     # El registro sigue abierto para el administrador: da de alta cuentas desde ahí.
     assert cliente_admin.get("/registrarme").status_code == 200
 

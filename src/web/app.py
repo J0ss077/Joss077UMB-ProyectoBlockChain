@@ -327,7 +327,12 @@ def create_app(
         """
         if g.user is not None:
             return render_template(
-                "ingreso.html", error=None, usuario="", sesion_abierta=True, sin_navegacion=True
+                "ingreso.html",
+                error=None,
+                usuario="",
+                sesion_abierta=True,
+                sin_navegacion=True,
+                volver=_inicio_de(g.user),
             )
         if request.method == "GET":
             return render_template("ingreso.html", error=None, usuario="")

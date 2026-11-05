@@ -32,6 +32,7 @@
         <form class="formulario" method="post" action="{{ url_for('salir') }}">
             <button class="boton boton-grande boton-primario" type="submit">{{ t("Cerrar sesión") }}</button>
         </form>
+        <p class="alternativa"><a href="{{ volver }}">{{ t("Volver") }}</a></p>
         {% else %}
         <form class="formulario" method="post" action="{{ url_for('ingresar') }}">
             <div class="campo">
