@@ -51,12 +51,12 @@ el encabezado de `src/bootstrap.py` y en el paso 4 del README.
    usa la aplicación, con el conteo de filas, los saldos, la cadena eslabonada y la
    fila del registro hecho desde la interfaz.
 2. **Registro desde la interfaz:** la cuenta `evidencia-fase4` se creó con el
-   formulario público (`POST /registrarme`, 4 de noviembre de 2026) y quedó en la base
-   como `pendiente`, sin wallet, esperando la aprobación del administrador. La fila
-   está en las consultas 7 y 9 del archivo anterior y se ve en la cola
-   `GET /admin/pendientes`. Queda en la base de demostración para que se pueda aprobar
-   o rechazar desde la interfaz; no se borra para que la evidencia siga siendo
-   verificable.
+   formulario público (`POST /registrarme`, 4 de noviembre de 2026, 17:53) y quedó en
+   la base como `pendiente`, sin wallet. Después se aprobó desde
+   `GET /admin/pendientes` —por eso hoy figura `aprobado` y con wallet, con su saldo de
+   bienvenida en un bloque propio—, y para la captura de la cola se registró una
+   segunda cuenta, `pendiente-demo`, que quedó esperando. Las dos filas están en la
+   sección de registro de `consulta-en-la-base.txt`.
 3. **Pruebas automáticas:** `pytest` completo en verde (ver la sección 6) y, en
    particular, `tests/integration/test_navegacion.py` y
    `tests/integration/test_conexion.py`, que cubren la navegación y el error de
@@ -85,7 +85,7 @@ funcionando contra PostgreSQL, no un diseño aparte. Las diecinueve de la interf
 tomaron con un navegador sin interfaz sobre las páginas que sirve la propia aplicación,
 con las animaciones de entrada detenidas para que se vea el estado final; las dos de
 terminal son capturas de pantalla de una sesión real de `psql` contra la base de la
-aplicación. Las veintiuna están hechas.
+aplicación. Las veintidós están hechas.
 
 | Archivo | Qué muestra | Estado |
 | --- | --- | --- |
@@ -95,7 +95,7 @@ aplicación. Las veintiuna están hechas.
 | `04-transacciones-rechazo.png` | El formulario de transacción con un monto inválido y el mensaje que explica el rechazo | ✅ |
 | `05-bloques.png` | El cierre de bloque con el pool en espera | ✅ |
 | `06-verificar.png` | El dictamen de integridad de la cadena | ✅ |
-| `07-pendientes.png` | La cola de aprobación con la cuenta `evidencia-fase4` y su fecha de registro | ✅ |
+| `07-pendientes.png` | La cola de aprobación con una cuenta pendiente y su fecha de registro | ✅ |
 | `08-tablero-comun.png` | El tablero del usuario común: saldo y envío | ✅ |
 | `09-estadisticas-comun.png` | Las estadísticas propias: filtros, cifras, gráficas y la tarjeta de proyección del próximo mes | ✅ |
 | `10-estadisticas-admin.png` | El selector del administrador y las estadísticas de un usuario, con su proyección | ✅ |
@@ -104,12 +104,13 @@ aplicación. Las veintiuna están hechas.
 | `13-error-503.png` | La página de error cuando la base no responde | ✅ |
 | `14-flujo-wallet-creada.png` | Una wallet recién registrada, con su identificador y su clave pública | ✅ |
 | `15-flujo-transaccion-pool.png` | La transacción recién propuesta, «En el pool» | ✅ |
-| `16-flujo-bloque-creado.png` | El bloque #4 creado y encadenado al hash del #3 | ✅ |
+| `16-flujo-bloque-creado.png` | El bloque #146 creado y encadenado al hash del #145 | ✅ |
 | `17-flujo-cadena-verificada.png` | La verificación: «La cadena es válida» | ✅ |
-| `18-alteracion-detectada.png` | La misma verificación con una fila alterada por `psql`: «no es válida», bloque #4 | ✅ |
+| `18-alteracion-detectada.png` | La misma verificación con una fila alterada por `psql`: «no es válida», bloque #146 | ✅ |
 | `19-alteracion-revertida.png` | Vuelta a «La cadena es válida» después de reponer el dato | ✅ |
 | `20-consulta-psql.png` | La terminal con `psql -f db/consultas.sql`: conteos por tabla, saldos por wallet y la cadena eslabonada | ✅ |
 | `21-registro-en-bd.png` | `SELECT` de la cuenta `evidencia-fase4` con su estado y su fecha de registro | ✅ |
+| `22-mis-contactos.png` | La agenda del usuario común con sus contactos y el movimiento de cada uno | ✅ |
 
 ## 4. Dificultades técnicas encontradas
 
@@ -197,9 +198,9 @@ identificadores está en `docs/evidencias/flujo.txt`.
 
 | Paso | Ruta | Qué quedó | Captura |
 | --- | --- | --- | --- |
-| Registrar wallet | `POST /wallets` | Wallet `d2e15839…` con su clave pública `036ff2ff…` y saldo 0 | `14-flujo-wallet-creada.png` |
+| Registrar wallet | `POST /wallets` | Wallet `ffa65493…` con su clave pública `034d25fe…` y saldo 0 | `14-flujo-wallet-creada.png` |
 | Proponer transacción | `POST /transacciones` | 25 desde `fondo` hacia la wallet nueva, estado «En el pool» | `15-flujo-transaccion-pool.png` |
-| Cerrar bloque | `POST /bloques` | Bloque **#4**, hash `9d5527eb…`, encadenado al `b32f0a09…` del #3 | `16-flujo-bloque-creado.png` |
+| Cerrar bloque | `POST /bloques` | Bloque **#146**, hash `b6f747ce…`, encadenado al `73e55de1…` del #145 | `16-flujo-bloque-creado.png` |
 | Verificar | `GET /verificar` | «La cadena es válida. Cada hash coincide con su contenido y con el del bloque anterior.» | `17-flujo-cadena-verificada.png` |
 
 Y la respuesta ante una alteración hecha **por fuera de la aplicación** (un `UPDATE` con
@@ -207,7 +208,7 @@ Y la respuesta ante una alteración hecha **por fuera de la aplicación** (un `U
 
 | Paso | Qué se hizo | Qué respondió el sistema | Captura |
 | --- | --- | --- | --- |
-| Alterar | `UPDATE transactions SET amount = amount + 100 …` (25 → 125) sobre una confirmada del bloque #4 | «La cadena no es válida. El primer bloque que no encaja es el de índice 4.» | `18-alteracion-detectada.png` |
+| Alterar | `UPDATE transactions SET amount = amount + 100 …` (25 → 125) sobre una confirmada del bloque #146 | «La cadena no es válida. El primer bloque que no encaja es el de índice 146.» | `18-alteracion-detectada.png` |
 | Reponer | `UPDATE … SET amount = 25 …` | «La cadena es válida» otra vez | `19-alteracion-revertida.png` |
 
 Ese ida y vuelta es lo que demuestra que la verificación recalcula de verdad: con el
@@ -258,4 +259,4 @@ Para reproducirlas sin tocar los datos de la aplicación hace falta una base apa
 - [x] Alteración por fuera de la aplicación detectada y luego revertida (capturas 18 y
       19).
 - [x] Resultados de las pruebas documentados (`docs/evidencias/pruebas.txt`).
-- [x] Capturas de la aplicación en `docs/evidencias/capturas/` (21 de 21).
+- [x] Capturas de la aplicación en `docs/evidencias/capturas/` (22 de 22).

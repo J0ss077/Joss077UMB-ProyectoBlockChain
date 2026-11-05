@@ -1,30 +1,34 @@
 Flujo completo ejecutado contra la aplicación levantada y su PostgreSQL
 =======================================================================
-Fecha: 2026-11-04 12:31 -05
+Fecha: 2026-11-04 17:54 -05
 Aplicación: python -m src.web  (http://127.0.0.1:5000)
-Base: la de DATABASE_URL (PostgreSQL 18.6)
+Base: la de DATABASE_URL (PostgreSQL 18.6), sembrada con la demostración y doce meses
+de historial.
 
 Las capturas 14 a 19 de docs/evidencias/capturas/ son las pantallas de estos pasos,
 en este orden.
 
 1. Registrar una wallet (CU-01, POST /wallets)  -> HTTP 200
-   Wallet registrada: d2e15839-cbaf-4f91-b5ee-18063dabb669
-   Clave pública:     036ff2ff614507d9...
+   Wallet registrada: ffa65493-9d02-454c-9b32-31f3592ec4be
+   Clave pública:     034d25fe9a5b2720...
    Saldo disponible:  0
    Captura: 14-flujo-wallet-creada.png
 
 2. Proponer una transacción (CU-02, POST /transacciones)  -> HTTP 200
-   Emisor:  fondo            (02bd2728...)
-   Destino: la wallet nueva  (d2e15839...)
+   Emisor:  fondo            (59d745dc...)
+   Destino: la wallet nueva  (ffa65493...)
    Monto:   25
    Estado:  En el pool  -> "Quedará confirmada cuando se cierre el próximo bloque."
+   Transacción: 8804fcb3-c023-41fa-bc96-d28e5e9a9e67
    Captura: 15-flujo-transaccion-pool.png
 
 3. Agrupar el pool en un bloque (CU-03, POST /bloques)  -> HTTP 200
    "Bloque creado y encadenado con el último."
-   Índice:      4
-   Hash:        9d5527eb1d0d...
-   Hash previo: b32f0a09dd6f...  (el hash del bloque #3)
+   Índice:      146
+   Hash:        b6f747ce26b5...
+   Hash previo: 73e55de13ba5...  (el hash del bloque #145)
+   El bloque confirmó las 12 transacciones que había en el pool: la del paso 2 y los
+   movimientos recientes que la historia de demostración deja en espera.
    Captura: 16-flujo-bloque-creado.png
 
 4. Verificar la cadena (CU-04, GET /verificar)  -> HTTP 200
@@ -32,14 +36,14 @@ en este orden.
    Captura: 17-flujo-cadena-verificada.png
 
 5. Alterar una fila por fuera de la aplicación (psql, no la app)
-   UPDATE transactions SET amount = amount + 100 WHERE id = 'f410a916-...';
-   Monto 25 -> 125 en una transacción ya confirmada del bloque #4.
+   UPDATE transactions SET amount = amount + 100 WHERE id = '8804fcb3-c023-41fa-bc96-d28e5e9a9e67';
+   Monto 25 -> 125 en una transacción ya confirmada del bloque #146.
    GET /verificar  ->  "La cadena no es válida. El primer bloque que no encaja es el
-   de índice 4."  (el bloque donde está la transacción alterada)
+   de índice 146."  (el bloque donde está la transacción alterada)
    Captura: 18-alteracion-detectada.png
 
 6. Reponer el monto original
-   UPDATE transactions SET amount = 25 WHERE id = 'f410a916-...';
+   UPDATE transactions SET amount = 25 WHERE id = '8804fcb3-c023-41fa-bc96-d28e5e9a9e67';
    GET /verificar  ->  "La cadena es válida" otra vez.
    Captura: 19-alteracion-revertida.png
 
@@ -49,15 +53,11 @@ en este orden.
 
 Comandos, tal como se ejecutaron (con el cliente del equipo):
 
-   psql "$DATABASE_URL" -c "UPDATE transactions SET amount = amount + 100 WHERE id = 'f410a916-b5c6-4f09-8ee0-132a0ab263f4';"
-   psql "$DATABASE_URL" -c "UPDATE transactions SET amount = 25 WHERE id = 'f410a916-b5c6-4f09-8ee0-132a0ab263f4';"
+   psql "$DATABASE_URL" -c "UPDATE transactions SET amount = amount + 100 WHERE id = '8804fcb3-c023-41fa-bc96-d28e5e9a9e67';"
+   psql "$DATABASE_URL" -c "UPDATE transactions SET amount = 25 WHERE id = '8804fcb3-c023-41fa-bc96-d28e5e9a9e67';"
 
-Estado de la base después del flujo: 6 wallets, 5 bloques, 11 transacciones, 7 cuentas
-(la de evidencia sigue pendiente de aprobación). El bloque #4 quedó con el hash
-9d5527eb1d0d... y contiene la transacción de 25.
+Después, para la captura 04, se propuso un monto de 0 hacia la misma wallet y la
+aplicación lo rechazó: "el monto debe ser mayor que cero".
 
-Nota posterior. Después de esta transcripción se sembró el historial de doce meses
-descrito en `src/historial_demo.py` para que la página de estadísticas y la proyección
-tuvieran datos: la base quedó con 17 bloques y 107 transacciones. Los identificadores de
-este documento siguen siendo válidos (la wallet d2e15839 y el bloque #4 no cambiaron);
-sólo cambiaron los conteos.
+Estado de la base después del flujo: 7 wallets, 147 bloques, 235 transacciones y 8 cuentas.
+El bloque #146 quedó con el hash b6f747ce26b5... y contiene la transacción de 25.

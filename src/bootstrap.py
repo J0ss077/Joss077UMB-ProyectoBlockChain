@@ -158,13 +158,13 @@ def run(chain: Blockchain) -> Block | None:
     asociados = [chain.register_wallet() for _ in range(ASOCIADOS)]
 
     chain.transactions.add(
-        _entrega_de_capital(chain, constituyente.id, fondo.id, CAPITAL_CONSTITUCION)
+        entrega_de_capital(chain, constituyente.id, fondo.id, CAPITAL_CONSTITUCION)
     )
     chain.group_pending()
 
     for asociado in asociados:
         chain.transactions.add(
-            _entrega_de_capital(chain, fondo.id, asociado.id, CAPITAL_ASOCIACION)
+            entrega_de_capital(chain, fondo.id, asociado.id, CAPITAL_ASOCIACION)
         )
     chain.group_pending()
 
@@ -177,7 +177,7 @@ def run(chain: Blockchain) -> Block | None:
     return bloque
 
 
-def _entrega_de_capital(
+def entrega_de_capital(
     chain: Blockchain, emisor_id: UUID, receptor_id: UUID, monto: Decimal
 ) -> Transaction:
     """Arma una entrega de capital ya firmada por su emisor.
@@ -253,7 +253,7 @@ def _wallets_de_la_demostracion(chain: Blockchain) -> list[UUID]:
         return []
     asociados = [
         fila.receiver_id
-        for fila in chain.wallet_history(fondo.id)
+        for fila in chain.wallet_history(fondo.id, limit=100_000)
         if fila.sender_id == fondo.id and fila.amount == CAPITAL_ASOCIACION
     ]
     return [CONSTITUYENTE_ID, fondo.id, *asociados]
