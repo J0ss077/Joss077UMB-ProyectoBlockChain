@@ -296,9 +296,9 @@ entrenada con TensorFlow y ejecutada **dentro de la aplicación**, en cada visit
 | Archivo | Qué hace |
 | ------- | -------- |
 | `red_neuronal/caracteristicas.py` | Las ocho características de entrada y la escala con la que se vuelve a pesos |
-| `red_neuronal/serie.py` | La serie sintética de 240 meses con la que se entrena |
+| `dataset/` | El dataset con el que se entrena: capas, formatos y su generador (ver abajo) |
 | `red_neuronal/modelo.py` | La red 8 → 8 → 2 (TensorFlow/Keras) |
-| `red_neuronal/entrenar.py` | Entrena, compara con dos predicciones ingenuas y guarda el modelo |
+| `red_neuronal/entrenar.py` | Entrena con el dataset, evalúa en prueba contra dos predicciones ingenuas y guarda el modelo |
 | `src/web/proyeccion.py` | Carga el modelo, resume el historial de la cuenta y proyecta |
 
 TensorFlow va en `red_neuronal/requirements.txt` y **no** en el `requirements.txt` del
@@ -308,9 +308,22 @@ proyección simplemente no aparece. Para tenerla:
 ```text
 python3.14 -m venv .venv-tf
 .venv-tf/bin/python -m pip install -r red_neuronal/requirements.txt
-.venv-tf/bin/python -m red_neuronal.entrenar
+.venv-tf/bin/python -m dataset.generar        # sólo si se quiere regenerar el dataset
+.venv-tf/bin/python -m red_neuronal.entrenar  # sólo si se quiere reentrenar
 .venv-tf/bin/python -m src.web
 ```
+
+### El dataset
+
+La red se entrena con el dataset de `dataset/`: **2.500 cuentas** de un fondo de
+empleados durante **96 meses**, **814.023 transacciones** y **188.111 ejemplos** para la
+red, en capas (crudo con defectos, limpio, agregado mensual y listo para el modelo) y en
+CSV, JSON Lines, Parquet, Excel y SQLite, con diccionario de datos y reporte de calidad.
+Es una simulación reproducible (semilla fija); `dataset/README.md` explica cómo se
+generó. La carpeta pesa unos 800 MB y ningún archivo pasa de 50 MB: lo que no cabe se
+parte por año. En prueba, contra los montos reales, la red se equivoca en 1.622 y 1.268
+pesos (recibido y enviado) contra 1.915 y 1.479 de predecir el promedio; el detalle está
+en `docs/red-neuronal.md`.
 
 El modelo entrenado queda en `red_neuronal/modelos/proyeccion.keras` y viaja con el
 repositorio, así que no hace falta entrenar para ver la tarjeta. El apartado del
@@ -325,8 +338,9 @@ el documento maestro se entregan aparte, no se versionan acá.
 pendientes, que son los retiros que `POST /bloques` agruparía a continuación. El
 ciclo es el del eje: el capital de constitución entra al ledger, el fondo reparte el
 capital de asociación, los asociados aportan y el fondo les gira retiros. Si después
-se corre `python -m src.historial_demo`, se suman **12 bloques y 72 transacciones**
-repartidas en doce meses (ver la sección anterior).
+se corre `python -m src.historial_demo`, se suman **unos 150 bloques y 230
+transacciones** repartidas en doce meses y lo que va del actual (la cifra exacta depende
+del día en que se corra; ver la sección anterior).
 
 | Actor          | Movimiento                                                                                               | Resultado                   |
 | -------------- | -------------------------------------------------------------------------------------------------------- | --------------------------- |
@@ -411,7 +425,33 @@ encadenado):
 <venv> -m src.historial_demo
 ```
 
+Cada usuario común tiene un perfil propio, para que las gráficas no muestren series
+parecidas:
+
+| Cuenta          | Perfil                                       | Movimientos | Con quién mueve más           | Cuándo opera                |
+| --------------- | -------------------------------------------- | ----------- | ----------------------------- | --------------------------- |
+| `asociado1`     | Comerciante: le compra seguido a asociado2   | ~120        | asociado2, después el fondo   | lunes a miércoles, mañana   |
+| `asociado2`     | Muchos movimientos chicos, primas jun./dic.  | ~160        | asociado1, después el fondo   | fines de semana, noche      |
+| `asociado3`     | Esporádico, montos de 4.000 a 12.000         | ~50         | el fondo, lejos del resto     | jueves y viernes, tarde     |
+| `constituyente` | Emisor: capital bimestral al fondo           | ~13         | el fondo; saldo negativo      | primer día hábil, temprano  |
+| `fondo`         | Contraparte de todos                         | ~120        | —                             | todos los días              |
+
+Los saldos suben y bajan: hay meses en que una cuenta aporta más de lo que retiró, gastos
+grandes después de las primas y préstamos que se pagan en cuotas. Los estados también se
+reparten: cada cuenta intenta, en meses al azar, operaciones que superan su saldo (entre
+siete y diez rechazadas por cuenta, salvo el constituyente) y lo de los últimos nueve
+días queda en espera, así la página muestra los tres estados mezclados.
+
 Es idempotente: si el fondo ya tiene movimientos de hace más de 45 días, no hace nada.
+Para cambiar una historia ya sembrada hay que volver a sembrar sobre una base vacía.
+
+Para que las pantallas que no miran la cadena tampoco queden vacías hay un tercer paso,
+también idempotente, que llena la agenda de los usuarios de demostración y deja una
+solicitud de cambio de contraseña esperando al administrador:
+
+```text
+<venv> -m src.demo_social
+```
 La historia se agrega al final de la cadena con fechas del pasado, así que los bloques
 nuevos quedan con marcas de tiempo anteriores a las del último bloque que ya existía; la
 verificación sigue siendo válida porque comprueba el encadenamiento, no el orden

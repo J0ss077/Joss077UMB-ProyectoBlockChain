@@ -109,18 +109,21 @@
     <p class="ayuda est-ancho est-nota">{{ t("Las sumas cuentan sólo lo completado: lo que está en espera todavía no se movió y lo rechazado nunca se movió.") }}</p>
 
     {% if proyeccion %}
-    {# La proyección la calcula la red entrenada dentro de la aplicación, en cada visita. El texto dice de dónde sale para que nadie la lea como una promesa. #}
+    {# La proyección la calcula la red entrenada dentro de la aplicación, en cada visita. El texto dice con qué dataset se entrenó, con las cifras de resultados.json. #}
     <section class="mosaico est-ancho est-proyeccion" aria-labelledby="titulo-proyeccion">
         <div class="titulo-bloque">
             <h2 id="titulo-proyeccion">{{ t("Proyección del próximo mes") }}</h2>
-            <span class="pildora">{{ t("modelo de demostración") }}</span>
         </div>
         <div class="est-cifras">
             <div class="mosaico est-cifra entra"><p class="mes-etiqueta">{{ t("Recibirías") }}</p><p class="est-numero">{{ cantidad(proyeccion.recibido) }}</p></div>
             <div class="mosaico est-cifra sale"><p class="mes-etiqueta">{{ t("Enviarías") }}</p><p class="est-numero">{{ cantidad(proyeccion.enviado) }}</p></div>
             <div class="mosaico est-cifra"><p class="mes-etiqueta">{{ t("Neto") }}</p><p class="est-numero">{{ cantidad(proyeccion.neto) }}</p></div>
         </div>
-        <p class="ayuda">{{ t("Lo estima una red neuronal entrenada con datos sintéticos: sirve para mostrar cómo se mueve la cuenta, no para predecir el dinero real.") }}</p>
+        {% if origen_del_modelo %}
+        <p class="ayuda">{{ t("Lo estima una red neuronal (TensorFlow) entrenada con el dataset del proyecto: {cuentas} cuentas y {meses} meses de movimientos.", cuentas=origen_del_modelo.cuentas, meses=origen_del_modelo.meses) }}</p>
+        {% else %}
+        <p class="ayuda">{{ t("Lo estima una red neuronal (TensorFlow) entrenada con el dataset del proyecto.") }}</p>
+        {% endif %}
     </section>
     {% endif %}
 

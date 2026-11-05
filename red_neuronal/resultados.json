@@ -1,5 +1,5 @@
 {
-  "fecha": "2026-11-04T18:05:21+00:00",
+  "fecha": "2026-11-04T23:56:13+00:00",
   "campos": [
     "gasto_relativo",
     "movimientos_30d",
@@ -11,27 +11,34 @@
     "mes_coseno"
   ],
   "neuronas_ocultas": 8,
-  "meses_de_la_serie": 240,
-  "ejemplos": 238,
-  "ejemplos_de_entrenamiento": 190,
-  "ejemplos_de_validacion": 48,
-  "epocas": 600,
-  "epocas_corridas": 244,
-  "lote": 16,
+  "dataset": "dataset",
+  "cuentas": 2500,
+  "meses": 96,
+  "transacciones": 814023,
+  "ejemplos": 188111,
+  "ejemplos_de_entrenamiento": 125667,
+  "ejemplos_de_validacion": 31782,
+  "ejemplos_de_prueba": 30662,
+  "epocas": 200,
+  "epocas_corridas": 53,
+  "lote": 256,
   "semilla": 2026,
-  "perdida_validacion": 0.0078,
-  "error_absoluto_medio_pesos": 140.45,
-  "error_recibido_pesos": 151.18,
-  "error_enviado_pesos": 129.72,
-  "error_ingenuo_mes_anterior": [
-    496.94,
-    618.02
-  ],
-  "error_ingenuo_promedio": [
-    322.76,
-    266.17
-  ],
-  "monto_medio_validacion_pesos": 1746.11,
-  "error_relativo": 0.08,
+  "perdida_validacion": 0.4207,
+  "perdida_prueba": 0.4342,
+  "error_prueba_pesos": 1444.72,
+  "error_recibido_pesos": 1621.75,
+  "error_enviado_pesos": 1267.7,
+  "error_ingenuo_prueba": {
+    "ultimos_30_dias": [
+      4770.69,
+      1621.51
+    ],
+    "promedio_de_entrenamiento": [
+      1915.36,
+      1478.94
+    ]
+  },
+  "monto_medio_prueba_pesos": 2733.4,
+  "error_relativo": 0.529,
   "modelo": "red_neuronal/modelos/proyeccion.keras"
 }

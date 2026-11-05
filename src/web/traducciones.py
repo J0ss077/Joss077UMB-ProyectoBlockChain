@@ -500,11 +500,11 @@ EN: dict[str, str] = {
     "Qué días hay más movimiento": "Which days are busiest",
     "Ver los movimientos en una tabla": "See the movements in a table",
     "Proyección del próximo mes": "Next month's projection",
-    "modelo de demostración": "demo model",
     "Recibirías": "You'd receive",
     "Enviarías": "You'd send",
     "Neto": "Net",
-    "Lo estima una red neuronal entrenada con datos sintéticos: sirve para mostrar cómo se mueve la cuenta, no para predecir el dinero real.": "Estimated by a neural network trained on synthetic data: it shows how the account moves, it does not predict real money.",
+    "Lo estima una red neuronal (TensorFlow) entrenada con el dataset del proyecto: {cuentas} cuentas y {meses} meses de movimientos.": "Estimated by a TensorFlow neural network trained on the project dataset: {cuentas} accounts and {meses} months of activity.",
+    "Lo estima una red neuronal (TensorFlow) entrenada con el dataset del proyecto.": "Estimated by a TensorFlow neural network trained on the project dataset.",
     # ── Textos de los guiones (TEXTOS_DE_JS) ──────────────────────────────
     "Saldo": "Balance",
     "movimientos": "movements",

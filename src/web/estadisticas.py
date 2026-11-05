@@ -39,7 +39,7 @@ from src.domain.blockchain import Blockchain
 from src.domain.transaction import Transaction, TransactionStatus
 from src.emision import CONSTITUYENTE_ID
 from src.web.auth import requiere_administrador, requiere_usuario_comun
-from src.web.proyeccion import proyectar
+from src.web.proyeccion import origen_del_modelo, proyectar
 from src.web.user import _wallet_de_la_sesion
 
 FabricaDeCadenas = Callable[[], AbstractContextManager[Blockchain]]
@@ -50,6 +50,12 @@ NOMBRE_DE_LA_BIENVENIDA = "Saldo de bienvenida"
 NOMBRE_SIN_DUENO = "otra cuenta"
 
 MENSAJE_USUARIO_SIN_ESTADISTICAS = "No hay un usuario con ese nombre."
+
+# Cuántos movimientos lee la página. El historial de la pantalla se queda con los
+# últimos cien, pero las estadísticas filtran por todo el año y una cuenta activa
+# pasa esa cifra en pocos meses: con el tope de la pantalla, las gráficas cortarían
+# la historia sin avisar.
+MOVIMIENTOS_DE_LAS_ESTADISTICAS = 5000
 
 
 @dataclass(frozen=True, slots=True)
@@ -80,7 +86,7 @@ def crear_blueprint_de_estadisticas(
         with abrir_cuentas() as cuentas:
             nombres = cuentas.nombres_por_wallet()
         with abrir_cadena() as chain:
-            historial = chain.wallet_history(wallet_id)
+            historial = chain.wallet_history(wallet_id, limit=MOVIMIENTOS_DE_LAS_ESTADISTICAS)
             proyeccion = proyectar(historial, chain.available_balance(wallet_id), wallet_id)
         return _pintar(historial, wallet_id, nombres, proyeccion=proyeccion)
 
@@ -108,7 +114,9 @@ def crear_blueprint_de_estadisticas(
         if elegido is None or elegido.wallet_id is None or elegido.role == ADMINISTRADOR:
             abort(404, description=MENSAJE_USUARIO_SIN_ESTADISTICAS)
         with abrir_cadena() as chain:
-            historial = chain.wallet_history(elegido.wallet_id)
+            historial = chain.wallet_history(
+                elegido.wallet_id, limit=MOVIMIENTOS_DE_LAS_ESTADISTICAS
+            )
             proyeccion = proyectar(
                 historial, chain.available_balance(elegido.wallet_id), elegido.wallet_id
             )
@@ -132,6 +140,7 @@ def _pintar(
 ) -> str:
     return render_template(
         "estadisticas.html",
+        origen_del_modelo=origen_del_modelo(),
         movimientos=movimientos_para_graficas(historial, propia, nombres),
         resumen=resumen_de_estadisticas(historial, propia),
         **contexto,
@@ -180,6 +189,4 @@ def resumen_de_estadisticas(
             enviado += transaction.amount
         else:
             recibido += transaction.amount
-    return ResumenDeEstadisticas(
-        recibido=recibido, enviado=enviado, movimientos=len(historial)
-    )
+    return ResumenDeEstadisticas(recibido=recibido, enviado=enviado, movimientos=len(historial))

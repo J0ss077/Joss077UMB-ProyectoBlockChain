@@ -14,10 +14,13 @@ función devuelve `None` y la página muestra sólo lo descriptivo: el prototipo
 funcionando sin la proyección. Es la misma degradación que el ayudante tiene sin clave
 de IA.
 """
+
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime
 from decimal import Decimal
+from pathlib import Path
 from typing import Any
 from uuid import UUID
 
@@ -33,6 +36,28 @@ RUTA_DEL_MODELO = "red_neuronal/modelos/proyeccion.keras"
 # el mismo error.
 _modelo: Any | None = None
 _no_disponible = False
+
+# El resumen que deja el entrenamiento. La tarjeta cita de ahí cuántas cuentas y meses
+# tiene el dataset, para que el texto no quede desactualizado si se regenera.
+RUTA_DE_RESULTADOS = Path("red_neuronal") / "resultados.json"
+_origen: dict[str, int] | None = None
+
+
+def origen_del_modelo() -> dict[str, int] | None:
+    """Cuántas cuentas y meses tiene el dataset del modelo, o `None` si no se sabe.
+
+    Se lee una vez y se guarda: el archivo sólo cambia al reentrenar, y entonces se
+    reinicia la aplicación para cargar el modelo nuevo de todas formas.
+    """
+    global _origen
+    if _origen is None:
+        try:
+            datos = json.loads(RUTA_DE_RESULTADOS.read_text(encoding="utf-8"))
+            _origen = {"cuentas": int(datos["cuentas"]), "meses": int(datos["meses"])}
+        except (OSError, ValueError, KeyError, TypeError):
+            # Sin resumen, o uno de antes del dataset: la tarjeta va sin cifras.
+            _origen = {}
+    return _origen or None
 
 
 def precargar() -> bool:

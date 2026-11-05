@@ -7,9 +7,8 @@ página de estadísticas lo muestra en su tarjeta de proyección.
 | Archivo | Qué hace | ¿Necesita TensorFlow? |
 | ------- | -------- | --------------------- |
 | `caracteristicas.py` | Las ocho características de entrada y la escala para volver a pesos | No |
-| `serie.py` | La serie sintética de 240 meses con la que se entrena | No |
 | `modelo.py` | Arma y compila la red 8 → 8 → 2 | Sí |
-| `entrenar.py` | Entrena, compara con dos predicciones ingenuas y guarda modelo y resumen | Sí |
+| `entrenar.py` | Entrena con `dataset/`, evalúa en prueba y guarda modelo y resumen | Sí |
 | `figuras.py` | Genera las figuras del apartado con los valores del modelo | Sí |
 
 TensorFlow va en `red_neuronal/requirements.txt` y **no** en el `requirements.txt` del
@@ -23,6 +22,7 @@ Cómo se reproduce:
 ```text
 python3.14 -m venv .venv-tf
 .venv-tf/bin/python -m pip install -r red_neuronal/requirements.txt
+.venv-tf/bin/python -m dataset.generar
 .venv-tf/bin/python -m red_neuronal.entrenar
 .venv-tf/bin/python -m red_neuronal.figuras
 ```

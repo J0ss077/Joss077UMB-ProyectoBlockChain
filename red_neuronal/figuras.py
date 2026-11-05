@@ -2,7 +2,7 @@
 
 La segunda no es un dibujo decorativo: se arma con las ocho características, las ocho
 activaciones ocultas y las dos salidas que el modelo entrenado produce para un mes de
-la serie de ejemplo. Si el modelo se reentrena, las figuras se regeneran y siguen
+la partición de prueba del dataset. Si el modelo se reentrena, las figuras se regeneran y siguen
 contando la verdad.
 
 Uso:
@@ -120,7 +120,7 @@ def figura_general() -> str:
 def figura_capas(
     caracteristicas: list[float], ocultas: list[float], salidas: list[float], escala: float
 ) -> str:
-    """Las tres capas con los números reales de un mes de la serie."""
+    """Las tres capas con los números reales de un ejemplo de prueba del dataset."""
     lineas = _cabecera(
         1600,
         820,
@@ -187,9 +187,10 @@ def figura_capas(
 def main() -> None:
     """Carga el modelo, calcula un mes de ejemplo y escribe las dos figuras."""
     import numpy as np
+    import tensorflow as tf
 
+    from dataset.exportar import leer
     from red_neuronal.modelo import RUTA_DEL_MODELO, cargar_modelo
-    from red_neuronal.serie import ejemplos
 
     if not RUTA_DEL_MODELO.exists():
         raise SystemExit(
@@ -198,9 +199,15 @@ def main() -> None:
         )
 
     modelo = cargar_modelo()
-    entradas, _salidas, escalas = ejemplos()
+    # El último ejemplo de prueba: un mes que el modelo no vio al entrenar.
+    prueba = leer(Path("dataset") / "modelo", "ejemplos_prueba")
+    entradas = prueba[list(CAMPOS)].to_numpy(dtype="float32").tolist()
+    escalas = prueba["escala"].tolist()
     ejemplo = np.array([entradas[-1]], dtype="float32")
-    ocultas = modelo.get_layer("oculta")(ejemplo).numpy()[0]
+    # La capa oculta recibe las entradas ya estandarizadas: se lee su salida desde la
+    # entrada del modelo y no aplicándola sola a las proporciones crudas.
+    hasta_la_oculta = tf.keras.Model(modelo.inputs, modelo.get_layer("oculta").output)
+    ocultas = hasta_la_oculta(ejemplo).numpy()[0]
     salidas = modelo.predict(ejemplo, verbose=0)[0]
 
     RUTA_DE_FIGURAS.mkdir(parents=True, exist_ok=True)

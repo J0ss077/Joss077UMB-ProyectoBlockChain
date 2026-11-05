@@ -4,7 +4,7 @@ La red no lee transacciones: lee ocho números que resumen cómo se movió una c
 los últimos treinta días. Este módulo es el único lugar donde esos números se arman, y
 por eso lo usan las dos puntas:
 
-- el entrenamiento, que los saca de la serie sintética;
+- el entrenamiento, que los saca de las transacciones del dataset (`dataset/agregado.py`);
 - la aplicación, que los saca del historial real de la wallet.
 
 Las cantidades van **en relación con lo que la cuenta recibió**, no en pesos. Un fondo

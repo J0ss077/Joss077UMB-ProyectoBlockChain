@@ -1,0 +1,462 @@
+[
+  {
+    "tabla":"cuentas",
+    "archivo":"limpio\/cuentas",
+    "columna":"cuenta_id",
+    "tipo":"texto",
+    "unidad":"—",
+    "rango_observado":"2,500 valores distintos",
+    "nulos":0,
+    "descripcion":"Identificador de la cuenta (C00001…). Clave primaria."
+  },
+  {
+    "tabla":"cuentas",
+    "archivo":"limpio\/cuentas",
+    "columna":"perfil",
+    "tipo":"categoría",
+    "unidad":"—",
+    "rango_observado":"ahorrador, comerciante, con_primas, endeudado, esporadico, frecuente, que_se_retira",
+    "nulos":0,
+    "descripcion":"Perfil de comportamiento con que se simuló la cuenta: ahorrador, frecuente, esporadico, con_primas, endeudado, comerciante, que_se_retira."
+  },
+  {
+    "tabla":"cuentas",
+    "archivo":"limpio\/cuentas",
+    "columna":"fecha_alta",
+    "tipo":"fecha",
+    "unidad":"AAAA-MM-DD",
+    "rango_observado":"787 valores distintos",
+    "nulos":0,
+    "descripcion":"Día en que la cuenta se afilió al fondo."
+  },
+  {
+    "tabla":"cuentas",
+    "archivo":"limpio\/cuentas",
+    "columna":"fecha_baja",
+    "tipo":"fecha",
+    "unidad":"AAAA-MM-DD",
+    "rango_observado":"319 valores distintos",
+    "nulos":2153,
+    "descripcion":"Día en que la cuenta se retiró del fondo; vacío si sigue activa."
+  },
+  {
+    "tabla":"cuentas",
+    "archivo":"limpio\/cuentas",
+    "columna":"ingreso_mensual",
+    "tipo":"decimal",
+    "unidad":"pesos",
+    "rango_observado":"356.38 a 6,273.19",
+    "nulos":0,
+    "descripcion":"Ingreso mensual base de la cuenta al inicio; crece entre 2 % y 8 % por año."
+  },
+  {
+    "tabla":"cuentas",
+    "archivo":"limpio\/cuentas",
+    "columna":"ciudad",
+    "tipo":"categoría",
+    "unidad":"—",
+    "rango_observado":"Barranquilla, Bogotá, Bucaramanga, Cali, Ipiales, Manizales, Medellín, Pasto, Pereira, Popayán",
+    "nulos":0,
+    "descripcion":"Ciudad de la cuenta."
+  },
+  {
+    "tabla":"cuentas",
+    "archivo":"limpio\/cuentas",
+    "columna":"edad",
+    "tipo":"entero",
+    "unidad":"años",
+    "rango_observado":"20 a 62",
+    "nulos":0,
+    "descripcion":"Edad de la persona titular al afiliarse."
+  },
+  {
+    "tabla":"transacciones",
+    "archivo":"limpio\/transacciones",
+    "columna":"transaccion_id",
+    "tipo":"texto",
+    "unidad":"—",
+    "rango_observado":"814,023 valores distintos",
+    "nulos":0,
+    "descripcion":"Identificador de la transacción (T0000001…). Clave primaria."
+  },
+  {
+    "tabla":"transacciones",
+    "archivo":"limpio\/transacciones",
+    "columna":"fecha",
+    "tipo":"fecha y hora",
+    "unidad":"ISO 8601, UTC",
+    "rango_observado":"2018-11-01 a 2026-10-31",
+    "nulos":0,
+    "descripcion":"Momento en que se hizo la transacción, en UTC."
+  },
+  {
+    "tabla":"transacciones",
+    "archivo":"limpio\/transacciones",
+    "columna":"cuenta_origen",
+    "tipo":"texto",
+    "unidad":"—",
+    "rango_observado":"2,501 valores distintos",
+    "nulos":0,
+    "descripcion":"Cuenta que envía el dinero, o FONDO si sale del fondo."
+  },
+  {
+    "tabla":"transacciones",
+    "archivo":"limpio\/transacciones",
+    "columna":"cuenta_destino",
+    "tipo":"texto",
+    "unidad":"—",
+    "rango_observado":"2,501 valores distintos",
+    "nulos":0,
+    "descripcion":"Cuenta que recibe el dinero, o FONDO si entra al fondo."
+  },
+  {
+    "tabla":"transacciones",
+    "archivo":"limpio\/transacciones",
+    "columna":"monto",
+    "tipo":"decimal",
+    "unidad":"pesos",
+    "rango_observado":"1.07 a 50,000",
+    "nulos":0,
+    "descripcion":"Monto movido, con dos decimales. Siempre positivo."
+  },
+  {
+    "tabla":"transacciones",
+    "archivo":"limpio\/transacciones",
+    "columna":"tipo",
+    "tipo":"categoría",
+    "unidad":"—",
+    "rango_observado":"aporte, cuota, liquidacion, prestamo, prima, retiro, transferencia",
+    "nulos":0,
+    "descripcion":"aporte, retiro, transferencia, prima, prestamo, cuota o liquidacion."
+  },
+  {
+    "tabla":"transacciones",
+    "archivo":"limpio\/transacciones",
+    "columna":"canal",
+    "tipo":"categoría",
+    "unidad":"—",
+    "rango_observado":"app, desconocido, oficina, programada, web",
+    "nulos":0,
+    "descripcion":"app, web, oficina o programada; desconocido si el crudo no lo traía."
+  },
+  {
+    "tabla":"transacciones_crudas",
+    "archivo":"crudo\/transacciones_crudas",
+    "columna":"transaccion_id",
+    "tipo":"texto",
+    "unidad":"—",
+    "rango_observado":"817,279 valores distintos",
+    "nulos":0,
+    "descripcion":"Identificador tal como llega del sistema; puede repetirse (duplicados)."
+  },
+  {
+    "tabla":"transacciones_crudas",
+    "archivo":"crudo\/transacciones_crudas",
+    "columna":"fecha",
+    "tipo":"texto",
+    "unidad":"ISO 8601",
+    "rango_observado":"808,467 valores distintos",
+    "nulos":0,
+    "descripcion":"Fecha con su zona: casi siempre UTC (+00:00), a veces hora de Colombia (-05:00)."
+  },
+  {
+    "tabla":"transacciones_crudas",
+    "archivo":"crudo\/transacciones_crudas",
+    "columna":"cuenta_origen",
+    "tipo":"texto",
+    "unidad":"—",
+    "rango_observado":"2,501 valores distintos",
+    "nulos":0,
+    "descripcion":"Cuenta que envía, sin validar."
+  },
+  {
+    "tabla":"transacciones_crudas",
+    "archivo":"crudo\/transacciones_crudas",
+    "columna":"cuenta_destino",
+    "tipo":"texto",
+    "unidad":"—",
+    "rango_observado":"2,502 valores distintos",
+    "nulos":0,
+    "descripcion":"Cuenta que recibe, sin validar: puede no existir."
+  },
+  {
+    "tabla":"transacciones_crudas",
+    "archivo":"crudo\/transacciones_crudas",
+    "columna":"monto",
+    "tipo":"texto",
+    "unidad":"pesos",
+    "rango_observado":"259,998 valores distintos",
+    "nulos":0,
+    "descripcion":"Monto sin normalizar: 1234.56, 1.234,56 o $1234.56; puede ser cero o negativo."
+  },
+  {
+    "tabla":"transacciones_crudas",
+    "archivo":"crudo\/transacciones_crudas",
+    "columna":"tipo",
+    "tipo":"texto",
+    "unidad":"—",
+    "rango_observado":"aporte, cuota, liquidacion, prestamo, prima, retiro, transferencia",
+    "nulos":0,
+    "descripcion":"Tipo de movimiento."
+  },
+  {
+    "tabla":"transacciones_crudas",
+    "archivo":"crudo\/transacciones_crudas",
+    "columna":"canal",
+    "tipo":"texto",
+    "unidad":"—",
+    "rango_observado":"app, oficina, programada, web",
+    "nulos":9892,
+    "descripcion":"Canal; puede venir vacío."
+  },
+  {
+    "tabla":"cuentas_mensual",
+    "archivo":"agregado\/cuentas_mensual",
+    "columna":"cuenta_id",
+    "tipo":"texto",
+    "unidad":"—",
+    "rango_observado":"2,500 valores distintos",
+    "nulos":0,
+    "descripcion":"Cuenta. Junto con anio y mes forma la clave primaria."
+  },
+  {
+    "tabla":"cuentas_mensual",
+    "archivo":"agregado\/cuentas_mensual",
+    "columna":"anio",
+    "tipo":"entero",
+    "unidad":"año",
+    "rango_observado":"2,018 a 2,026",
+    "nulos":0,
+    "descripcion":"Año calendario."
+  },
+  {
+    "tabla":"cuentas_mensual",
+    "archivo":"agregado\/cuentas_mensual",
+    "columna":"mes",
+    "tipo":"entero",
+    "unidad":"1–12",
+    "rango_observado":"1 a 12",
+    "nulos":0,
+    "descripcion":"Mes calendario."
+  },
+  {
+    "tabla":"cuentas_mensual",
+    "archivo":"agregado\/cuentas_mensual",
+    "columna":"recibido",
+    "tipo":"decimal",
+    "unidad":"pesos",
+    "rango_observado":"0 a 56,760.5",
+    "nulos":0,
+    "descripcion":"Suma de lo que la cuenta recibió en el mes."
+  },
+  {
+    "tabla":"cuentas_mensual",
+    "archivo":"agregado\/cuentas_mensual",
+    "columna":"enviado",
+    "tipo":"decimal",
+    "unidad":"pesos",
+    "rango_observado":"0 a 56,054.9",
+    "nulos":0,
+    "descripcion":"Suma de lo que la cuenta envió en el mes."
+  },
+  {
+    "tabla":"cuentas_mensual",
+    "archivo":"agregado\/cuentas_mensual",
+    "columna":"movimientos",
+    "tipo":"entero",
+    "unidad":"transacciones",
+    "rango_observado":"0 a 28",
+    "nulos":0,
+    "descripcion":"Cuántas transacciones tocaron la cuenta en el mes."
+  },
+  {
+    "tabla":"cuentas_mensual",
+    "archivo":"agregado\/cuentas_mensual",
+    "columna":"saldo_cierre",
+    "tipo":"decimal",
+    "unidad":"pesos",
+    "rango_observado":"0 a 296,989",
+    "nulos":0,
+    "descripcion":"Saldo de la cuenta al terminar el mes. Nunca negativo."
+  },
+  {
+    "tabla":"cuentas_mensual",
+    "archivo":"agregado\/cuentas_mensual",
+    "columna":"mes_seno",
+    "tipo":"decimal",
+    "unidad":"−1 a 1",
+    "rango_observado":"-1 a 1",
+    "nulos":0,
+    "descripcion":"sen(2π·mes\/12): el mes como posición en un círculo, para que diciembre quede junto a enero."
+  },
+  {
+    "tabla":"cuentas_mensual",
+    "archivo":"agregado\/cuentas_mensual",
+    "columna":"mes_coseno",
+    "tipo":"decimal",
+    "unidad":"−1 a 1",
+    "rango_observado":"-1 a 1",
+    "nulos":0,
+    "descripcion":"cos(2π·mes\/12), la otra coordenada del mes en el círculo."
+  },
+  {
+    "tabla":"ejemplos",
+    "archivo":"modelo\/ejemplos_{entrenamiento,validacion,prueba}",
+    "columna":"cuenta_id",
+    "tipo":"texto",
+    "unidad":"—",
+    "rango_observado":"2,500 valores distintos",
+    "nulos":0,
+    "descripcion":"Cuenta del ejemplo."
+  },
+  {
+    "tabla":"ejemplos",
+    "archivo":"modelo\/ejemplos_{entrenamiento,validacion,prueba}",
+    "columna":"fecha_corte",
+    "tipo":"fecha y hora",
+    "unidad":"ISO 8601, UTC",
+    "rango_observado":"2019-01-01 a 2026-10-01",
+    "nulos":0,
+    "descripcion":"Instante de corte: las entradas miran los 60 días anteriores y los objetivos los 30 siguientes."
+  },
+  {
+    "tabla":"ejemplos",
+    "archivo":"modelo\/ejemplos_{entrenamiento,validacion,prueba}",
+    "columna":"gasto_relativo",
+    "tipo":"decimal",
+    "unidad":"proporción",
+    "rango_observado":"0 a 3",
+    "nulos":0,
+    "descripcion":"Lo enviado en los últimos 30 días sobre la escala (tope 3)."
+  },
+  {
+    "tabla":"ejemplos",
+    "archivo":"modelo\/ejemplos_{entrenamiento,validacion,prueba}",
+    "columna":"movimientos_30d",
+    "tipo":"decimal",
+    "unidad":"conteo \/ 10",
+    "rango_observado":"0 a 2.8",
+    "nulos":0,
+    "descripcion":"Movimientos de los últimos 30 días, divididos por 10 (tope 3)."
+  },
+  {
+    "tabla":"ejemplos",
+    "archivo":"modelo\/ejemplos_{entrenamiento,validacion,prueba}",
+    "columna":"neto_relativo",
+    "tipo":"decimal",
+    "unidad":"proporción",
+    "rango_observado":"-3 a 3",
+    "nulos":0,
+    "descripcion":"Neto (recibido − enviado) de los 30 días anteriores a esos, sobre la escala (entre −3 y 3)."
+  },
+  {
+    "tabla":"ejemplos",
+    "archivo":"modelo\/ejemplos_{entrenamiento,validacion,prueba}",
+    "columna":"colchon",
+    "tipo":"decimal",
+    "unidad":"proporción",
+    "rango_observado":"-0 a 5",
+    "nulos":0,
+    "descripcion":"Saldo al corte sobre la escala (tope 5)."
+  },
+  {
+    "tabla":"ejemplos",
+    "archivo":"modelo\/ejemplos_{entrenamiento,validacion,prueba}",
+    "columna":"movimientos_previos",
+    "tipo":"decimal",
+    "unidad":"conteo \/ 10",
+    "rango_observado":"0 a 2.9",
+    "nulos":0,
+    "descripcion":"Movimientos de los 30 días anteriores a esos, divididos por 10 (tope 3)."
+  },
+  {
+    "tabla":"ejemplos",
+    "archivo":"modelo\/ejemplos_{entrenamiento,validacion,prueba}",
+    "columna":"recibido_escala",
+    "tipo":"decimal",
+    "unidad":"pesos \/ 10,000",
+    "rango_observado":"0.0001 a 27.1525",
+    "nulos":0,
+    "descripcion":"La escala dividida por 10.000: el tamaño de la cuenta."
+  },
+  {
+    "tabla":"ejemplos",
+    "archivo":"modelo\/ejemplos_{entrenamiento,validacion,prueba}",
+    "columna":"mes_seno",
+    "tipo":"decimal",
+    "unidad":"−1 a 1",
+    "rango_observado":"-1 a 1",
+    "nulos":0,
+    "descripcion":"sen(2π·mes\/12) del mes de corte."
+  },
+  {
+    "tabla":"ejemplos",
+    "archivo":"modelo\/ejemplos_{entrenamiento,validacion,prueba}",
+    "columna":"mes_coseno",
+    "tipo":"decimal",
+    "unidad":"−1 a 1",
+    "rango_observado":"-1 a 1",
+    "nulos":0,
+    "descripcion":"cos(2π·mes\/12) del mes de corte."
+  },
+  {
+    "tabla":"ejemplos",
+    "archivo":"modelo\/ejemplos_{entrenamiento,validacion,prueba}",
+    "columna":"objetivo_recibido",
+    "tipo":"decimal",
+    "unidad":"proporción",
+    "rango_observado":"0 a 5",
+    "nulos":0,
+    "descripcion":"Objetivo: lo recibido en los 30 días siguientes, sobre la escala (tope 5)."
+  },
+  {
+    "tabla":"ejemplos",
+    "archivo":"modelo\/ejemplos_{entrenamiento,validacion,prueba}",
+    "columna":"objetivo_enviado",
+    "tipo":"decimal",
+    "unidad":"proporción",
+    "rango_observado":"0 a 5",
+    "nulos":0,
+    "descripcion":"Objetivo: lo enviado en los 30 días siguientes, sobre la escala (tope 5)."
+  },
+  {
+    "tabla":"ejemplos",
+    "archivo":"modelo\/ejemplos_{entrenamiento,validacion,prueba}",
+    "columna":"escala",
+    "tipo":"decimal",
+    "unidad":"pesos",
+    "rango_observado":"1 a 271,525",
+    "nulos":0,
+    "descripcion":"Lo recibido en los últimos 30 días (o el saldo, si no recibió nada): multiplica los objetivos para volver a pesos."
+  },
+  {
+    "tabla":"ejemplos",
+    "archivo":"modelo\/ejemplos_{entrenamiento,validacion,prueba}",
+    "columna":"real_recibido",
+    "tipo":"decimal",
+    "unidad":"pesos",
+    "rango_observado":"0 a 56,760.5",
+    "nulos":0,
+    "descripcion":"Lo que la cuenta recibió de verdad en los 30 días siguientes, sin tope: contra esto se mide el error."
+  },
+  {
+    "tabla":"ejemplos",
+    "archivo":"modelo\/ejemplos_{entrenamiento,validacion,prueba}",
+    "columna":"real_enviado",
+    "tipo":"decimal",
+    "unidad":"pesos",
+    "rango_observado":"0 a 56,054.9",
+    "nulos":0,
+    "descripcion":"Lo que la cuenta envió de verdad en los 30 días siguientes, sin tope."
+  },
+  {
+    "tabla":"ejemplos",
+    "archivo":"modelo\/ejemplos_{entrenamiento,validacion,prueba}",
+    "columna":"particion",
+    "tipo":"categoría",
+    "unidad":"—",
+    "rango_observado":"entrenamiento, prueba, validacion",
+    "nulos":0,
+    "descripcion":"entrenamiento, validacion o prueba, según el lugar del corte en el tiempo."
+  }
+]

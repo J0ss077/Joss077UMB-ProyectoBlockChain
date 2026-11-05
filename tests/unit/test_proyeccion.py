@@ -6,6 +6,7 @@ características, cómo vuelve de proporciones a pesos y qué hace cuando el mod
 está. Esa última parte es la que garantiza que el prototipo siga funcionando en una
 máquina sin TensorFlow.
 """
+
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from uuid import uuid4
@@ -155,3 +156,23 @@ def test_una_prediccion_negativa_se_recorta_a_cero(monkeypatch):
         "enviado": Decimal("0.00"),
         "neto": Decimal("0.00"),
     }
+
+
+def test_origen_del_modelo_lee_cuentas_y_meses(tmp_path, monkeypatch):
+    """La tarjeta cita cuántas cuentas y meses tiene el dataset con que se entrenó la red."""
+    resultados = tmp_path / "resultados.json"
+    resultados.write_text(
+        '{"cuentas": 2500, "meses": 96, "transacciones": 800000}', encoding="utf-8"
+    )
+    monkeypatch.setattr(proyeccion, "RUTA_DE_RESULTADOS", resultados)
+    monkeypatch.setattr(proyeccion, "_origen", None)
+
+    assert proyeccion.origen_del_modelo() == {"cuentas": 2500, "meses": 96}
+
+
+def test_origen_del_modelo_sin_archivo_devuelve_none(tmp_path, monkeypatch):
+    """Sin resultados del entrenamiento, la tarjeta usa el texto sin cifras."""
+    monkeypatch.setattr(proyeccion, "RUTA_DE_RESULTADOS", tmp_path / "no-existe.json")
+    monkeypatch.setattr(proyeccion, "_origen", None)
+
+    assert proyeccion.origen_del_modelo() is None
