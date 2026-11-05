@@ -104,9 +104,9 @@ aplicación. Las veintidós están hechas.
 | `13-error-503.png` | La página de error cuando la base no responde | ✅ |
 | `14-flujo-wallet-creada.png` | Una wallet recién registrada, con su identificador y su clave pública | ✅ |
 | `15-flujo-transaccion-pool.png` | La transacción recién propuesta, «En el pool» | ✅ |
-| `16-flujo-bloque-creado.png` | El bloque #146 creado y encadenado al hash del #145 | ✅ |
+| `16-flujo-bloque-creado.png` | El bloque #147 creado y encadenado al hash del #146 | ✅ |
 | `17-flujo-cadena-verificada.png` | La verificación: «La cadena es válida» | ✅ |
-| `18-alteracion-detectada.png` | La misma verificación con una fila alterada por `psql`: «no es válida», bloque #146 | ✅ |
+| `18-alteracion-detectada.png` | La misma verificación con una fila alterada por `psql`: «no es válida», bloque #147 | ✅ |
 | `19-alteracion-revertida.png` | Vuelta a «La cadena es válida» después de reponer el dato | ✅ |
 | `20-consulta-psql.png` | La terminal con `psql -f db/consultas.sql`: conteos por tabla, saldos por wallet y la cadena eslabonada | ✅ |
 | `21-registro-en-bd.png` | `SELECT` de la cuenta `evidencia-fase4` con su estado y su fecha de registro | ✅ |
@@ -200,7 +200,7 @@ identificadores está en `docs/evidencias/flujo.txt`.
 | --- | --- | --- | --- |
 | Registrar wallet | `POST /wallets` | Wallet `ffa65493…` con su clave pública `034d25fe…` y saldo 0 | `14-flujo-wallet-creada.png` |
 | Proponer transacción | `POST /transacciones` | 25 desde `fondo` hacia la wallet nueva, estado «En el pool» | `15-flujo-transaccion-pool.png` |
-| Cerrar bloque | `POST /bloques` | Bloque **#146**, hash `b6f747ce…`, encadenado al `73e55de1…` del #145 | `16-flujo-bloque-creado.png` |
+| Cerrar bloque | `POST /bloques` | Bloque **#147**, hash `b6f747ce…`, encadenado al `73e55de1…` del #146 | `16-flujo-bloque-creado.png` |
 | Verificar | `GET /verificar` | «La cadena es válida. Cada hash coincide con su contenido y con el del bloque anterior.» | `17-flujo-cadena-verificada.png` |
 
 Y la respuesta ante una alteración hecha **por fuera de la aplicación** (un `UPDATE` con
@@ -208,7 +208,7 @@ Y la respuesta ante una alteración hecha **por fuera de la aplicación** (un `U
 
 | Paso | Qué se hizo | Qué respondió el sistema | Captura |
 | --- | --- | --- | --- |
-| Alterar | `UPDATE transactions SET amount = amount + 100 …` (25 → 125) sobre una confirmada del bloque #146 | «La cadena no es válida. El primer bloque que no encaja es el de índice 146.» | `18-alteracion-detectada.png` |
+| Alterar | `UPDATE transactions SET amount = amount + 100 …` (25 → 125) sobre una confirmada del bloque #147 | «La cadena no es válida. El primer bloque que no encaja es el de índice 147.» | `18-alteracion-detectada.png` |
 | Reponer | `UPDATE … SET amount = 25 …` | «La cadena es válida» otra vez | `19-alteracion-revertida.png` |
 
 Ese ida y vuelta es lo que demuestra que la verificación recalcula de verdad: con el

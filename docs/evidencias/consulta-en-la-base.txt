@@ -1,26 +1,27 @@
 Evidencia de consulta sobre la base de datos que usa la aplicación.
-Fecha: 2026-11-04 17:55:14 -05
+Fecha: 2026-11-04 20:51:56 -05
 Comando: psql "$DATABASE_URL" -f db/consultas.sql
 Servidor: PostgreSQL 18.6 on x86_64-pc-linux-gnu
 
 --- Registro hecho desde el formulario público (POST /registrarme) ---
-    username    |  role   |  estado   | tiene_wallet |          creado_en           
-----------------+---------+-----------+--------------+------------------------------
- pendiente-demo | usuario | pendiente | f            | 2026-11-04 17:53:21.79058-05
-(1 row)
+    username     |  role   |  estado   | tiene_wallet |           creado_en           
+-----------------+---------+-----------+--------------+-------------------------------
+ evidencia-fase4 | usuario | aprobado  | t            | 2026-11-04 17:53:18.566414-05
+ pendiente-demo  | usuario | pendiente | f            | 2026-11-04 17:53:21.79058-05
+(2 rows)
 
 
 --- La wallet y la transacción del flujo de la sección 7 ---
                   id                  |     publica      |   amount    |  status   | block_index 
 --------------------------------------+------------------+-------------+-----------+-------------
- ffa65493-9d02-454c-9b32-31f3592ec4be | 034d25fe9a5b2720 | 25.00000000 | confirmed |         146
+ f441b231-5663-461a-aa0a-dae33e6482b9 | 028cdfa1910aeaee | 25.00000000 | confirmed |         147
 (1 row)
 
 
---- Los tres usuarios de demostración ---
+--- Los usuarios de demostración ---
  username  | completadas | en_espera | rechazadas 
 -----------+-------------+-----------+------------
- asociado1 |         111 |         0 |          9
+ asociado1 |         111 |         1 |          9
  asociado2 |         152 |         0 |          9
  asociado3 |          43 |         0 |          9
 (3 rows)
@@ -30,25 +31,26 @@ Servidor: PostgreSQL 18.6 on x86_64-pc-linux-gnu
 === 1. Cuántas filas hay en cada tabla del ledger ===
            tabla           | count 
 ---------------------------+-------
- blocks                    |   147
+ blocks                    |   148
  contactos                 |     7
  solicitudes_de_contrasena |     1
- transactions              |   235
+ transactions              |   237
  users                     |     8
- wallets                   |     7
+ wallets                   |     8
 (6 rows)
 
 === 2. Wallets con su saldo disponible (la misma cuenta de la aplicación) ===
                              public_key                             |    disponible    
 --------------------------------------------------------------------+------------------
  02b5c69ef71ad01c3af08c820f68a98ba5a496d90c04bea18121b6f129bc3f6a98 | -110100.00000000
+ 028cdfa1910aeaee0c58e3956c7b976f81813646d5fdaacd3d90b6bc5ac80820d7 |      25.00000000
  034d25fe9a5b2720c58c283b97ccc7a135bafaf8533f9da4aaa4586a2f16111d6b |      25.00000000
  03b48446d4573802713e5fd42a2d833b8183b6928b16703b345301e5b118a151eb |    1000.00000000
- 034131b009438dbb6f121de3f23251b38cee28582d43cef44a54e264a8e8b4f74d |    2262.00000000
+ 034131b009438dbb6f121de3f23251b38cee28582d43cef44a54e264a8e8b4f74d |    2012.00000000
  03895b75a933fb5d7ac041cf4fcf4a8680bcd6b7255c784cdb9a381b2a12bac47e |    3615.00000000
  024b2d1a28ae1472cad87b50d4d143c066dd3b383a913318489793d201f1472c1b |    9430.00000000
- 02bd272854e707a6dbe337c10085ac3982eaffbc74be98897f14e0d6f844a51658 |   93768.00000000
-(7 rows)
+ 02bd272854e707a6dbe337c10085ac3982eaffbc74be98897f14e0d6f844a51658 |   93743.00000000
+(8 rows)
 
 === 3. La cadena: cada bloque con el hash del anterior ===
  block_index |           timestamp           |                          previous_hash                           |                               hash                               
@@ -200,7 +202,8 @@ Servidor: PostgreSQL 18.6 on x86_64-pc-linux-gnu
          144 | 2026-10-24 18:00:00-05        | b5588f27f8213ccd3e9d506969f91306f0ced3caaf734abc2b64922ec7847aab | 09f55a3e372bc4f02e218bb2408a4176956bb04d9a818b8cb0ffa3f6d274af78
          145 | 2026-11-04 17:53:21.283374-05 | 09f55a3e372bc4f02e218bb2408a4176956bb04d9a818b8cb0ffa3f6d274af78 | 73e55de13ba57f5bc77009b88ce06b04005f3c8aab3b003f675b11d6ba462152
          146 | 2026-11-04 17:54:07.096737-05 | 73e55de13ba57f5bc77009b88ce06b04005f3c8aab3b003f675b11d6ba462152 | b6f747ce26b5f3b35784c4b8b0535416ece254dd3c7188d21bf34b6ced8d095b
-(147 rows)
+         147 | 2026-11-04 20:50:40.723924-05 | b6f747ce26b5f3b35784c4b8b0535416ece254dd3c7188d21bf34b6ced8d095b | 83b6a21e61845f7e2d190f3f101ab79bd5c2a96787bf06c833f6a5264c97fb4c
+(148 rows)
 
 === 4. Los bloques eslabonados sin huecos (no debería devolver filas) ===
  block_index | hash_esperado | previous_hash 
@@ -208,34 +211,35 @@ Servidor: PostgreSQL 18.6 on x86_64-pc-linux-gnu
 (0 rows)
 
 === 5. Transacciones con el nombre de cada lado, la más nueva primero ===
-          created_at           |     envia     |     recibe      |     amount     |  status   |               block_id               
--------------------------------+---------------+-----------------+----------------+-----------+--------------------------------------
- 2026-11-04 17:54:03.081989-05 | fondo         |                 |    25.00000000 | confirmed | 4951f7e5-5dba-4dca-8d76-957af8d505d1
- 2026-11-04 17:53:21.28052-05  | constituyente | evidencia-fase4 |  1000.00000000 | confirmed | f2d60bff-7c79-46bc-855c-25da8ef6518f
- 2026-11-04 17:53:12.507312-05 | fondo         | asociado1       |   600.00000000 | confirmed | 4f08b961-37ea-47f5-9392-65b05b438035
- 2026-11-04 17:53:12.500292-05 | fondo         | asociado2       |   600.00000000 | confirmed | 4f08b961-37ea-47f5-9392-65b05b438035
- 2026-11-04 17:53:12.493066-05 | fondo         | asociado3       |   600.00000000 | confirmed | 4f08b961-37ea-47f5-9392-65b05b438035
- 2026-11-04 17:53:12.470217-05 | asociado1     | fondo           |   700.00000000 | confirmed | 459f49f8-34d9-4198-ad38-1be25f06af74
- 2026-11-04 17:53:12.461711-05 | asociado2     | fondo           |   700.00000000 | confirmed | 459f49f8-34d9-4198-ad38-1be25f06af74
- 2026-11-04 17:53:12.453475-05 | asociado3     | fondo           |   700.00000000 | confirmed | 459f49f8-34d9-4198-ad38-1be25f06af74
- 2026-11-04 17:53:12.433843-05 | fondo         | asociado1       |  1000.00000000 | confirmed | 38f1f76b-777a-4ac6-b344-f131f6a1a3b3
- 2026-11-04 17:53:12.428515-05 | fondo         | asociado2       |  1000.00000000 | confirmed | 38f1f76b-777a-4ac6-b344-f131f6a1a3b3
- 2026-11-04 17:53:12.422598-05 | fondo         | asociado3       |  1000.00000000 | confirmed | 38f1f76b-777a-4ac6-b344-f131f6a1a3b3
- 2026-11-04 17:53:12.39901-05  | constituyente | fondo           |  3000.00000000 | confirmed | 6cd0ea0b-4d77-4d62-816c-dcaa1755a300
- 2026-11-04 12:53:13.36378-05  | asociado2     | asociado1       |    75.00000000 | confirmed | 4951f7e5-5dba-4dca-8d76-957af8d505d1
- 2026-11-03 21:53:13.36378-05  | asociado1     | fondo           |   850.00000000 | confirmed | 4951f7e5-5dba-4dca-8d76-957af8d505d1
- 2026-11-03 11:53:13.36378-05  | asociado3     | fondo           |  2400.00000000 | confirmed | 4951f7e5-5dba-4dca-8d76-957af8d505d1
- 2026-11-02 21:53:13.36378-05  | asociado1     | asociado2       |   420.00000000 | confirmed | 4951f7e5-5dba-4dca-8d76-957af8d505d1
- 2026-11-02 13:53:13.36378-05  | asociado3     | asociado1       |   900.00000000 | confirmed | 4951f7e5-5dba-4dca-8d76-957af8d505d1
- 2026-11-02 05:53:13.36378-05  | asociado2     | fondo           |   180.00000000 | confirmed | 4951f7e5-5dba-4dca-8d76-957af8d505d1
- 2026-11-02 02:00:00-05        | constituyente | fondo           | 19500.00000000 | confirmed | 4951f7e5-5dba-4dca-8d76-957af8d505d1
- 2026-11-01 19:53:13.36378-05  | asociado3     | asociado2       |   350.00000000 | confirmed | 4951f7e5-5dba-4dca-8d76-957af8d505d1
+          created_at           |     envia     |     recibe      |    amount     |  status   |               block_id               
+-------------------------------+---------------+-----------------+---------------+-----------+--------------------------------------
+ 2026-11-04 20:50:41.43805-05  | asociado1     | fondo           |  250.00000000 | pending   | 
+ 2026-11-04 20:50:40.677178-05 | fondo         |                 |   25.00000000 | confirmed | ee0f1e85-67ee-45b1-a716-4999314b3121
+ 2026-11-04 17:54:03.081989-05 | fondo         |                 |   25.00000000 | confirmed | 4951f7e5-5dba-4dca-8d76-957af8d505d1
+ 2026-11-04 17:53:21.28052-05  | constituyente | evidencia-fase4 | 1000.00000000 | confirmed | f2d60bff-7c79-46bc-855c-25da8ef6518f
+ 2026-11-04 17:53:12.507312-05 | fondo         | asociado1       |  600.00000000 | confirmed | 4f08b961-37ea-47f5-9392-65b05b438035
+ 2026-11-04 17:53:12.500292-05 | fondo         | asociado2       |  600.00000000 | confirmed | 4f08b961-37ea-47f5-9392-65b05b438035
+ 2026-11-04 17:53:12.493066-05 | fondo         | asociado3       |  600.00000000 | confirmed | 4f08b961-37ea-47f5-9392-65b05b438035
+ 2026-11-04 17:53:12.470217-05 | asociado1     | fondo           |  700.00000000 | confirmed | 459f49f8-34d9-4198-ad38-1be25f06af74
+ 2026-11-04 17:53:12.461711-05 | asociado2     | fondo           |  700.00000000 | confirmed | 459f49f8-34d9-4198-ad38-1be25f06af74
+ 2026-11-04 17:53:12.453475-05 | asociado3     | fondo           |  700.00000000 | confirmed | 459f49f8-34d9-4198-ad38-1be25f06af74
+ 2026-11-04 17:53:12.433843-05 | fondo         | asociado1       | 1000.00000000 | confirmed | 38f1f76b-777a-4ac6-b344-f131f6a1a3b3
+ 2026-11-04 17:53:12.428515-05 | fondo         | asociado2       | 1000.00000000 | confirmed | 38f1f76b-777a-4ac6-b344-f131f6a1a3b3
+ 2026-11-04 17:53:12.422598-05 | fondo         | asociado3       | 1000.00000000 | confirmed | 38f1f76b-777a-4ac6-b344-f131f6a1a3b3
+ 2026-11-04 17:53:12.39901-05  | constituyente | fondo           | 3000.00000000 | confirmed | 6cd0ea0b-4d77-4d62-816c-dcaa1755a300
+ 2026-11-04 12:53:13.36378-05  | asociado2     | asociado1       |   75.00000000 | confirmed | 4951f7e5-5dba-4dca-8d76-957af8d505d1
+ 2026-11-03 21:53:13.36378-05  | asociado1     | fondo           |  850.00000000 | confirmed | 4951f7e5-5dba-4dca-8d76-957af8d505d1
+ 2026-11-03 11:53:13.36378-05  | asociado3     | fondo           | 2400.00000000 | confirmed | 4951f7e5-5dba-4dca-8d76-957af8d505d1
+ 2026-11-02 21:53:13.36378-05  | asociado1     | asociado2       |  420.00000000 | confirmed | 4951f7e5-5dba-4dca-8d76-957af8d505d1
+ 2026-11-02 13:53:13.36378-05  | asociado3     | asociado1       |  900.00000000 | confirmed | 4951f7e5-5dba-4dca-8d76-957af8d505d1
+ 2026-11-02 05:53:13.36378-05  | asociado2     | fondo           |  180.00000000 | confirmed | 4951f7e5-5dba-4dca-8d76-957af8d505d1
 (20 rows)
 
 === 6. El pool: lo que está en espera de entrar a un bloque ===
- created_at | sender_id | receiver_id | amount 
-------------+-----------+-------------+--------
-(0 rows)
+          created_at          |              sender_id               |             receiver_id              |    amount    
+------------------------------+--------------------------------------+--------------------------------------+--------------
+ 2026-11-04 20:50:41.43805-05 | 08c2a6ca-6248-4adb-a46d-ae97b0299884 | 59d745dc-77de-5654-86f2-35bc8d52b0a1 | 250.00000000
+(1 row)
 
 === 7. Las cuentas y su estado de alta moderada ===
     username     |     role      |  estado   | tiene_wallet |           creado_en           |          aprobado_en          | motivo_rechazo 
@@ -251,9 +255,9 @@ Servidor: PostgreSQL 18.6 on x86_64-pc-linux-gnu
 (8 rows)
 
 === 8. La última fila escrita: la evidencia del registro hecho en la interfaz ===
-          created_at           |                  id                  |              sender_id               |             receiver_id              |   amount    |  status   
--------------------------------+--------------------------------------+--------------------------------------+--------------------------------------+-------------+-----------
- 2026-11-04 17:54:03.081989-05 | 8804fcb3-c023-41fa-bc96-d28e5e9a9e67 | 59d745dc-77de-5654-86f2-35bc8d52b0a1 | ffa65493-9d02-454c-9b32-31f3592ec4be | 25.00000000 | confirmed
+          created_at          |                  id                  |              sender_id               |             receiver_id              |    amount    | status  
+------------------------------+--------------------------------------+--------------------------------------+--------------------------------------+--------------+---------
+ 2026-11-04 20:50:41.43805-05 | 2c557dd6-b446-466a-8271-8c482c2eb2ff | 08c2a6ca-6248-4adb-a46d-ae97b0299884 | 59d745dc-77de-5654-86f2-35bc8d52b0a1 | 250.00000000 | pending
 (1 row)
 
 === 9. Cuentas pendientes de aprobación y solicitudes de contraseña pendientes ===

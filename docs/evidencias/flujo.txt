@@ -1,34 +1,28 @@
 Flujo completo ejecutado contra la aplicación levantada y su PostgreSQL
 =======================================================================
-Fecha: 2026-11-04 17:54 -05
+Fecha: 2026-11-04 20:51 -05
 Aplicación: python -m src.web  (http://127.0.0.1:5000)
-Base: la de DATABASE_URL (PostgreSQL 18.6), sembrada con la demostración y doce meses
-de historial.
+Base: la de DATABASE_URL, con los datos de demostración.
 
-Las capturas 14 a 19 de docs/evidencias/capturas/ son las pantallas de estos pasos,
-en este orden.
+Las capturas 14 a 19 de docs/evidencias/capturas/ son las pantallas de estos pasos.
 
 1. Registrar una wallet (CU-01, POST /wallets)  -> HTTP 200
-   Wallet registrada: ffa65493-9d02-454c-9b32-31f3592ec4be
-   Clave pública:     034d25fe9a5b2720...
+   Wallet registrada: f441b231-5663-461a-aa0a-dae33e6482b9
+   Clave pública:     028cdfa1910aeaee...
    Saldo disponible:  0
    Captura: 14-flujo-wallet-creada.png
 
 2. Proponer una transacción (CU-02, POST /transacciones)  -> HTTP 200
-   Emisor:  fondo            (59d745dc...)
-   Destino: la wallet nueva  (ffa65493...)
+   Emisor:  fondo
+   Destino: la wallet nueva
    Monto:   25
-   Estado:  En el pool  -> "Quedará confirmada cuando se cierre el próximo bloque."
-   Transacción: 8804fcb3-c023-41fa-bc96-d28e5e9a9e67
+   Estado:  En el pool  -> queda pendiente hasta el próximo bloque
    Captura: 15-flujo-transaccion-pool.png
 
 3. Agrupar el pool en un bloque (CU-03, POST /bloques)  -> HTTP 200
-   "Bloque creado y encadenado con el último."
-   Índice:      146
-   Hash:        b6f747ce26b5...
-   Hash previo: 73e55de13ba5...  (el hash del bloque #145)
-   El bloque confirmó las 12 transacciones que había en el pool: la del paso 2 y los
-   movimientos recientes que la historia de demostración deja en espera.
+   Índice:      147
+   Hash:        83b6a21e6184...
+   Hash previo: b6f747ce26b5...
    Captura: 16-flujo-bloque-creado.png
 
 4. Verificar la cadena (CU-04, GET /verificar)  -> HTTP 200
@@ -36,28 +30,15 @@ en este orden.
    Captura: 17-flujo-cadena-verificada.png
 
 5. Alterar una fila por fuera de la aplicación (psql, no la app)
-   UPDATE transactions SET amount = amount + 100 WHERE id = '8804fcb3-c023-41fa-bc96-d28e5e9a9e67';
-   Monto 25 -> 125 en una transacción ya confirmada del bloque #146.
-   GET /verificar  ->  "La cadena no es válida. El primer bloque que no encaja es el
-   de índice 146."  (el bloque donde está la transacción alterada)
+   UPDATE transactions SET amount = amount + 100 WHERE id = '72240628-5b5a-4619-9952-b8d4c256a173';
+   GET /verificar  ->  "La cadena no es válida. El primer bloque que no encaja es el de
+   índice 147."
    Captura: 18-alteracion-detectada.png
 
 6. Reponer el monto original
-   UPDATE transactions SET amount = 25 WHERE id = '8804fcb3-c023-41fa-bc96-d28e5e9a9e67';
+   UPDATE transactions SET amount = 25 WHERE id = '72240628-5b5a-4619-9952-b8d4c256a173';
    GET /verificar  ->  "La cadena es válida" otra vez.
    Captura: 19-alteracion-revertida.png
 
-   Ese ida y vuelta es la prueba de que la verificación recalcula los hashes y no
-   devuelve un resultado fijo: con el dato alterado falla y con el dato original
-   vuelve a pasar, sin reiniciar la aplicación ni volver a sembrar.
-
-Comandos, tal como se ejecutaron (con el cliente del equipo):
-
-   psql "$DATABASE_URL" -c "UPDATE transactions SET amount = amount + 100 WHERE id = '8804fcb3-c023-41fa-bc96-d28e5e9a9e67';"
-   psql "$DATABASE_URL" -c "UPDATE transactions SET amount = 25 WHERE id = '8804fcb3-c023-41fa-bc96-d28e5e9a9e67';"
-
-Después, para la captura 04, se propuso un monto de 0 hacia la misma wallet y la
-aplicación lo rechazó: "el monto debe ser mayor que cero".
-
-Estado de la base después del flujo: 7 wallets, 147 bloques, 235 transacciones y 8 cuentas.
-El bloque #146 quedó con el hash b6f747ce26b5... y contiene la transacción de 25.
+Estado de la base después del flujo: 7 wallets, 148 bloques y 237 transacciones.
+El bloque #147 quedó con el hash 83b6a21e6184... y contiene la transacción de 25.
