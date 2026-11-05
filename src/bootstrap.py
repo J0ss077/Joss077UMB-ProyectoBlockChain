@@ -33,6 +33,7 @@ from src.domain.blockchain import Blockchain, ensure_genesis
 from src.domain.transaction import Transaction, TransactionStatus
 from src.domain.wallet import CURVE, Wallet, encrypt_private_key, public_key_hex, sign_payload
 from src.emision import CONSTITUYENTE_ID, CONSTITUYENTE_SEED
+from src.errores import NoHayConexion
 from src.persistence.factory import admin_password, database_url, ledger, transaction
 
 # Semilla del par de llaves del fondo: fijarla hace que su clave pública sea la
@@ -191,13 +192,13 @@ def run(chain: Blockchain) -> Block | None:
     asociados = [chain.register_wallet() for _ in range(ASOCIADOS)]
 
     chain.transactions.add(
-        _entrega_de_capital(chain, constituyente.id, fondo.id, CAPITAL_CONSTITUCION)
+        entrega_de_capital(chain, constituyente.id, fondo.id, CAPITAL_CONSTITUCION)
     )
     chain.group_pending()
 
     for asociado in asociados:
         chain.transactions.add(
-            _entrega_de_capital(chain, fondo.id, asociado.id, CAPITAL_ASOCIACION)
+            entrega_de_capital(chain, fondo.id, asociado.id, CAPITAL_ASOCIACION)
         )
     chain.group_pending()
 
@@ -210,7 +211,7 @@ def run(chain: Blockchain) -> Block | None:
     return bloque
 
 
-def _entrega_de_capital(
+def entrega_de_capital(
     chain: Blockchain, emisor_id: UUID, receptor_id: UUID, monto: Decimal
 ) -> Transaction:
     """Arma una entrega de capital ya firmada por su emisor.
@@ -286,7 +287,7 @@ def _wallets_de_la_demostracion(chain: Blockchain) -> list[UUID]:
         return []
     asociados = [
         fila.receiver_id
-        for fila in chain.wallet_history(fondo.id)
+        for fila in chain.wallet_history(fondo.id, limit=100_000)
         if fila.sender_id == fondo.id and fila.amount == CAPITAL_ASOCIACION
     ]
     return [CONSTITUYENTE_ID, fondo.id, *asociados]
@@ -361,12 +362,25 @@ def _mensaje_de_admin_ocupado(usuario: Usuario) -> str:
 
 
 def main() -> None:
-    """Asegura el génesis, siembra la demostración si hace falta e informa el estado."""
-    # Se comprueba el esquema antes de escribir nada: un volumen viejo se reconoce
-    # y se explica, en vez de sembrar media demostración y fallar en la pantalla.
-    if faltantes := tablas_faltantes():
-        print(f"faltan tablas: {', '.join(faltantes)}", file=sys.stderr)
-        raise SystemExit(MENSAJE_DE_VOLUMEN_VIEJO)
+    """Asegura el génesis, siembra la demostración si hace falta e informa el estado.
+
+    Un motor que no responde no llega como traza: la conexión lo levanta como
+    `NoHayConexion` y acá se convierte en la salida con la instrucción, igual que
+    el volumen viejo.
+    """
+    try:
+        # Se comprueba el esquema antes de escribir nada: un volumen viejo se
+        # reconoce y se explica, en vez de sembrar media demostración y fallar
+        # después en la primera página con sesión.
+        if faltantes := tablas_faltantes():
+            print(f"faltan tablas: {', '.join(faltantes)}", file=sys.stderr)
+            raise SystemExit(MENSAJE_DE_VOLUMEN_VIEJO)
+        _sembrar_todo()
+    except NoHayConexion as error:
+        raise SystemExit(str(error)) from error
+
+
+def _sembrar_todo() -> None:
     with ledger() as chain:
         genesis = ensure_genesis(chain)
         bloque = run(chain)

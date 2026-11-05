@@ -14,6 +14,7 @@ from types import TracebackType
 import psycopg
 
 from src.accounts.postgres import PostgresAccountsRepository
+from src.persistence.conexion import abrir_en_utc
 from src.persistence.postgres import (
     PostgresBlockRepository,
     PostgresTransactionRepository,
@@ -49,15 +50,9 @@ class PostgresUnitOfWork:
         autocommit, cada escritura se confirmaría sola y el fallo de la segunda
         dejaría la primera aplicada.
 
-        La sesión queda en UTC igual que las demás conexiones del ledger: la zona
-        decide cómo se leen las columnas `TIMESTAMPTZ`, y `hash_payload` y
-        `calculate_hash` hashean `datetime.isoformat()`, así que dos sesiones en zonas
-        distintas calcularían hashes distintos para la misma fila y una cadena válida
-        se verificaría como alterada.
+        Las conexiones del ledger se abren y quedan en UTC en `conexion.abrir_en_utc`.
         """
-        connection = psycopg.connect(database_url)
-        connection.execute("SET TIME ZONE 'UTC'")
-        return cls(connection)
+        return cls(abrir_en_utc(database_url))
 
     def __enter__(self) -> PostgresUnitOfWork:
         return self

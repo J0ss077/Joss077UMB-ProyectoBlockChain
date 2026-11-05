@@ -340,12 +340,14 @@ class Blockchain:
             anterior = block
         return VerificationReport(valid=True, altered_block_index=None)
 
-    def wallet_history(self, wallet_id: UUID) -> Sequence[Transaction]:
+    def wallet_history(self, wallet_id: UUID, limit: int = 100) -> Sequence[Transaction]:
         """Los envíos y las recepciones de una wallet, en cualquier estado (CU-05, REQ-13).
 
-        Van de la más nueva a la más vieja: el último movimiento queda arriba.
+        Van de la más nueva a la más vieja: el último movimiento queda arriba. El
+        historial de la pantalla se queda con los últimos `limit`; las estadísticas
+        piden más, porque filtran por todo el año.
         """
-        return self.transactions.list(wallet_id=wallet_id, newest_first=True)
+        return self.transactions.list(wallet_id=wallet_id, limit=limit, newest_first=True)
 
     def available_balance(self, wallet_id: UUID) -> Decimal:
         """Saldo disponible de una wallet: confirma a favor menos lo comprometido (REQ-05).

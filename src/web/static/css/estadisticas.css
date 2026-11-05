@@ -1,0 +1,722 @@
+/* Estadísticas: filtros, cifras y gráficas. Recibido y enviado tienen su propio par
+   de colores —cobalto y naranja, validados para daltonismo en los dos temas—; los
+   colores de éxito, espera y peligro quedan sólo para el estado de un movimiento.
+   Todas las transiciones usan los tokens de movimiento, así que con movimiento
+   reducido pasan a ser instantáneas. */
+
+:root {
+    --serie-entra: var(--cobalto-600);
+    --serie-sale: #d9480f;
+}
+@media (prefers-color-scheme: dark) {
+    :root:not([data-tema="claro"]) {
+        --serie-entra: var(--cobalto-400);
+        --serie-sale: #e8692a;
+    }
+}
+:root[data-tema="oscuro"] {
+    --serie-entra: var(--cobalto-400);
+    --serie-sale: #e8692a;
+}
+
+.rejilla-estadisticas {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--separacion-rejilla);
+    align-items: stretch;
+}
+.rejilla-estadisticas > * {
+    animation: aparecer var(--duracion-larga) var(--curva-salida) both;
+}
+.rejilla-estadisticas > :nth-child(2) { animation-delay: 60ms; }
+.rejilla-estadisticas > :nth-child(3) { animation-delay: 120ms; }
+.rejilla-estadisticas > :nth-child(4) { animation-delay: 160ms; }
+.rejilla-estadisticas > :nth-child(n + 5) { animation-delay: 200ms; }
+.est-ancho,
+.est-cabecera {
+    grid-column: 1 / -1;
+}
+/* Sin JavaScript no hay filtros ni gráficas: queda el resumen y el enlace al historial. */
+:root:not(.js) .est-filtros,
+:root:not(.js) .est-grafica,
+:root:not(.js) .est-detalle {
+    display: none;
+}
+
+/* ── Cabecera y selector del administrador ─────────────────────────────── */
+.est-cabecera {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--espacio-6);
+}
+.est-elegir {
+    display: flex;
+    align-items: flex-end;
+    gap: var(--espacio-3);
+    min-width: min(100%, 22rem);
+}
+.est-elegir .campo {
+    flex: 1;
+}
+.est-elegir .boton {
+    height: 52px;
+}
+.js .est-elegir .boton {
+    display: none;
+}
+.est-usuarios {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--espacio-2);
+    margin: var(--espacio-5) 0 0;
+    padding: 0;
+    list-style: none;
+}
+.est-usuario {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--espacio-2);
+    padding: 6px 14px 6px 6px;
+    border-radius: var(--radio-pildora);
+    background: var(--color-superficie);
+    color: var(--color-texto);
+    font-weight: var(--peso-semi);
+    text-decoration: none;
+    transition:
+        transform var(--duracion-corta) var(--curva-resorte),
+        box-shadow var(--duracion-corta) var(--curva-salida);
+}
+.est-usuario:hover,
+.est-usuario:focus-visible {
+    transform: translateY(-2px);
+    box-shadow: 0 0 0 2px var(--color-acento);
+}
+
+/* ── Filtros, en una sola fila arriba de las gráficas ──────────────────── */
+.est-filtros {
+    position: sticky;
+    top: var(--espacio-2);
+    z-index: 5;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: var(--espacio-4) var(--espacio-6);
+    padding-block: var(--espacio-4);
+    box-shadow: 0 8px 24px -18px rgb(0 0 0 / 0.5);
+}
+.est-filtro {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    min-width: 0;
+}
+.est-filtro legend,
+.est-filtro > label {
+    margin-bottom: var(--espacio-2);
+    padding: 0;
+    font-size: var(--texto-sm);
+    font-weight: var(--peso-semi);
+}
+.est-filtro.campo select {
+    height: 44px;
+    min-width: 11rem;
+    font-size: var(--texto-md);
+}
+.segmentado {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    padding: 4px;
+    border-radius: var(--radio-lg);
+    background: var(--color-superficie-2);
+}
+.segmentado label {
+    position: relative;
+    margin: 0;
+}
+.segmentado input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+.segmentado span {
+    display: inline-flex;
+    align-items: center;
+    min-height: 36px;
+    padding: 0 14px;
+    border-radius: calc(var(--radio-lg) - 4px);
+    color: var(--color-texto-suave);
+    font-size: var(--texto-base);
+    font-weight: var(--peso-semi);
+    cursor: pointer;
+    transition:
+        background-color var(--duracion-corta) var(--curva-salida),
+        color var(--duracion-corta) var(--curva-salida),
+        transform var(--duracion-corta) var(--curva-resorte);
+}
+.segmentado span:hover {
+    color: var(--color-texto);
+}
+.segmentado input:checked + span {
+    background: var(--color-texto);
+    color: var(--color-superficie);
+    transform: scale(1.03);
+}
+.segmentado input:focus-visible + span {
+    outline: 2px solid var(--color-foco);
+    outline-offset: 2px;
+}
+.est-limpiar {
+    margin-left: auto;
+    animation: aparecer var(--duracion-media) var(--curva-salida) both;
+}
+
+/* ── Cifras ────────────────────────────────────────────────────────────── */
+.est-cifras {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--separacion-rejilla);
+}
+.est-cifra {
+    display: flex;
+    flex-direction: column;
+    gap: var(--espacio-1);
+    border-top: 4px solid transparent;
+    transition: border-color var(--duracion-media) var(--curva-salida);
+}
+.est-cifra.entra {
+    border-top-color: var(--serie-entra);
+}
+.est-cifra.sale {
+    border-top-color: var(--serie-sale);
+}
+.est-cifra.positivo {
+    border-top-color: var(--color-exito);
+}
+.est-cifra.negativo {
+    border-top-color: var(--color-peligro);
+}
+.est-numero {
+    margin: 0;
+    font: var(--peso-titulo) var(--texto-2xl) var(--fuente-mono);
+    font-size: clamp(var(--texto-2xl), 2.6vw, 2.25rem);
+    letter-spacing: var(--tracking-cifra);
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+}
+.est-nota {
+    margin: calc(var(--espacio-2) * -1) 0 0;
+}
+
+/* ── Piezas comunes de las gráficas ────────────────────────────────────── */
+.est-grafica {
+    display: flex;
+    flex-direction: column;
+    gap: var(--espacio-4);
+}
+.est-grafica h2 {
+    margin: 0;
+    font-size: inherit;
+}
+.est-leyenda {
+    display: flex;
+    gap: var(--espacio-4);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    color: var(--color-texto-suave);
+    font-size: var(--texto-sm);
+    font-weight: var(--peso-medio);
+}
+.est-leyenda li {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+.muestra {
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+}
+.muestra.entra,
+.barra.entra {
+    background: var(--serie-entra);
+}
+.muestra.sale,
+.barra.sale {
+    background: var(--serie-sale);
+}
+.est-eje {
+    color: var(--color-texto-suave);
+    font: var(--peso-medio) var(--texto-2xs) var(--fuente-mono);
+    white-space: nowrap;
+}
+.est-sin {
+    display: none;
+    margin: 0;
+    color: var(--color-texto-suave);
+    text-align: center;
+}
+[data-marca] {
+    outline: none;
+}
+[data-marca]:focus-visible {
+    box-shadow: 0 0 0 2px var(--color-foco);
+    border-radius: var(--radio-md);
+}
+
+/* ── Lo que entró y salió ──────────────────────────────────────────────── */
+.est-plano {
+    position: relative;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: var(--espacio-3);
+    height: 260px;
+}
+.est-guias {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding-bottom: 22px;
+    color: var(--color-texto-suave);
+    font: var(--peso-medio) var(--texto-2xs) var(--fuente-mono);
+    text-align: right;
+}
+.est-guias span {
+    transform: translateY(-50%);
+}
+.est-guias span:last-child {
+    transform: translateY(50%);
+}
+.est-columnas {
+    display: flex;
+    gap: 2px;
+    min-width: 0;
+    background: repeating-linear-gradient(
+            to bottom,
+            var(--color-borde) 0 1px,
+            transparent 1px calc((100% - 22px) / 2)
+        )
+        top / 100% calc(100% - 22px) no-repeat;
+}
+.est-columna {
+    flex: 1 1 0;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    cursor: default;
+    transition: background-color var(--duracion-instante) var(--curva-salida);
+}
+.est-columna:hover {
+    background: color-mix(in srgb, var(--color-texto) 6%, transparent);
+    border-radius: var(--radio-md);
+}
+.est-par {
+    flex: 1;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 2px;
+    padding-inline: 12%;
+    border-bottom: 1px solid var(--color-borde-fuerte);
+}
+.est-par .barra {
+    flex: 1 1 0;
+    max-width: 22px;
+    height: var(--alto, 0%);
+    min-height: 0;
+    border-radius: 4px 4px 0 0;
+    transition: height var(--duracion-larga) var(--curva-salida);
+}
+/* Al armarse de nuevo las barras crecen desde la base, una tras otra. */
+[data-grafica="flujo"]:not(.listo) .barra {
+    height: 0;
+    transition: none;
+}
+.est-columna:nth-child(4n + 2) .barra { transition-delay: 30ms; }
+.est-columna:nth-child(4n + 3) .barra { transition-delay: 60ms; }
+.est-columna:nth-child(4n + 4) .barra { transition-delay: 90ms; }
+.est-columna .est-eje {
+    height: 22px;
+    padding-top: 6px;
+    overflow: visible;
+    text-align: center;
+}
+[data-grafica="flujo"].sin-datos .est-sin {
+    display: block;
+}
+[data-grafica="flujo"] {
+    display: flex;
+    flex-direction: column;
+    gap: var(--espacio-2);
+}
+
+/* ── Cómo fue cambiando el saldo ───────────────────────────────────────── */
+.est-linea {
+    position: relative;
+    height: 220px;
+    margin-bottom: 22px;
+    border-bottom: 1px solid var(--color-borde-fuerte);
+    cursor: crosshair;
+    touch-action: pan-y;
+}
+.est-linea svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+}
+.est-linea .trazo {
+    fill: none;
+    stroke: var(--color-acento);
+    stroke-width: 2;
+    stroke-linejoin: round;
+    vector-effect: non-scaling-stroke;
+}
+.est-linea .area {
+    fill: color-mix(in srgb, var(--color-acento) 16%, transparent);
+}
+.est-linea .cero {
+    stroke: var(--color-borde-fuerte);
+    stroke-dasharray: 3 3;
+    vector-effect: non-scaling-stroke;
+}
+.est-linea.dibujando svg {
+    animation: revelar-linea 1.1s var(--curva-salida) both;
+}
+@keyframes revelar-linea {
+    from {
+        clip-path: inset(0 100% 0 0);
+    }
+    to {
+        clip-path: inset(0 0 0 0);
+    }
+}
+.est-tope {
+    position: absolute;
+    left: 0;
+    padding: 0 4px;
+    border-radius: 4px;
+    background: var(--color-superficie);
+    color: var(--color-texto-suave);
+    font: var(--peso-medio) var(--texto-2xs) var(--fuente-mono);
+}
+.est-tope.arriba {
+    top: 0;
+}
+.est-tope.abajo {
+    bottom: 4px;
+}
+.est-eje-linea {
+    position: absolute;
+    inset: 100% 0 auto;
+    display: flex;
+    justify-content: space-between;
+    padding-top: 6px;
+    color: var(--color-texto-suave);
+    font: var(--peso-medio) var(--texto-2xs) var(--fuente-mono);
+}
+.est-cruz,
+.est-punto {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--duracion-instante) var(--curva-salida);
+}
+.est-cruz {
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: var(--color-borde-fuerte);
+}
+.est-punto {
+    width: 10px;
+    height: 10px;
+    margin: -5px 0 0 -5px;
+    border-radius: 50%;
+    background: var(--color-acento);
+    box-shadow: 0 0 0 2px var(--color-superficie);
+}
+.est-linea.apuntado .est-cruz,
+.est-linea.apuntado .est-punto {
+    opacity: 1;
+}
+
+/* ── Cómo terminaron ───────────────────────────────────────────────────── */
+.est-dona {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: var(--espacio-6);
+    flex: 1;
+}
+.est-aro-caja {
+    position: relative;
+    width: 180px;
+    aspect-ratio: 1;
+}
+.est-aro {
+    width: 100%;
+    height: 100%;
+}
+.est-aro circle {
+    fill: none;
+    stroke-width: 5;
+}
+.est-aro .fondo {
+    stroke: var(--color-superficie-2);
+}
+.est-aro .segmento {
+    stroke-dasharray: 0 100;
+    stroke-dashoffset: 25;
+    stroke-linecap: butt;
+    transition:
+        stroke-dasharray var(--duracion-larga) var(--curva-salida),
+        stroke-dashoffset var(--duracion-larga) var(--curva-salida);
+}
+.est-aro .confirmed {
+    stroke: var(--color-exito);
+}
+.est-aro .pending {
+    stroke: var(--color-pendiente);
+}
+.est-aro .rejected {
+    stroke: var(--color-peligro);
+}
+.est-centro {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-texto-suave);
+    font-size: var(--texto-sm);
+}
+.est-centro b {
+    color: var(--color-texto);
+    font: var(--peso-titulo) var(--texto-2xl) var(--fuente-mono);
+}
+.est-leyenda-dona {
+    display: flex;
+    flex-direction: column;
+    gap: var(--espacio-3);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.est-leyenda-dona li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--espacio-4);
+}
+.est-leyenda-dona b {
+    font: var(--peso-semi) var(--texto-sm) var(--fuente-mono);
+}
+
+/* ── Con quién se movió más dinero ─────────────────────────────────────── */
+.est-personas {
+    display: flex;
+    flex-direction: column;
+    gap: var(--espacio-4);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.est-personas .est-sin {
+    display: block;
+}
+.est-persona {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 4px;
+    animation: aparecer var(--duracion-media) var(--curva-salida) both;
+}
+.est-persona-cabeza {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--espacio-3);
+    font-size: var(--texto-md);
+}
+.est-persona-nombre {
+    overflow: hidden;
+    font-weight: var(--peso-semi);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.est-persona-total {
+    font: var(--peso-semi) var(--texto-sm) var(--fuente-mono);
+}
+.est-pista {
+    display: flex;
+    gap: 2px;
+    height: 10px;
+    border-radius: var(--radio-pildora);
+    background: var(--color-superficie-2);
+    overflow: hidden;
+}
+.est-pista .barra {
+    width: var(--ancho, 0%);
+    border-radius: 4px;
+    transition: width var(--duracion-larga) var(--curva-salida);
+}
+
+/* ── Qué días hay más movimiento ───────────────────────────────────────── */
+.est-semana {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: var(--espacio-2);
+    flex: 1;
+    min-height: 200px;
+}
+.est-dia {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 0;
+}
+.est-dia-n {
+    font: var(--peso-semi) var(--texto-sm) var(--fuente-mono);
+}
+.est-dia-pista {
+    flex: 1;
+    display: flex;
+    align-items: flex-end;
+    width: min(100%, 36px);
+    border-radius: var(--radio-md);
+    background: var(--color-superficie-2);
+}
+.est-dia .barra {
+    width: 100%;
+    height: var(--alto, 0%);
+    border-radius: var(--radio-md);
+    background: color-mix(in srgb, var(--color-acento) 55%, var(--color-superficie));
+    transition:
+        height var(--duracion-larga) var(--curva-resorte),
+        background-color var(--duracion-media) var(--curva-salida);
+}
+.est-dia.pico .barra {
+    background: var(--color-acento);
+}
+
+/* ── Tabla ─────────────────────────────────────────────────────────────── */
+.est-detalle summary {
+    cursor: pointer;
+    list-style: none;
+}
+.est-detalle summary::-webkit-details-marker {
+    display: none;
+}
+.est-detalle summary h2 {
+    margin: 0;
+    font-size: inherit;
+}
+.est-detalle summary::after {
+    content: "";
+    width: 10px;
+    height: 10px;
+    margin-left: auto;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    transform: rotate(45deg);
+    transition: transform var(--duracion-corta) var(--curva-salida);
+}
+.est-detalle[open] summary::after {
+    transform: rotate(225deg);
+}
+.est-detalle[open] .est-tabla-caja {
+    animation: aparecer var(--duracion-media) var(--curva-salida) both;
+}
+.est-tabla-caja {
+    max-height: 28rem;
+    margin-top: var(--espacio-4);
+    overflow: auto;
+}
+.est-tabla {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--texto-base);
+}
+.est-tabla th,
+.est-tabla td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--color-borde);
+    text-align: left;
+    white-space: nowrap;
+}
+.est-tabla th {
+    position: sticky;
+    top: 0;
+    background: var(--color-superficie);
+    color: var(--color-texto-suave);
+    font: var(--peso-semi) var(--texto-xs) var(--fuente-mono);
+    text-transform: uppercase;
+}
+.est-tabla .numero {
+    font-family: var(--fuente-mono);
+    text-align: right;
+}
+.est-tabla td.est-sin {
+    display: table-cell;
+}
+
+/* ── Globo ─────────────────────────────────────────────────────────────── */
+.est-globo {
+    position: fixed;
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 8px 12px;
+    border-radius: var(--radio-md);
+    background: var(--color-texto);
+    color: var(--color-superficie);
+    font-size: var(--texto-sm);
+    pointer-events: none;
+    box-shadow: 0 10px 30px -12px rgb(0 0 0 / 0.5);
+    animation: aparecer var(--duracion-instante) var(--curva-salida);
+}
+.est-globo span {
+    font-family: var(--fuente-mono);
+}
+.est-globo .entra::before,
+.est-globo .sale::before {
+    content: "";
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    margin-right: 6px;
+    border-radius: 2px;
+    background: var(--serie-entra);
+}
+.est-globo .sale::before {
+    background: var(--serie-sale);
+}
+
+/* ── Pantallas angostas ────────────────────────────────────────────────── */
+@media (max-width: 64rem) {
+    .rejilla-estadisticas {
+        grid-template-columns: 1fr;
+    }
+    .est-cifras {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+@media (max-width: 36rem) {
+    .est-filtros {
+        position: static;
+    }
+    .est-plano {
+        height: 220px;
+    }
+    .est-limpiar {
+        margin-left: 0;
+    }
+}

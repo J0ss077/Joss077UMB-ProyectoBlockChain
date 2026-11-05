@@ -1,0 +1,44 @@
+Flujo completo ejecutado contra la aplicación levantada y su PostgreSQL
+=======================================================================
+Fecha: 2026-11-04 20:51 -05
+Aplicación: python -m src.web  (http://127.0.0.1:5000)
+Base: la de DATABASE_URL, con los datos de demostración.
+
+Las capturas 14 a 19 de docs/evidencias/capturas/ son las pantallas de estos pasos.
+
+1. Registrar una wallet (CU-01, POST /wallets)  -> HTTP 200
+   Wallet registrada: f441b231-5663-461a-aa0a-dae33e6482b9
+   Clave pública:     028cdfa1910aeaee...
+   Saldo disponible:  0
+   Captura: 14-flujo-wallet-creada.png
+
+2. Proponer una transacción (CU-02, POST /transacciones)  -> HTTP 200
+   Emisor:  fondo
+   Destino: la wallet nueva
+   Monto:   25
+   Estado:  En el pool  -> queda pendiente hasta el próximo bloque
+   Captura: 15-flujo-transaccion-pool.png
+
+3. Agrupar el pool en un bloque (CU-03, POST /bloques)  -> HTTP 200
+   Índice:      147
+   Hash:        83b6a21e6184...
+   Hash previo: b6f747ce26b5...
+   Captura: 16-flujo-bloque-creado.png
+
+4. Verificar la cadena (CU-04, GET /verificar)  -> HTTP 200
+   "La cadena es válida. Cada hash coincide con su contenido y con el del bloque anterior."
+   Captura: 17-flujo-cadena-verificada.png
+
+5. Alterar una fila por fuera de la aplicación (psql, no la app)
+   UPDATE transactions SET amount = amount + 100 WHERE id = '72240628-5b5a-4619-9952-b8d4c256a173';
+   GET /verificar  ->  "La cadena no es válida. El primer bloque que no encaja es el de
+   índice 147."
+   Captura: 18-alteracion-detectada.png
+
+6. Reponer el monto original
+   UPDATE transactions SET amount = 25 WHERE id = '72240628-5b5a-4619-9952-b8d4c256a173';
+   GET /verificar  ->  "La cadena es válida" otra vez.
+   Captura: 19-alteracion-revertida.png
+
+Estado de la base después del flujo: 7 wallets, 148 bloques y 237 transacciones.
+El bloque #147 quedó con el hash 83b6a21e6184... y contiene la transacción de 25.

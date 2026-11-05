@@ -47,6 +47,7 @@ from src.accounts.fotos import MOTIVO_DE_FOTO_GRANDE
 from src.accounts.model import ADMINISTRADOR, UsuarioDuplicado
 from src.accounts.service import CredencialesInvalidas, Cuentas, NoAprobado
 from src.domain.blockchain import Blockchain, ensure_genesis
+from src.errores import MENSAJE_SIN_CONEXION, NoHayConexion
 from src.web.admin import crear_blueprint_de_la_cola
 from src.web.asistente import crear_blueprint_del_asistente
 from src.web.auth import (
@@ -57,6 +58,7 @@ from src.web.auth import (
     sesion_vigente,
     usuario_de_la_sesion,
 )
+from src.web.estadisticas import crear_blueprint_de_estadisticas
 from src.web.forms import a_monto, a_uuid
 from src.web.ia import crear_conector
 from src.web.idioma import (
@@ -145,6 +147,9 @@ def create_app(
     # es la que alimenta el panel de wallets con saldos que comparten sus páginas
     # (REQ-29, REQ-31).
     app.register_blueprint(crear_blueprint_de_la_cola(abrir_cuentas, abrir_cadena))
+    # Las estadísticas también: el común ve las suyas y el administrador elige de
+    # quién; las dos leen con las mismas fábricas y no abren conexiones propias.
+    app.register_blueprint(crear_blueprint_de_estadisticas(abrir_cadena, abrir_cuentas))
     # El perfil es de las dos clases de cuenta: datos, idioma y contraseña.
     app.register_blueprint(crear_blueprint_del_perfil(abrir_cuentas))
     # El ayudante, con su pestaña en la barra, lee la cadena y las cuentas para explicar,
@@ -518,6 +523,37 @@ def create_app(
                 detalle="Tu cuenta no tiene el rol que esta página exige.",
             ),
             403,
+        )
+
+    @app.errorhandler(NoHayConexion)
+    def sin_base(_error):
+        """La base no respondió: página propia con 503, no el 500 genérico del motor.
+
+        Es el único fallo de infraestructura que la aplicación traduce (lo levanta
+        el módulo de conexión de la capa de datos), y se pinta como las otras
+        páginas de error:
+        sin abrir el ledger ni las cuentas —volver a la base sería fallar otra vez—
+        y con el botón de reintentar apuntando a esta misma dirección.
+
+        El 503 y no el 500: el servidor está bien y lo que falta es un servicio del
+        que depende, que es justo lo que significa «servicio no disponible». Un
+        reintento tiene sentido, y por eso el botón está.
+
+        Sólo se ofrece reintentar cuando la petición fue un GET: repetir un POST
+        desde un enlace del navegador no es lo mismo que recargar la página, y el
+        formulario ya se puede volver a enviar desde su pantalla.
+        """
+        return (
+            render_template(
+                "error.html",
+                codigo=503,
+                encabezado="La base de datos no respondió",
+                detalle=MENSAJE_SIN_CONEXION,
+                reintentar=request.full_path.rstrip("?")
+                if request.method == "GET"
+                else None,
+            ),
+            503,
         )
 
     return app

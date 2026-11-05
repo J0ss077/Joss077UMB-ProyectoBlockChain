@@ -22,5 +22,8 @@ __pycache__/
 # no sirve: `podman` necesita su almacén y sus espacios de nombres.
 .tmp-podman/
 
+# Cerrojos de LibreOffice mientras hay un documento abierto en docs/
+.~lock.*#
+
 # Artefactos del proceso de desarrollo (no del producto)
 .superpowers/

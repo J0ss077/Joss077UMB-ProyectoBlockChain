@@ -20,3 +20,8 @@ line-length = 100
 # `E` incluye la longitud de línea, que es la razón de que el envoltorio de las
 # líneas largas sea parte del trabajo y no una preferencia.
 select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.per-file-ignores]
+# El README y el reporte del dataset son plantillas de Markdown dentro de cadenas: sus
+# tablas son una fila por línea y partirlas rompería el Markdown que generan.
+"dataset/documentar.py" = ["E501"]

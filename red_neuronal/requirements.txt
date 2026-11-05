@@ -1,0 +1,16 @@
+# Dependencias de la red neuronal (actividad de modelado, no de la aplicación).
+#
+# Va aparte del `requirements.txt` del proyecto a propósito: TensorFlow pesa cientos
+# de megas y la aplicación —Flask, psycopg, cryptography— se instala y se prueba sin
+# él. Sin este archivo, lo único que no se puede hacer es entrenar o predecir con la
+# red; todo el prototipo funciona igual.
+#
+# Python 3.14 sólo tiene por ahora la release candidate 2.22; en 3.11 o 3.12 cualquier
+# `tensorflow>=2.16` sirve con el mismo código.
+tensorflow==2.22.0rc0
+
+# Para generar y leer el dataset de `dataset/` (`python -m dataset.generar`): tablas,
+# Parquet y Excel. Tampoco van en el `requirements.txt` de la aplicación.
+pandas==3.1.1
+pyarrow==26.0.1
+openpyxl==3.1.5

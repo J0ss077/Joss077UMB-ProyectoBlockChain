@@ -12,19 +12,19 @@ El eje del proyecto es el documento académico **`documentacion_proyecto_transac
 29 requerimientos (REQ) con su criterio de aceptación, los 5 casos de uso (CU), las
 clases del dominio, la arquitectura en capas, las rutas HTTP y el modelo relacional.
 Este repositorio agrega los diez requerimientos del sistema de usuarios (REQ-30 a
-REQ-39) y los seis del perfil, los contactos, las fotos, el idioma y el ayudante
-(REQ-40 a REQ-45), todos con su prueba.
+REQ-39), que también tienen su prueba.
 **Este repositorio no vuelve a decidir nada de eso: existe para hacer verdadero lo que
 el eje describe como prototipo.** Su página 43 afirma que "el núcleo del prototipo ya
 está implementado y probado"; este repositorio es la evidencia de ese párrafo.
 
 Toda decisión que el eje no fija (curva, cifrado, contenido del hash, datos de
-demostración) está declarada y numerada en
-`docs/superpowers/specs/2026-10-10-blockchain-transaccional-design.md`, y el orden en
-que se construyó, en `docs/superpowers/plans/2026-10-10-blockchain-transaccional-plan.md`.
+demostración) está declarada en `docs/arquitectura-y-decisiones.md`, y el recorrido de
+la construcción, con lo que queda afuera y los límites declarados, en
+`docs/proceso-y-alcance.md`. Los requerimientos del eje y su criterio de aceptación
+siguen en `docs/superpowers/specs/2026-10-10-blockchain-transaccional-design.md`, y
+los de las funciones de las fases siguientes, en `docs/superpowers/specs/`.
 La explicación de cómo se ejecuta cada caso de uso está en
-`docs/recorrido-de-casos-de-uso.md`, y el marco teórico que sostiene las decisiones
-—blockchain, ledgers verificables, la curva y el hash— está en `docs/estado-del-arte.md`.
+`docs/recorrido-de-casos-de-uso.md`.
 
 ## Requisitos previos
 
@@ -58,8 +58,8 @@ macOS y Linux:
 .venv/bin/python -m pip install -r requirements.txt
 ```
 
-Si la instalación de Python no dejó `pip` dentro del entorno virtual, se ejecuta
-una vez `<venv> -m ensurepip --upgrade` y se repite la instalación.
+Si su instalación de Python no dejó `pip` dentro del entorno virtual, ejecute una vez
+`<venv> -m ensurepip --upgrade` y repita la instalación.
 
 ### 2. Crear el archivo `.env`
 
@@ -78,24 +78,24 @@ macOS y Linux:
 cp .env.example .env
 ```
 
-Se genera una `MASTER_KEY` propia y se escribe en `.env` en lugar de la de la
-plantilla: la de la plantilla es de relleno (32 bytes en cero con la forma válida de
-Fernet) y el lector la rechaza, así que sin cambiarla la aplicación falla al arrancar
-en vez de cifrar las llaves privadas con una clave publicada en el repositorio.
+La clave `MASTER_KEY` se genera propia y se escribe en `.env`: la de la plantilla es de
+relleno (32 bytes en cero con la forma válida de Fernet) y el lector la rechaza,
+así que sin cambiarla la aplicación falla al arrancar en vez de cifrar las llaves
+privadas con una clave publicada en el repositorio.
 
 ```text
 <venv> -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 ```
 
-Conviene revisar también las otras dos variables del entorno: `SESSION_SECRET` firma
-la cookie de sesión (REQ-37) y `ADMIN_PASSWORD` es la contraseña del administrador que
-siembra el arranque. La plantilla trae valores de ejemplo y los lectores los rechazan:
-sin cambiarlos, la aplicación o el arranque fallan en cuanto leen el valor de
-plantilla. Sin cualquiera de las dos, también fallan, nombrando la variable que falta.
+Se revisan también las otras dos variables del entorno: `SESSION_SECRET` firma la cookie
+de sesión (REQ-37) y `ADMIN_PASSWORD` es la contraseña del administrador que siembra
+el arranque. La plantilla trae valores de ejemplo y los lectores los rechazan: sin
+cambiarlos, la aplicación o el arranque fallan en cuanto leen el valor de plantilla.
+Sin cualquiera de las dos, también fallan, nombrando la variable que falta.
 
-Conviene comprobar que `POSTGRES_PORT` y el puerto de `DATABASE_URL` sean el mismo: el
-primero es el puerto que se publica en el equipo y el segundo es el que usa la
-aplicación para conectarse. Los valores de la plantilla funcionan tal cual.
+Se comprueba que `POSTGRES_PORT` y el puerto de `DATABASE_URL` sean el mismo: el primero es
+el puerto que se publica en el equipo y el segundo es el que usa la aplicación para
+conectarse. Los valores de la plantilla funcionan tal cual.
 
 El host de `DATABASE_URL` es `127.0.0.1` y no `localhost`, y no es un detalle: en
 Windows `localhost` puede resolverse primero a IPv6 (`::1`) mientras el contenedor
@@ -136,12 +136,12 @@ Para comprobar que el contenedor está sano:
 docker compose ps
 ```
 
-Si el contenedor no llega a estar sano, conviene comprobar que `db/init.sql` sea
-legible por el usuario `postgres` del contenedor: el punto de entrada lee el guion con
-ese usuario y, si el archivo quedó con permisos `600` (un `git checkout` bajo un
-`umask` restrictivo los reproduce), falla con `psql: error:
-/docker-entrypoint-initdb.d/01_init.sql: Permission denied` y la base nunca arranca.
-En Linux o Podman se corrige con `chmod 644 db/init.sql`.
+Si el contenedor no llega a estar sano, revise que `db/init.sql` sea legible por el
+usuario `postgres` del contenedor: el punto de entrada lee el guion con ese usuario y,
+si el archivo quedó con permisos `600` (un `git checkout` bajo un `umask` restrictivo
+los reproduce), falla con `psql: error: /docker-entrypoint-initdb.d/01_init.sql:
+Permission denied` y la base nunca arranca. En Linux o Podman se corrige con
+`chmod 644 db/init.sql`.
 
 ### 4. Crear el génesis y cargar los datos de demostración
 
@@ -158,9 +158,9 @@ cuántas cuentas creó.
 
 Si el volumen es anterior a esta versión no tiene todas las tablas del esquema —le
 faltan `contactos`, `solicitudes_de_contrasena` o `fotos_de_perfil`, o incluso
-`users`—, y el proyecto no tiene migraciones: el arranque comprueba el catálogo
-antes de sembrar, nombra las tablas que faltan y falla con el mensaje que indica
-recrear el volumen y volver a sembrar.
+`users`—, y el proyecto no tiene migraciones: el arranque comprueba el catálogo antes
+de sembrar, nombra las tablas que faltan y falla con el mensaje que indica recrear el
+volumen y volver a sembrar.
 
 ### 5. Levantar la aplicación
 
@@ -175,11 +175,6 @@ la vista en todas las páginas de trabajo; el saldo solo se consulta en la porta
 aplicación arranca sin el depurador interactivo ni el recargador de código; se activan
 con `FLASK_DEBUG=1` en el entorno, solo para desarrollo local.
 
-Cada cuenta con sesión tiene además una pestaña **Ayudante**, que explica en palabras
-simples qué está pasando con su dinero. Sin configurar nada contesta con una guía local
-que funciona sin red; con `ASISTENTE_API_KEY` en `.env` una pregunta escrita a mano la
-responde un servicio de IA (sección «El ayudante y la IA»).
-
 ### Las fotos de perfil
 
 La foto de cada cuenta es un archivo aparte: la base guarda su nombre, su tipo y su
@@ -193,36 +188,25 @@ nueva.
 ## Problemas conocidos
 
 **La aplicación parece quedarse pensando.** El arranque imprime al final, así que una
-conexión que espera se ve igual que un cuelgue. Si el arranque se queda callado, el
-primer sospechoso es el host de `DATABASE_URL`: conviene `127.0.0.1` en lugar de
-`localhost`. En Windows `localhost` puede resolverse primero a IPv6 (`::1`) mientras el
-contenedor publica en IPv4 (el `compose.yaml` publica el puerto en `127.0.0.1`), y la
-conexión se queda esperando una dirección donde nadie escucha.
+conexión que espera se ve igual que un cuelgue. Si el arranque se queda callado, el primer
+sospechoso es el host de `DATABASE_URL`: conviene `127.0.0.1` en lugar de
+`localhost`. En Windows
+`localhost` puede resolverse primero a IPv6 (`::1`) mientras el contenedor publica en
+IPv4 (el `compose.yaml` publica el puerto en `127.0.0.1`), y la conexión se queda
+esperando una dirección donde nadie escucha.
 
 Desde esta versión, una conexión imposible falla en cinco segundos con el mensaje del
 motor en vez de esperar lo que decida el sistema operativo. El tiempo de espera lo pone
-`database_url()` cuando la cadena no lo trae; una cadena propia con otro
-`connect_timeout` manda sobre ese valor.
+`database_url()` cuando la cadena no lo trae; si la cadena propia llega con otro
+`connect_timeout`, ese manda.
 
-## La interfaz
-
-La interfaz es un bento geométrico en cobalto con un solo acento lima, tema claro y
-oscuro y los datos que se comparan en monoespaciada. El sistema de diseño completo
-—tokens, componentes, accesibilidad y los contratos que las pruebas respetan— vive en
-[`docs/sistema-de-diseno.md`](docs/sistema-de-diseno.md), que es documentación viva del
-equipo y no un documento del proceso de desarrollo.
-
-Las dos tipografías viajan con el repositorio en `src/web/static/fonts/`, cada una con
-su licencia al lado:
-
-- **Bricolage Grotesque** (The Bricolage Grotesque Project Authors, 2022), variable,
-  para todo el texto y los títulos.
-- **Geist Mono** (The Geist Project Authors, 2024), variable, para claves,
-  identificadores, hashes y montos, que se comparan carácter a carácter.
-
-Las dos se distribuyen bajo la SIL Open Font License 1.1, con el texto completo de la
-licencia en `src/web/static/fonts/OFL-bricolage-grotesque.txt` y en
-`src/web/static/fonts/OFL-geist-mono.txt`.
+**La aplicación responde 503.** Cuando el motor no contesta, la aplicación no muestra el
+error genérico del servidor: pinta una página propia que dice qué revisar —el
+contenedor, `DATABASE_URL`— y ofrece un botón de reintentar. El arranque
+(`python -m src.bootstrap`) termina en ese mismo caso con la instrucción en la terminal.
+La traducción la hace `src/persistence/conexion.py` y la página la registra
+`src/web/app.py`; las pruebas de ese camino están en `tests/integration/test_conexion.py`
+y no necesitan PostgreSQL.
 
 ## Las cinco rutas
 
@@ -249,22 +233,32 @@ historial. En la portada del administrador el panel muestra también el saldo di
 de cada wallet, que es la celda de la matriz de permisos del diseño §8. El CU-05 se
 alcanza desde ese panel: no hay que teclear el identificador a mano.
 
-### Las rutas de la cuenta y del ayudante
+### Las rutas de la sesión y del usuario común
 
-Además de las cinco del eje, la entrega del perfil y los contactos agrega estas, todas
-con sesión y con el dueño tomado de la sesión, nunca de la URL:
+La barra superior es el menú principal: cambia sus enlaces según el rol de la sesión
+—el logo vuelve a la portada y el botón de tema claro/oscuro queda al final—, y la
+pestaña del ayudante viaja con `?desde=` la pantalla de origen para explicarla.
 
-| Ruta                                                                              | Para qué                                                                                     |
-| --------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| `GET /perfil`                                                                     | Los datos de la cuenta, su foto y el estado de su último cambio de contraseña.               |
-| `POST /perfil/contrasena`                                                         | Pide el cambio; el usuario común queda pendiente de aprobación y el administrador lo aplica. |
-| `POST /perfil/foto`, `POST /perfil/foto/quitar`                                   | Pone o quita la foto (JPEG, PNG o WebP de hasta 2 MB, reconocidos por sus bytes).            |
-| `GET /foto/<username>`                                                            | Sirve la foto a quien tiene sesión, con `nosniff` y política de contenido vacía.             |
-| `GET /mis-contactos`, `POST /mis-contactos/agregar`, `POST /mis-contactos/quitar` | La agenda del usuario común, por nombre de usuario.                                          |
-| `GET /asistente`, `GET /asistente/ahora`, `POST /asistente/preguntar`             | El ayudante en su pestaña: guía local y, si hay clave, IA.                                   |
-| `POST /idioma`                                                                    | Cambia el idioma de la interfaz (español o inglés).                                          |
-| `GET /admin/pendientes`                                                           | La cola del administrador: cuentas por aprobar y cambios de contraseña pendientes.           |
-| `POST /admin/contrasenas/<id>/<accion>`                                           | Aprueba o rechaza un cambio de contraseña, con motivo opcional.                              |
+| Ruta                                                                                      | Qué hace                                                                        | Quién entra   |
+| ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- | ------------- |
+| `GET,POST /ingresar`                                                                      | Abre la sesión con usuario y contraseña (REQ-32)                                | cualquiera    |
+| `GET,POST /registrarme`                                                                   | Alta moderada: la cuenta queda pendiente de aprobación (REQ-30)                 | cualquiera    |
+| `POST /salir`                                                                             | Cierra la sesión (REQ-37)                                                       | con sesión    |
+| `GET /mi-tablero`                                                                         | Saldo, formulario de envío y últimos movimientos                                | usuario común |
+| `POST /mi-envio`                                                                          | Firma y registra un envío de la wallet de la sesión (REQ-34)                    | usuario común |
+| `GET /mi-historial`                                                                       | Historial de la wallet de la sesión, con verificación (REQ-39)                  | usuario común |
+| `GET /mi-verificacion`                                                                    | Dictamen de la cadena en palabras simples                                       | usuario común |
+| `GET,POST /mis-contactos`                                                                 | Agenda de a quién le envía, por nombre (REQ-35)                                 | usuario común |
+| `POST /mis-contactos/<id>/quitar`                                                         | Borra un contacto de la agenda                                                  | usuario común |
+| `GET /mis-contactos/sugerencias`                                                          | Nombres que coinciden con lo que se escribe en la agenda                        | usuario común |
+| `GET /mis-estadisticas`                                                                   | Gráficas y filtros de la propia cuenta                                          | usuario común |
+| `GET /perfil`, `POST /perfil/contrasena`, `POST /perfil/foto`, `POST /perfil/foto/quitar` | Datos, foto e idioma de la cuenta                                               | con sesión    |
+| `GET /foto/<username>`                                                                    | Sirve la foto a quien tiene sesión, con `nosniff` y política de contenido vacía | con sesión    |
+| `GET /admin/estadisticas?usuario=<nombre>`                                                | El administrador elige a qué usuario común mirar                                | administrador |
+| `GET /admin/pendientes`, `POST /admin/pendientes/<id>/aprobar`, `.../rechazar`            | Cola de altas pendientes (REQ-31)                                               | administrador |
+| `POST /admin/contrasenas/<id>/<accion>`                                                   | Aprobar o rechazar un cambio de contraseña (REQ-36)                             | administrador |
+| `GET /asistente`, `POST /asistente/preguntar`, `GET /asistente/ahora`                     | El ayudante en palabras simples                                                 | con sesión    |
+| `POST /idioma`                                                                            | Guarda el idioma elegido                                                        | cualquiera    |
 
 ### El ayudante y la IA
 
@@ -280,8 +274,93 @@ servicio de IA. El proveedor se reconoce por el comienzo de la clave (`sk-ant-`,
 manda nada. `ASISTENTE_URL` permite cualquier servicio compatible con la API de OpenAI y
 `ASISTENTE_MODELO` cambia el modelo. En ese modo, la pregunta y el resumen de la cuenta
 —saldo y últimos movimientos, con el nombre de las contrapartes— salen hacia ese
-servicio, y la página lo advierte antes de preguntar. El límite de preguntas por minuto
-está en el propio ayudante.
+servicio, y la página lo advierte antes de preguntar. El tope es de cinco preguntas por
+cuenta y por minuto.
+
+## La conexión con la base de datos
+
+La aplicación no escribe SQL: la capa de presentación recibe fábricas y habla con el
+dominio. Quién abre la conexión y con qué cadena está repartido en cuatro archivos, y
+sólo el primero toca el motor:
+
+| Archivo                                                    | Qué resuelve                                                                                                                                                                         |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `src/persistence/conexion.py`                              | **El módulo de la conexión.** Abre la conexión con `psycopg` y deja la sesión en UTC; si el motor no responde, levanta `NoHayConexion` con el mensaje que la aplicación sabe mostrar |
+| `src/persistence/factory.py`                               | De dónde sale `DATABASE_URL` —entorno o `.env`—, la clave maestra, el secreto de sesión y la contraseña del administrador; arma el ledger con los repositorios                       |
+| `src/persistence/postgres.py` y `src/accounts/postgres.py` | Los repositorios: el SQL de wallets, bloques, transacciones, cuentas, contactos, fotos y solicitudes                                                                                 |
+| `db/init.sql`                                              | El esquema: tablas, `CHECK`, claves foráneas e índices (la aplicación nunca ejecuta DDL)                                                                                             |
+
+Todas las conexiones pasan por `conexion.py`: la del ledger, la de la transacción que
+comparten el ledger y las cuentas, y la de la unidad de trabajo que hace atómica la
+agrupación. `database_url()` agrega `connect_timeout=5` cuando la cadena no lo trae,
+así que un puerto mal puesto se ve como un error en cinco segundos y no como un cuelgue.
+La configuración sensible vive en `.env`, que no se versiona; `.env.example` sólo trae
+valores de plantilla que los lectores rechazan.
+
+## Cómo comprobar los datos en la base
+
+`db/consultas.sql` reúne las consultas de evidencia —conteos por tabla, saldo disponible
+por wallet, la cadena eslabonada, el pool y las últimas filas escritas— y se puede
+ejecutar entero:
+
+```text
+docker compose exec -T postgres psql -U blockchain_user -d blockchain_db < db/consultas.sql
+```
+
+o, con el cliente del equipo:
+
+```text
+psql "$DATABASE_URL" -f db/consultas.sql
+```
+
+Es el camino recomendado para la evidencia de la Fase 4: registrar algo desde la
+interfaz y comprobar la fila con la consulta 8 del archivo. El detalle de qué se hizo y
+qué evidencias acompañan la entrega está en `docs/evidencias-fase4.md`.
+
+## La proyección de las estadísticas
+
+La página de estadísticas suma, cuenta y grafica con aritmética exacta sobre el
+historial; eso no lo calcula ningún modelo. Encima de eso muestra una **proyección del
+próximo mes** (cuánto se espera recibir y enviar) que la estima una red neuronal
+entrenada con TensorFlow y ejecutada **dentro de la aplicación**, en cada visita.
+
+| Archivo                           | Qué hace                                                                                     |
+| --------------------------------- | -------------------------------------------------------------------------------------------- |
+| `red_neuronal/caracteristicas.py` | Las ocho características de entrada y la escala con la que se vuelve a pesos                 |
+| `dataset/`                        | El dataset con el que se entrena: capas, formatos y su generador (ver abajo)                 |
+| `red_neuronal/modelo.py`          | La red 8 → 8 → 2 (TensorFlow/Keras)                                                          |
+| `red_neuronal/entrenar.py`        | Entrena con el dataset, evalúa en prueba contra dos predicciones ingenuas y guarda el modelo |
+| `src/web/proyeccion.py`           | Carga el modelo, resume el historial de la cuenta y proyecta                                 |
+
+TensorFlow va en `red_neuronal/requirements.txt` y **no** en el `requirements.txt` del
+proyecto: el prototipo se instala y se prueba sin él, y en ese caso la tarjeta de
+proyección simplemente no aparece. Para tenerla:
+
+```text
+python3.14 -m venv .venv-tf
+.venv-tf/bin/python -m pip install -r red_neuronal/requirements.txt
+.venv-tf/bin/python -m dataset.generar        # sólo si se quiere regenerar el dataset
+.venv-tf/bin/python -m red_neuronal.entrenar  # sólo si se quiere reentrenar
+.venv-tf/bin/python -m src.web
+```
+
+### El dataset
+
+La red se entrena con el dataset de `dataset/`: **2.500 cuentas** de un fondo de
+empleados durante **96 meses**, **814.023 transacciones** y **188.111 ejemplos** para la
+red, en capas (crudo con defectos, limpio, agregado mensual y listo para el modelo) y en
+CSV, JSON Lines, Parquet, Excel y SQLite, con diccionario de datos y reporte de calidad.
+Es una simulación reproducible (semilla fija); `dataset/README.md` explica cómo se
+generó. La carpeta pesa unos 800 MB y ningún archivo pasa de 50 MB: lo que no cabe se
+parte por año. En prueba, contra los montos reales, la red se equivoca en 1.622 y 1.268
+pesos (recibido y enviado) contra 1.915 y 1.479 de predecir el promedio; el detalle está
+en `docs/red-neuronal.md`.
+
+El modelo entrenado queda en `red_neuronal/modelos/proyeccion.keras` y viaja con el
+repositorio, así que no hace falta entrenar para ver la tarjeta. El apartado del
+documento que explica la red está en `docs/red-neuronal.md`, y el presupuesto y el
+cronograma en `docs/presupuesto-y-cronograma.md`; las versiones en `.docx` para pegar en
+el documento maestro se entregan aparte, no se versionan acá.
 
 ## Los datos de demostración
 
@@ -289,7 +368,10 @@ está en el propio ayudante.
 (las de la sección siguiente). De las transacciones, 7 quedan confirmadas y 3
 pendientes, que son los retiros que `POST /bloques` agruparía a continuación. El
 ciclo es el del eje: el capital de constitución entra al ledger, el fondo reparte el
-capital de asociación, los asociados aportan y el fondo les gira retiros.
+capital de asociación, los asociados aportan y el fondo les gira retiros. Si después
+se corre `python -m src.historial_demo`, se suman **unos 150 bloques y 230
+transacciones** repartidas en doce meses y lo que va del actual (la cifra exacta depende
+del día en que se corra; ver la sección anterior).
 
 | Actor          | Movimiento                                                                                               | Resultado                   |
 | -------------- | -------------------------------------------------------------------------------------------------------- | --------------------------- |
@@ -362,6 +444,51 @@ La clave pública del fondo se imprime con:
 <venv> -c "from src.bootstrap import FONDO; print(FONDO)"
 ```
 
+## Más historial para las estadísticas
+
+La semilla deja movimientos de un solo día, que alcanzan para ver la cadena pero no una
+tendencia. Para que la página de estadísticas y la proyección tengan qué mostrar hay un
+segundo paso opcional que agrega **doce meses de aportes y retiros** a las cuentas de
+demostración, con el mismo camino que la aplicación (firma, validación de saldo y bloque
+encadenado):
+
+```text
+<venv> -m src.historial_demo
+```
+
+Cada usuario común tiene un perfil propio, para que las gráficas no muestren series
+parecidas:
+
+| Cuenta          | Perfil                                      | Movimientos | Con quién mueve más         | Cuándo opera               |
+| --------------- | ------------------------------------------- | ----------- | --------------------------- | -------------------------- |
+| `asociado1`     | Comerciante: le compra seguido a asociado2  | ~120        | asociado2, después el fondo | lunes a miércoles, mañana  |
+| `asociado2`     | Muchos movimientos chicos, primas jun./dic. | ~160        | asociado1, después el fondo | fines de semana, noche     |
+| `asociado3`     | Esporádico, montos de 4.000 a 12.000        | ~50         | el fondo, lejos del resto   | jueves y viernes, tarde    |
+| `constituyente` | Emisor: capital bimestral al fondo          | ~13         | el fondo; saldo negativo    | primer día hábil, temprano |
+| `fondo`         | Contraparte de todos                        | ~120        | —                           | todos los días             |
+
+Los saldos suben y bajan: hay meses en que una cuenta aporta más de lo que retiró, gastos
+grandes después de las primas y préstamos que se pagan en cuotas. Los estados también se
+reparten: cada cuenta intenta, en meses al azar, operaciones que superan su saldo (entre
+siete y diez rechazadas por cuenta, salvo el constituyente) y lo de los últimos nueve
+días queda en espera, así la página muestra los tres estados mezclados.
+
+Es idempotente: si el fondo ya tiene movimientos de hace más de 45 días, no hace nada.
+Para cambiar una historia ya sembrada hay que volver a sembrar sobre una base vacía.
+
+Para que las pantallas que no miran la cadena tampoco queden vacías hay un tercer paso,
+también idempotente, que llena la agenda de los usuarios de demostración y deja una
+solicitud de cambio de contraseña esperando al administrador:
+
+```text
+<venv> -m src.demo_social
+```
+
+La historia se agrega al final de la cadena con fechas del pasado, así que los bloques
+nuevos quedan con marcas de tiempo anteriores a las del último bloque que ya existía; la
+verificación sigue siendo válida porque comprueba el encadenamiento, no el orden
+cronológico.
+
 ## Las cuentas de demostración
 
 ### Las cuentas sembradas
@@ -373,7 +500,7 @@ de las wallets de la semilla.
 
 | Usuario         | Rol             | Wallet que maneja    | Contraseña                          |
 | --------------- | --------------- | -------------------- | ----------------------------------- |
-| `admin`         | `administrador` | ninguna              | la de `ADMIN_PASSWORD` en el `.env` |
+| `admin`         | `administrador` | ninguna              | la de `ADMIN_PASSWORD` en su `.env` |
 | `constituyente` | `usuario`       | la del constituyente | `demostracion`                      |
 | `fondo`         | `usuario`       | la del fondo         | `demostracion`                      |
 | `asociado1`     | `usuario`       | un asociado          | `demostracion`                      |
@@ -398,29 +525,28 @@ demostración tienen saldo disponible positivo.
 
 Con la base sembrada y la aplicación corriendo en `http://127.0.0.1:5000`:
 
-1. **La persona se registra.** Se abre «Registrarme», se elige un usuario que no
-   exista (por ejemplo `persona-demo`) y una contraseña de al menos ocho caracteres.
-   La pantalla dice que la cuenta está esperando aprobación y no abre sesión (REQ-30).
-2. **El administrador la aprueba.** Se abre «Ingresar», se entra con el usuario
-   `admin` y la contraseña de `ADMIN_PASSWORD`, y se va a «Pendientes». La cuenta
-   registrada aparece con su usuario y su fecha; se pulsa «Aprobar». La aprobación
-   crea su wallet y le acredita el saldo de bienvenida de 1000 en un bloque nuevo
-   (REQ-33).
+1. **La persona se registra.** Se abre «Registrarme», se elige un usuario que no exista (por
+   ejemplo `persona-demo`) y una contraseña de al menos ocho caracteres. La pantalla
+   dice que la cuenta está esperando aprobación y no abre sesión (REQ-30).
+2. **El administrador la aprueba.** Se abre «Ingresar», se entra con el usuario `admin` y la
+   contraseña de `ADMIN_PASSWORD`, y vaya a «Pendientes». La cuenta registrada
+   aparece con su usuario y su fecha; pulse «Aprobar». La aprobación crea su wallet y
+   le acredita el saldo de bienvenida de 1000 en un bloque nuevo (REQ-33).
 3. **La persona ingresa** con el usuario y la contraseña del registro. Su tablero
    muestra el saldo de bienvenida (`1000.00000000`) y el crédito confirmado.
-4. **Manda un envío.** En el formulario del tablero se escribe como destinatario el
+4. **Manda un envío.** En el formulario del tablero escriba como destinatario el
    usuario de una cuenta de demostración, por ejemplo `fondo`, y un monto menor que su
    saldo, por ejemplo `125.00000000`. El envío queda pendiente y el saldo disponible
    baja a `875.00000000`.
 5. **La persona ve el envío en su historial.** «Mi historial» lista la transacción con
    estado `pending` y sin bloque, debajo del dictamen de la cadena.
-6. **El administrador agrupa el bloque.** Se cierra la sesión de la persona, se
-   ingresa como `admin`, se abre «Cerrar bloque» y se agrupa el pool. El envío queda
-   confirmado en un eslabón nuevo, junto con las pendientes que ya tenía la semilla.
+6. **El administrador agrupa el bloque.** Se cierra la sesión de la persona, se entra como
+   `admin`, abra «Cerrar bloque» y agrupe el pool. El envío queda confirmado en un
+   eslabón nuevo, junto con las pendientes que ya tenía la semilla.
 7. **La persona vuelve a entrar** y en «Mi historial» ve la misma transacción con
    estado `confirmed` y el índice del bloque que la agrupa.
 8. **Verifica su historial en la misma página.** Arriba del historial, el dictamen
-   dice «La cadena es válida: tu historial está respaldado» y la tabla lista todas sus
+   dice «La cadena es válida: su historial está respaldado» y la tabla lista todas sus
    transacciones (REQ-39). El enlace viejo «Mi verificación» redirige a esta página.
 9. **Opcional: el administrador verifica la cadena completa** en «Verificar cadena».
    El dictamen es el mismo, pero sobre todo el ledger.
@@ -457,7 +583,7 @@ propios: `DATABASE_URL` apuntando a la base de pruebas, `SESSION_SECRET` y
 vez de omitirse en silencio.
 
 Las pruebas de integración vacían las tablas antes de cada caso. Para no perder los
-datos de la aplicación, se define `TEST_DATABASE_URL` en `.env` con una base aparte
+datos de la aplicación, defina `TEST_DATABASE_URL` en su `.env` con una base aparte
 en el mismo PostgreSQL (creada una vez y con `db/init.sql` aplicado): con ella, la
 suite usa esa base y no toca la de `DATABASE_URL`. Las fotos de perfil de las
 pruebas van siempre a una carpeta temporal, nunca a `FOTOS_DIR`.
@@ -468,12 +594,10 @@ pruebas van siempre a una carpeta temporal, nunca a `FOTOS_DIR`.
 
 La suite incluye las pruebas de reglas, las de integración contra PostgreSQL y
 `tests/test_explicacion.py`, que comprueba que cada caso de uso está en el recorrido y
-que cada uno de los 39 requerimientos del eje tiene una prueba `test_req_NN_` (REQ-17,
-REQ-20 y REQ-23 incluidos). Los de esta entrega (REQ-40 a REQ-45) se prueban en
-`test_perfil.py`, `test_foto.py`, `test_contactos.py`, `test_idioma.py` y
-`test_asistente.py`.
+que cada uno de los 39 requerimientos tiene una prueba `test_req_NN_` (REQ-17, REQ-20
+y REQ-23 incluidos).
 
-Para correr solo la integración:
+Si prefiere correr solo la integración:
 
 ```text
 <venv> -m pytest tests/integration -v
@@ -506,13 +630,13 @@ docker compose exec postgres psql -U blockchain_user -d blockchain_db -c "WITH o
 ```
 
 Con Podman, `podman compose exec postgres psql ...` con el mismo resto del comando. Si
-`psql` está instalado, el equivalente es
+tiene `psql` instalado, el equivalente es
 `psql "$DATABASE_URL" -c "WITH objetivo AS (...) UPDATE ...;"` (en PowerShell,
 `psql $env:DATABASE_URL -c "..."`).
 
-2. Se inicia sesión como administrador y se abre `http://127.0.0.1:5000/verificar` en
-   el navegador. La ruta exige administrador (REQ-38): sin sesión redirige al ingreso,
-   así que un `curl` anónimo no sirve para esta comprobación. La cuenta `admin` y su
+2. Inicie sesión como administrador y abra `http://127.0.0.1:5000/verificar` en el
+   navegador. La ruta exige administrador (REQ-38): sin sesión redirige al ingreso, así
+   que un `curl` anónimo no sirve para esta comprobación. La cuenta `admin` y su
    contraseña están en «Las cuentas de demostración».
 
 **Resultado esperado.** La página dice "La cadena no es válida" y muestra el índice
@@ -521,7 +645,7 @@ verificación recalcula el hash de cada bloque con sus transacciones y lo compar
 el guardado (REQ-10), y no escribe nada (REQ-22).
 
 La alteración deja la base modificada a propósito. Para volver a los datos de
-demostración se borra el volumen y se vuelve a sembrar: `docker compose down -v`,
+demostración, borre el volumen y vuelva a sembrar: `docker compose down -v`,
 `docker compose up -d` (o con Podman) y `<venv> -m src.bootstrap`.
 
 ## Sabotaje guiado
@@ -622,7 +746,7 @@ confirmó completa o no ocurrió.
 **Apagar PostgreSQL 16.** `docker compose down` (o `podman compose down`) quita el
 contenedor **y conserva los datos**: el volumen `postgres_data` sigue en el equipo, así
 que el próximo `docker compose up -d` levanta el mismo ledger. `docker compose down -v`
-es el que borra el volumen y, con él, las siete tablas. Tras borrarlo, el esquema de
+es el que borra el volumen y, con él, las cuatro tablas. Tras borrarlo, el esquema de
 `db/init.sql` se vuelve a aplicar solo en el próximo `up` (el punto de entrada de la
 imagen lo lee al crear el volumen de nuevo), la base queda vacía y hay que volver a
 sembrar la demostración:
@@ -633,22 +757,22 @@ docker compose up -d
 <venv> -m src.bootstrap
 ```
 
-**Deshacer la alteración de la demostración.** La alteración a mano del apartado
-anterior cambia una fila sin pasar por la cadena, y la aplicación no tiene una operación
-que la deshaga: el camino de vuelta es el reinicio limpio de arriba —borrar el volumen,
-`up` y `<venv> -m src.bootstrap`—. Para ver el dictamen sin ensuciar la demostración,
-`tests/integration/test_req_10_alteracion.py` hace la misma alteración sobre una base
-desechable.
+**Deshacer la alteración de la demostración.** La alteración a mano del apartado anterior
+cambia una fila sin pasar por la cadena, y la aplicación no tiene una operación que la
+deshaga: el camino de vuelta es el reinicio limpio de arriba —borrar el volumen, `up` y
+`<venv> -m src.bootstrap`—. Si lo que quiere es ver el dictamen sin ensuciar la
+demostración, `tests/integration/test_req_10_alteracion.py` hace la misma alteración
+sobre una base desechable.
 
 **Qué se puede borrar sin miedo.** Nada de esto está versionado (`.gitignore`), así que
 borrarlo no ensucia el repositorio:
 
-| Ruta               | Qué es                                                            | Si se borra                                                                                                        |
-| ------------------ | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| `.venv/`           | El entorno virtual con las dependencias fijadas                   | Se recrea con `python -m venv .venv` y la instalación de `requirements.txt`.                                       |
-| `.reference/`      | El extracto del documento del eje y el material de consulta       | No rompe nada: no lo importan el código ni las pruebas. Se pierde la copia local del extracto del eje.             |
-| `.legacy-project/` | El prototipo anterior, que solo se conserva como referencia       | No rompe nada: no lo importa nadie. Se pierde el prototipo anterior, que no es el entregable.                      |
-| `.env`             | Los secretos locales: `DATABASE_URL`, `POSTGRES_*` y `MASTER_KEY` | Obliga a copiar `.env.example` otra vez y a generar una `MASTER_KEY` nueva; conviene leer la advertencia de abajo. |
+| Ruta               | Qué es                                                            | Si la borra                                                                                              |
+| ------------------ | ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `.venv/`           | El entorno virtual con las dependencias fijadas                   | Se recrea con `python -m venv .venv` y la instalación de `requirements.txt`.                             |
+| `.reference/`      | El extracto del documento del eje y el material de consulta       | No rompe nada: no lo importan el código ni las pruebas. Se pierde la copia local del extracto del eje.   |
+| `.legacy-project/` | El prototipo anterior, que solo se conserva como referencia       | No rompe nada: no lo importa nadie. Se pierde el prototipo anterior, que no es el entregable.            |
+| `.env`             | Los secretos locales: `DATABASE_URL`, `POSTGRES_*` y `MASTER_KEY` | Obliga a copiar `.env.example` otra vez y a generar una `MASTER_KEY` nueva; lea la advertencia de abajo. |
 
 **Antes de borrar `.env`.** `.env` guarda la `MASTER_KEY` con la que se cifra el material
 privado de las wallets (decisión 3 del diseño). Con otra clave, las wallets ya guardadas
@@ -662,14 +786,13 @@ con la clave nueva. El arranque solo siembra cuando la tabla de wallets está va
 
 - **El esquema en PostgreSQL 16**, la versión del piso: `db/init.sql` se aplicó como
   guion de inicialización de un contenedor `postgres:16-alpine` (PostgreSQL 16.15) y
-  quedaron las siete tablas, `uuid-ossp`, sus índices y todos los `CHECK` del eje;
+  quedaron las cuatro tablas, `uuid-ossp`, los once índices y todos los `CHECK` del eje;
   una transacción de una wallet a sí misma la rechazó el motor.
 - **Las reglas sin base de datos (REQ-17)**: `pytest tests/unit` pasa con
   `DATABASE_URL` sin definir y sin contenedor, porque el dominio no importa el driver.
-- **La suite completa** contra un clúster PostgreSQL 16 desechable: las reglas, la
-  integración y la coherencia de la explicación. La cobertura de los 39 requerimientos
-  del eje no se cuenta a mano: la exige `tests/test_explicacion.py`; la de REQ-40 a
-  REQ-45 vive en sus archivos de prueba.
+- **La suite completa** contra el clúster PostgreSQL del equipo de desarrollo: las
+  reglas, la integración y la coherencia de la explicación. La cobertura de los 39
+  requerimientos no se cuenta a mano: la exige `tests/test_explicacion.py`.
 - **La suite completa dentro del contenedor del piso de Python** (`python:3.11-slim`):
   con el repositorio montado en solo lectura, `requirements.txt` instalado y `pytest`
   corriendo contra el contenedor PostgreSQL 16, el veredicto fue el código de salida 0.
@@ -690,9 +813,10 @@ con la clave nueva. El arranque solo siembra cuando la tabla de wallets está va
 5. `src/domain/block.py` y `src/domain/blockchain.py`: el hash del contenido agrupado,
    el saldo disponible, el pool, la agrupación atómica, la verificación que localiza
    la alteración y el génesis (REQ-05 a REQ-10, REQ-14, REQ-18, REQ-22).
-6. `src/persistence/ports.py` y `src/persistence/postgres.py`: los protocolos que
-   aíslan al dominio del motor (REQ-16) y los adaptadores que no traducen los errores
-   de PostgreSQL (REQ-19).
+6. `src/persistence/conexion.py`, `src/persistence/ports.py` y
+   `src/persistence/postgres.py`: el módulo que abre la conexión y la deja en UTC, los
+   protocolos que aíslan al dominio del motor (REQ-16) y los adaptadores que no traducen
+   los errores de PostgreSQL (REQ-19).
 7. `src/web/app.py` y `src/web/templates/`: las cinco rutas y sus plantillas, sin
    reglas de negocio ni SQL (REQ-24 a REQ-29).
 8. `tests/`: la explicación ejecutable. Cada prueba se llama `test_req_NN_*` y lleva

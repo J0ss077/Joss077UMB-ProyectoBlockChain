@@ -1,0 +1,34 @@
+{
+  "gasto_relativo": {
+    "media": 0.7943515638473108,
+    "desviacion": 0.6026557320921332
+  },
+  "movimientos_30d": {
+    "media": 0.5376439319789603,
+    "desviacion": 0.3996051272491737
+  },
+  "neto_relativo": {
+    "media": 0.24979315637359054,
+    "desviacion": 0.8720106052533427
+  },
+  "colchon": {
+    "media": 3.581687211797847,
+    "desviacion": 1.7945332611185965
+  },
+  "movimientos_previos": {
+    "media": 0.5339667534038371,
+    "desviacion": 0.39505025256871107
+  },
+  "recibido_escala": {
+    "media": 0.3688355881337185,
+    "desviacion": 0.7185342068468771
+  },
+  "mes_seno": {
+    "media": 0.05580717312420923,
+    "desviacion": 0.7037866882549574
+  },
+  "mes_coseno": {
+    "media": -0.01534653130893552,
+    "desviacion": 0.7080493457600265
+  }
+}
