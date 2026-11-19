@@ -1,4 +1,63 @@
-{% extends "base.html" %} {% block titulo %}{{ t("Verificar cadena") }}{% endblock %} {% block cuerpo %}
+{% extends "base.html" %}
+{% from "_macros.html" import dato, copiar %}
+{% block titulo %}{{ t("Verificar cadena") }}{% endblock %}
+{% block cuerpo %}
+{# El panel de auditoría va debajo del dictamen y conserva sus textos: el veredicto
+   de siempre arriba, el detalle completo del ledger abajo. Los títulos de los
+   hallazgos se traducen a partir de su código; el detalle técnico que arma el
+   dominio —hashes, identificadores, motivos— va tal cual. #}
+{% set severidades = {"critico": "Crítico", "aviso": "Aviso", "nota": "Nota"} %}
+{% set titulos_de_hallazgo = {
+    "cadena-vacia": "No hay ningún bloque",
+    "cabeza": "La cadena no empieza en el génesis",
+    "indice": "Hay un hueco en los índices",
+    "encadenamiento": "El encadenamiento está roto",
+    "hash": "El hash del bloque no coincide",
+    "transaccion-sin-bloque": "Una transacción confirmada no tiene bloque",
+    "coherencia-de-estado": "El estado y el bloque no concuerdan",
+    "wallet-inexistente": "La transacción apunta a una wallet que no está",
+    "monto": "El monto no es válido",
+    "firma": "La firma no corresponde al emisor",
+    "firma-repetida": "Hay firmas repetidas",
+    "sello-ausente": "No hay sello fijado",
+    "sello-ilegible": "El sello no se puede leer",
+    "sello-no-coincide": "El sello no coincide con la cadena"
+} %}
+{% set estados_de_bloque = {
+    "correcto": "Correcto",
+    "cabeza": "Cabeza",
+    "alterado": "Alterado",
+    "encadenamiento": "Encadenamiento",
+    "hueco": "Hueco"
+} %}
+{% set nombres_de_accion = {
+    "reparar-todo": "Reparar todo lo que se pueda",
+    "reagrupar": "Reagrupar el pool",
+    "fijar-sello": "Fijar el sello"
+} %}
+{% set botones_de_accion = {
+    "reparar-todo": "Reparar todo",
+    "reagrupar": "Reagrupar",
+    "fijar-sello": "Fijar sello"
+} %}
+{% set confirmaciones = {
+    "reparar-todo": "Entiendo que se rechazan las transacciones inválidas del pool, se aíslan las confirmadas inválidas y se recalculan los hashes: esto no recupera el contenido alterado.",
+    "reagrupar": "Entiendo que las transacciones del pool se confirman en un bloque nuevo, encadenado al último.",
+    "fijar-sello": "Entiendo que el sello se fija en el último bloque actual: desde ahora el recorte de la cola se notará, y lo que ya esté alterado queda aceptado."
+} %}
+{# Las acciones se ofrecen según lo que la auditoría encontró: reparar todo si hay
+   algo reparable, reagrupar si el pool tiene filas y fijar el sello si falta, no se
+   puede leer o ya no coincide con la cadena. #}
+{% set acciones_sugeridas = [] %}
+{% if "encadenar" in auditoria.reparaciones or "aislar" in auditoria.reparaciones or "rechazar-pendientes" in auditoria.reparaciones %}
+{% set _ = acciones_sugeridas.append("reparar-todo") %}
+{% endif %}
+{% if auditoria.resumen.pendientes %}
+{% set _ = acciones_sugeridas.append("reagrupar") %}
+{% endif %}
+{% if not auditoria.sello.coincide %}
+{% set _ = acciones_sugeridas.append("fijar-sello") %}
+{% endif %}
 <div class="rejilla">
     <main id="contenido" tabindex="-1" class="mosaico columna-principal">
         <div class="encabezado-con-accion">
@@ -29,10 +88,147 @@
                 <p>{{ t("El primer bloque que no encaja es el de índice") }} <code>{{ dictamen.altered_block_index }}</code>.</p>
             </div>
         </section>
-        <div class="datos-clave">
-            <p><b>{{ t("Qué hacer") }}</b>{{ t("Restaura la base desde un respaldo confiable para volver a comprobar la integridad de los movimientos.") }}</p>
-        </div>
         {% endif %}
+
+        <section class="auditoria-seccion" aria-labelledby="titulo-auditoria">
+            <h2 class="titulo-bloque" id="titulo-auditoria">{{ t("Auditoría del estado") }}</h2>
+            <div class="auditoria-cifras" role="list" aria-label="{{ t('Resumen de la auditoría') }}">
+                <div class="resumen-dato resumen-acento" role="listitem"><span>{{ t("Altura") }}</span><b>{{ auditoria.resumen.altura if auditoria.resumen.altura is not none else "—" }}</b></div>
+                <div class="resumen-dato" role="listitem"><span>{{ t("Bloques") }}</span><b>{{ auditoria.resumen.bloques }}</b></div>
+                <div class="resumen-dato" role="listitem"><span>{{ t("Confirmadas") }}</span><b>{{ auditoria.resumen.confirmadas }}</b></div>
+                <div class="resumen-dato" role="listitem"><span>{{ t("En el pool") }}</span><b>{{ auditoria.resumen.pendientes }}</b></div>
+                <div class="resumen-dato" role="listitem"><span>{{ t("Rechazadas") }}</span><b>{{ auditoria.resumen.rechazadas }}</b></div>
+                <div class="resumen-dato" role="listitem"><span>{{ t("Wallets") }}</span><b>{{ auditoria.resumen.wallets }}</b></div>
+            </div>
+            <ul class="datos-clave datos-clave-auditoria">
+                <li>
+                    <b>{{ t("Último bloque") }}</b>
+                    {% if auditoria.resumen.cabeza_en %}
+                    <span class="mono">{{ auditoria.resumen.cabeza_en.strftime("%d/%m/%Y %H:%M") }}</span>
+                    {% else %}
+                    <span class="suave">—</span>
+                    {% endif %}
+                </li>
+                <li>
+                    <b>{{ t("Hash de la cabeza") }}</b>
+                    {% if auditoria.resumen.cabeza_hash %}
+                    <span class="codigo">{{ dato(auditoria.resumen.cabeza_hash) }}{{ copiar(auditoria.resumen.cabeza_hash, "el hash de la cabeza") }}</span>
+                    {% else %}
+                    <span class="suave">—</span>
+                    {% endif %}
+                </li>
+                <li>
+                    <b>{{ t("Sello de vigilancia") }}</b>
+                    {% if auditoria.sello.problema == "ausente" %}
+                    <span class="pildora pildora-nota">{{ t("Sin fijar") }}</span>
+                    <p class="ayuda">{{ t("Sin sello no se puede comprobar si la cola de la cadena se recortó.") }}</p>
+                    {% elif auditoria.sello.problema == "ilegible" %}
+                    <span class="pildora pildora-aviso">{{ t("Ilegible") }}</span>
+                    <p class="ayuda">{{ t("El archivo del sello no se puede leer o su firma no cuadra.") }}</p>
+                    {% elif auditoria.sello.coincide %}
+                    <span class="pildora pildora-confirmed">{{ t("Coincide") }}</span>
+                    {% if auditoria.sello.crecio == 1 %}
+                    <p class="ayuda">{{ t("La cadena tiene un bloque nuevo desde el sello.") }}</p>
+                    {% elif auditoria.sello.crecio %}
+                    <p class="ayuda">{{ t("La cadena tiene {n} bloques nuevos desde el sello.", n=auditoria.sello.crecio) }}</p>
+                    {% else %}
+                    <p class="ayuda">{{ t("La cabeza sigue siendo el bloque sellado.") }}</p>
+                    {% endif %}
+                    <p class="ayuda">{{ t("Fijado en el bloque {n} el {fecha}.", n=auditoria.sello.sello.altura, fecha=auditoria.sello.sello.fijado_en.strftime("%d/%m/%Y %H:%M")) }}</p>
+                    {% else %}
+                    <span class="pildora pildora-critico">{{ t("No coincide") }}</span>
+                    <p class="ayuda">{{ t("El bloque sellado cambió o desapareció: la cadena se recortó o se reescribió.") }}</p>
+                    <p class="ayuda">{{ t("Fijado en el bloque {n} el {fecha}.", n=auditoria.sello.sello.altura, fecha=auditoria.sello.sello.fijado_en.strftime("%d/%m/%Y %H:%M")) }}</p>
+                    {% endif %}
+                </li>
+            </ul>
+        </section>
+
+        <section class="auditoria-seccion" aria-labelledby="titulo-hallazgos">
+            <h2 class="titulo-bloque" id="titulo-hallazgos">{{ t("Hallazgos") }} <span class="contador">{{ auditoria.hallazgos|length }}</span></h2>
+            {% if auditoria.limpia %}
+            <div class="exito" role="status"><p>{{ t("La cadena y el pool cuadran con lo registrado.") }}</p></div>
+            {% endif %}
+            {% if auditoria.hallazgos %}
+            <ul class="auditoria-hallazgos">
+                {% for hallazgo in auditoria.hallazgos %}
+                {% set destino = "fijar-sello" if hallazgo.reparacion == "fijar-sello" else "reparar-todo" %}
+                <li class="hallazgo">
+                    <div class="hallazgo-cabecera">
+                        <span class="pildora pildora-{{ hallazgo.severidad }}">{{ t(severidades[hallazgo.severidad]) }}</span>
+                        <h3 class="hallazgo-titulo">{{ t(titulos_de_hallazgo.get(hallazgo.codigo, hallazgo.codigo)) }}</h3>
+                        <span class="hallazgo-ubicacion">{{ hallazgo.ubicacion }}</span>
+                    </div>
+                    <p class="hallazgo-detalle">{{ hallazgo.detalle }}</p>
+                    {% if hallazgo.reparacion and acciones_sugeridas %}
+                    <a class="boton" href="#reparacion-{{ destino }}">{{ t("Ir a la reparación") }}</a>
+                    {% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="ayuda">{{ t("La auditoría no encontró ningún hallazgo.") }}</p>
+            {% endif %}
+        </section>
+
+        {% if acciones_sugeridas %}
+        <section class="auditoria-seccion" aria-labelledby="titulo-acciones">
+            <h2 class="titulo-bloque" id="titulo-acciones">{{ t("Reparaciones") }}</h2>
+            <p class="ayuda">{{ t("Cada reparación se aplica solo cuando confirmas la casilla: la auditoría no cambia nada por su cuenta.") }}</p>
+            <div class="auditoria-acciones">
+                {% for accion in acciones_sugeridas %}
+                <form class="accion-reparacion" method="post" action="/verificar/reparar">
+                    <h3 class="accion-titulo" id="reparacion-{{ accion }}" tabindex="-1">{{ t(nombres_de_accion[accion]) }}</h3>
+                    <input type="hidden" name="accion" value="{{ accion }}" />
+                    <label class="casilla-confirmar">
+                        <input type="checkbox" name="confirmar" value="si" required />
+                        <span>{{ t(confirmaciones[accion]) }}</span>
+                    </label>
+                    <button class="boton{% if accion == 'reparar-todo' %} boton-primario{% endif %}" type="submit">{{ t(botones_de_accion[accion]) }}</button>
+                </form>
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+
+        <section class="auditoria-seccion" aria-labelledby="titulo-bloques">
+            <h2 class="titulo-bloque" id="titulo-bloques">{{ t("Bloques de la cadena") }} <span class="contador">{{ auditoria.resumen.bloques }}</span></h2>
+            {% if auditoria.bloques %}
+            {# La caja se acota en alto y se desplaza sola: con una cadena larga la
+               tabla no puede alargar la página entera. El encabezado queda fijo y
+               el desplazamiento horizontal sigue dentro de la misma caja, así que
+               a 320 px tampoco se mueve la página. #}
+            <div class="tabla-desplazable tabla-bloques-caja" tabindex="0" role="group" aria-labelledby="titulo-bloques">
+                <table class="tabla tabla-bloques">
+                    <thead>
+                        <tr><th>{{ t("Índice") }}</th><th>{{ t("Estado") }}</th><th>{{ t("Hash") }}</th><th class="derecha">{{ t("Transacciones") }}</th><th>{{ t("Detalle") }}</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for bloque in auditoria.bloques %}
+                        <tr>
+                            <td class="cifra">#{{ bloque.indice }}</td>
+                            <td><span class="pildora pildora-bloque-{{ bloque.estado }}">{{ t(estados_de_bloque[bloque.estado]) }}</span></td>
+                            <td><span class="codigo">{{ dato(bloque.hash) }}</span></td>
+                            <td class="derecha cifra">{{ bloque.transacciones }}</td>
+                            <td>{% if bloque.detalle %}{{ bloque.detalle }}{% else %}<span class="suave">—</span>{% endif %}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="ayuda">{{ t("No hay ningún bloque en la cadena.") }}</p>
+            {% endif %}
+        </section>
+
+        <section class="auditoria-seccion" aria-labelledby="titulo-limites">
+            <h2 class="titulo-bloque" id="titulo-limites">{{ t("Límites de la auditoría") }}</h2>
+            <ul class="auditoria-limites">
+                {% for limite in auditoria.limites %}
+                <li><b>{{ t(limite.titulo) }}</b> {{ t(limite.detalle) }}</li>
+                {% endfor %}
+            </ul>
+        </section>
     </main>
     {% include "_panel_wallets.html" %}
 </div>

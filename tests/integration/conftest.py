@@ -36,6 +36,7 @@ from src.domain.blockchain import Blockchain, ensure_genesis
 from src.domain.transaction import Transaction, TransactionStatus
 from src.domain.wallet import Wallet, create_wallet, sign_payload
 from src.persistence.factory import (
+    VARIABLE_DEL_SELLO,
     database_url,
     database_url_de_pruebas,
     open_ledger,
@@ -75,9 +76,19 @@ CONTRASENA_DEL_ADMINISTRADOR = "clave-del-administrador-de-prueba"
 CARPETA_DE_FOTOS_DE_PRUEBA = Path(tempfile.mkdtemp(prefix="fotos-de-prueba-"))
 ALMACEN_DE_PRUEBA = CarpetaDeFotos(CARPETA_DE_FOTOS_DE_PRUEBA)
 
+# El sello de vigilancia de las pruebas va a una carpeta temporal propia, igual que
+# las fotos, y nunca a `datos/sello-de-vigilancia.json`. La ruta se define a nivel de
+# módulo, antes de que corra cualquier caso, porque el arranque se ejecuta en un
+# subproceso que hereda este entorno: sin la variable, cada corrida de la suite
+# dejaría en la aplicación el sello de la base de pruebas y `/verificar` mostraría un
+# desajuste que provocaron las pruebas. La carpeta se borra al terminar la sesión.
+CARPETA_DEL_SELLO_DE_PRUEBA = Path(tempfile.mkdtemp(prefix="sello-de-prueba-"))
+ARCHIVO_DEL_SELLO_DE_PRUEBA = CARPETA_DEL_SELLO_DE_PRUEBA / "sello-de-vigilancia.json"
+os.environ[VARIABLE_DEL_SELLO] = str(ARCHIVO_DEL_SELLO_DE_PRUEBA)
+
 
 def crear_app_de_prueba(
-    chain_factory, *, cuentas_factory=None, secret_key=None, asistente=None
+    chain_factory, *, cuentas_factory=None, secret_key=None, asistente=None, sello=None
 ) -> Flask:
     """Arma la aplicación con la fábrica del ledger y la del servicio de cuentas.
 
@@ -94,6 +105,10 @@ def crear_app_de_prueba(
     `asistente` trae la configuración del servicio de IA del ayudante, tal como la
     leería el arranque. Sin ella, la aplicación usa sólo la guía local; con una URL
     que no responde se prueba el camino de la IA sin salir a la red.
+
+    `sello` deja inyectar el sello de vigilancia de la verificación. Sin él, la
+    aplicación arranca sin sello configurado y el panel declara esa ausencia; las
+    pruebas del panel con sello le pasan uno sobre un archivo temporal.
     """
 
     @contextmanager
@@ -105,6 +120,7 @@ def crear_app_de_prueba(
         fabrica_real if cuentas_factory is None else cuentas_factory,
         secret_key=session_secret() if secret_key is None else secret_key,
         asistente=asistente,
+        sello=sello,
     )
 
 
@@ -161,6 +177,14 @@ def _carpeta_de_fotos_de_prueba():
     """Borra la carpeta temporal de fotos al terminar la sesión de pruebas."""
     yield
     shutil.rmtree(CARPETA_DE_FOTOS_DE_PRUEBA, ignore_errors=True)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _carpeta_del_sello_de_prueba():
+    """Borra la carpeta temporal del sello al terminar la sesión de pruebas."""
+    yield
+    shutil.rmtree(CARPETA_DEL_SELLO_DE_PRUEBA, ignore_errors=True)
+    os.environ.pop(VARIABLE_DEL_SELLO, None)
 
 
 @pytest.fixture(scope="session")

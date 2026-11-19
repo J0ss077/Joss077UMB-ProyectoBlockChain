@@ -16,6 +16,7 @@ from src.persistence.factory import (
     carpeta_de_fotos,
     configuracion_del_asistente,
     ledger,
+    sello_de_vigilancia,
     session_secret,
     transaction,
 )
@@ -39,6 +40,7 @@ app = create_app(
     cuentas,
     secret_key=session_secret(),
     asistente=configuracion_del_asistente(),
+    sello=sello_de_vigilancia(),
 )
 
 

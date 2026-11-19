@@ -17,7 +17,7 @@ from src.accounts.credentials import (
     MOTIVO_DE_USUARIO_INVALIDO,
 )
 from src.domain.transaction import RejectionReason
-from src.web import admin, perfil, user
+from src.web import admin, app, perfil, user
 from src.web.idioma import COOKIE_DEL_IDIOMA
 from src.web.traducciones import EN, MENSAJES_ARMADOS, TEXTOS_DE_JS
 from tests.integration.conftest import CONTRASENA_DE_PRUEBA
@@ -39,10 +39,16 @@ def _frases_de_las_plantillas() -> set[str]:
 
 
 def _mensajes_de_las_capas() -> set[str]:
-    """Los textos que el servicio, las rutas o el dominio entregan para mostrar."""
+    """Los textos que el servicio, las rutas y el dominio entregan para mostrar.
+
+    `app` entra con los otros módulos de la presentación: sus constantes `MENSAJE_*`
+    son los avisos de la bandeja de las reparaciones y de la verificación, y una
+    constante nueva sin traducción dejaría la notificación en español. Importar el
+    módulo no arma la aplicación: `create_app` sólo se llama cuando alguien la pide.
+    """
     mensajes = {
         valor
-        for modulo in (service, user, admin, perfil)
+        for modulo in (service, user, admin, perfil, app)
         for nombre, valor in vars(modulo).items()
         if nombre.startswith("MENSAJE") and isinstance(valor, str)
     }

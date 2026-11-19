@@ -21,6 +21,7 @@ from __future__ import annotations
 import os
 from collections.abc import Callable, Iterator, Mapping
 from contextlib import AbstractContextManager, contextmanager
+from typing import TYPE_CHECKING, Protocol
 from uuid import UUID
 
 from flask import (
@@ -73,6 +74,31 @@ from src.web.panel import datos_del_panel
 from src.web.perfil import crear_blueprint_del_perfil
 from src.web.user import crear_blueprint_del_usuario
 
+if TYPE_CHECKING:
+    # Solo para las anotaciones: la presentación no arma el sello ni conoce su
+    # adaptador (REQ-29); recibe el contrato estructural de abajo, ya construido por
+    # el arranque o por las pruebas.
+    from src.domain.auditoria import LecturaDelSello, Sello
+    from src.domain.reparacion import Reparacion
+
+
+class SelloDeVigilancia(Protocol):
+    """Lo que la presentación necesita del sello de vigilancia que recibe.
+
+    Es el contrato estructural del ancla externa contra el recorte de la cola: la
+    lectura del panel y la escritura de la acción `fijar-sello` usan solo estos dos
+    métodos. El adaptador real vive en la capa de persistencia y lo cablea el
+    arranque; este módulo no lo importa (REQ-29).
+    """
+
+    def leer(self) -> LecturaDelSello:
+        """Devuelve el sello guardado o el motivo por el que no se puede usar."""
+        ...
+
+    def fijar(self, *, altura: int, hash: str) -> Sello:
+        """Escribe el sello en la cabeza indicada y devuelve lo fijado."""
+        ...
+
 # Nombre de la variable que firma la cookie. Es una constante y no un literal
 # porque el respaldo y su mensaje de error tienen que nombrar la misma variable.
 VARIABLE_DEL_SECRETO_DE_SESION = "SESSION_SECRET"
@@ -85,6 +111,75 @@ SECRETO_DE_SESION_DE_LA_PLANTILLA = "0" * 64
 
 TAMANO_MAXIMO_DE_LA_PETICION = 3 * 1024 * 1024
 
+# Acciones que acepta `POST /verificar/reparar`. Son claves estables y no frases:
+# el despacho las compara y la plantilla las traduce. La de reagrupar usa
+# `Blockchain.group_pending`; las otras cuatro, los métodos de reparación del
+# dominio, y `fijar-sello` el adaptador inyectado.
+ACCION_DE_REPARAR_TODO = "reparar-todo"
+ACCION_DE_ENCADENAR = "encadenar"
+ACCION_DE_AISLAR = "aislar"
+ACCION_DE_RECHAZAR_PENDIENTES = "rechazar-pendientes"
+ACCION_DE_REAGRUPAR = "reagrupar"
+ACCION_DE_FIJAR_SELLO = "fijar-sello"
+ACCIONES_DE_REPARACION = frozenset(
+    (
+        ACCION_DE_REPARAR_TODO,
+        ACCION_DE_ENCADENAR,
+        ACCION_DE_AISLAR,
+        ACCION_DE_RECHAZAR_PENDIENTES,
+        ACCION_DE_REAGRUPAR,
+        ACCION_DE_FIJAR_SELLO,
+    )
+)
+
+# Los avisos de la ruta de reparaciones. Van como constantes para que la bandeja
+# los traduzca con la misma frase que se registró en `traducciones.EN`. Ninguno
+# incluye cifras ni el detalle técnico del dominio: eso queda en el panel, que se
+# vuelve a pintar después de la redirección.
+MENSAJE_REPARACION_SIN_CONFIRMAR = (
+    "No se reparó nada: falta marcar la casilla de confirmación."
+)
+MENSAJE_REPARACION_DESCONOCIDA = "No se reparó nada: esa acción no existe."
+MENSAJE_SIN_SELLO_CONFIGURADO = (
+    "No hay un sello de vigilancia configurado: no se escribió nada."
+)
+MENSAJE_SIN_BLOQUES_PARA_SELLAR = (
+    "No hay ningún bloque que sellar: no se escribió nada."
+)
+MENSAJE_SELLO_NO_ESCRITO = "No se pudo escribir el sello: no cambió nada."
+MENSAJE_SELLO_FIJADO = "El sello quedó fijado en la cabeza de la cadena."
+MENSAJE_REPARAR_TODO = (
+    "Se reparó todo lo que se pudo. Revisa el sello de vigilancia."
+)
+MENSAJE_ENCADENADO = "La cadena quedó reencadenada. Revisa el sello de vigilancia."
+MENSAJE_ENCADENADO_NADA = "No había nada que reencadenar."
+MENSAJE_AISLADO = (
+    "Se aislaron las transacciones confirmadas inválidas. Revisa el sello de vigilancia."
+)
+MENSAJE_AISLADO_NADA = "No había transacciones confirmadas inválidas."
+MENSAJE_PENDIENTES_RECHAZADAS = "Se rechazaron las transacciones inválidas del pool."
+MENSAJE_PENDIENTES_NADA = "El pool no tenía transacciones inválidas."
+MENSAJE_REAGRUPADO = "El pool quedó agrupado en un bloque nuevo."
+MENSAJE_REAGRUPADO_NADA = "El pool estaba vacío: no se creó ningún bloque."
+
+
+def _aviso_de_reparacion(
+    reparacion: Reparacion, *, aplicado: str, nada: str
+) -> tuple[str, str]:
+    """El aviso y su categoría según lo que la reparación realmente hizo.
+
+    Con cambios escritos se anuncia la acción que se aplicó; una reparación
+    aplicada que no escribió nada se informa como que no había nada que hacer. Si
+    no se aplicó, se muestra el detalle del dominio, que es el único que explica el
+    motivo (la cadena ya estaba encadenada, el primer bloque no es el génesis, no
+    había filas inválidas) sin afirmar que se reparó algo.
+    """
+    if reparacion.aplicada and reparacion.cambios > 0:
+        return aplicado, "exito"
+    if reparacion.aplicada:
+        return nada, "aviso"
+    return reparacion.detalle, "aviso"
+
 FabricaDeCadenas = Callable[[], AbstractContextManager[Blockchain]]
 FabricaDeCuentas = Callable[[], AbstractContextManager[Cuentas]]
 
@@ -95,6 +190,7 @@ def create_app(
     *,
     secret_key: str | bytes | None = None,
     asistente: Mapping[str, str | None] | None = None,
+    sello: SelloDeVigilancia | None = None,
 ) -> Flask:
     """Arma la aplicación con las fábricas que abren el ledger y las cuentas.
 
@@ -110,6 +206,12 @@ def create_app(
 
     `asistente` trae las variables del servicio de IA del ayudante, leídas de
     `.env` por el arranque. Sin ellas el ayudante contesta con su guía local.
+
+    `sello` es el ancla externa contra el recorte de la cola que lee la auditoría
+    de `/verificar` y que fija la acción `fijar-sello`. Llega inyectado para que
+    este módulo no arme adaptadores de persistencia (REQ-29); sin él, la
+    verificación declara el sello ausente y la acción avisa que no hay dónde
+    escribirlo. Queda en `app.extensions["sello"]`.
     """
     app = Flask(__name__)
     app.secret_key = _secreto_de_sesion() if secret_key is None else secret_key
@@ -123,6 +225,9 @@ def create_app(
         # el margen cubre el resto del cuerpo. Más que eso se corta antes de leerlo.
         MAX_CONTENT_LENGTH=TAMANO_MAXIMO_DE_LA_PETICION,
     )
+    # El sello vive junto al ayudante en las extensiones de la aplicación: es el
+    # adaptador que inyecta el arranque y el que consultan la lectura y la escritura.
+    app.extensions["sello"] = sello
 
     @contextmanager
     def abrir_cadena() -> Iterator[Blockchain]:
@@ -138,6 +243,83 @@ def create_app(
         """Abre el servicio de cuentas que entrega la fábrica inyectada."""
         with cuentas_factory() as cuentas:
             yield cuentas
+
+    def leer_sello() -> tuple[Sello | None, str | None]:
+        """Lee el sello inyectado sin escribir nada (REQ-22).
+
+        Sin adaptador configurado la lectura es `ausente`, que es lo que la
+        auditoría necesita para declarar la nota y el límite del recorte. El
+        adaptador nunca levanta: un archivo ilegible llega como `ilegible`.
+        """
+        if sello is None:
+            return None, "ausente"
+        lectura = sello.leer()
+        return lectura.sello, lectura.problema
+
+    def reparar_cadena(accion: str) -> tuple[str, str]:
+        """Aplica una reparación de la cadena y devuelve el aviso y su categoría.
+
+        Cada acción usa el método de la fachada que le corresponde. El aviso refleja
+        el resultado real: si la reparación no se aplicó se muestra su detalle, que
+        es el que explica por qué; si escribió cambios se anuncia la acción y se
+        recuerda revisar el sello. El panel que sigue a la redirección vuelve a
+        pintar el estado completo.
+        """
+        with abrir_cadena() as chain:
+            if accion == ACCION_DE_REPARAR_TODO:
+                reparaciones = chain.repair_all()
+                if any(reparacion.aplicada for reparacion in reparaciones):
+                    return MENSAJE_REPARAR_TODO, "exito"
+                # Nada se aplicó: el detalle de la última reparación (el
+                # reencadenado) es el que explica el estado en que quedó la cadena.
+                return reparaciones[-1].detalle, "aviso"
+            if accion == ACCION_DE_ENCADENAR:
+                return _aviso_de_reparacion(
+                    chain.repair_chain(),
+                    aplicado=MENSAJE_ENCADENADO,
+                    nada=MENSAJE_ENCADENADO_NADA,
+                )
+            if accion == ACCION_DE_AISLAR:
+                return _aviso_de_reparacion(
+                    chain.isolate_invalid_transactions(),
+                    aplicado=MENSAJE_AISLADO,
+                    nada=MENSAJE_AISLADO_NADA,
+                )
+            if accion == ACCION_DE_RECHAZAR_PENDIENTES:
+                return _aviso_de_reparacion(
+                    chain.reject_invalid_pending(),
+                    aplicado=MENSAJE_PENDIENTES_RECHAZADAS,
+                    nada=MENSAJE_PENDIENTES_NADA,
+                )
+            # De las acciones válidas solo queda reagrupar: cierra el pool en un
+            # bloque nuevo, que es la agrupación de siempre y no una reparación.
+            if chain.group_pending() is None:
+                return MENSAJE_REAGRUPADO_NADA, "aviso"
+            return MENSAJE_REAGRUPADO, "exito"
+
+    def fijar_sello() -> None:
+        """Fija el sello en la cabeza actual y avisa lo que pasó en la bandeja.
+
+        La cadena se lee primero y el archivo se escribe después: si la escritura
+        falla, ninguna tabla cambió y el sello anterior queda intacto. Sin sello
+        configurado no hay archivo que escribir y la acción se declara no aplicada.
+        """
+        if sello is None:
+            flash(MENSAJE_SIN_SELLO_CONFIGURADO, "aviso")
+            return
+        with abrir_cadena() as chain:
+            cabeza = chain.blocks.last()
+        if cabeza is None:
+            flash(MENSAJE_SIN_BLOQUES_PARA_SELLAR, "aviso")
+            return
+        try:
+            sello.fijar(altura=cabeza.block_index, hash=cabeza.hash)
+        except (OSError, RuntimeError, ValueError):
+            # El adaptador valida los datos y escribe el archivo; un fallo de la
+            # ruta no puede tumbar la página ni dejar un sello a medio escribir.
+            flash(MENSAJE_SELLO_NO_ESCRITO, "aviso")
+            return
+        flash(MENSAJE_SELLO_FIJADO, "exito")
 
     # Las rutas del usuario común se registran con las mismas fábricas: el
     # blueprint no arma el ledger ni las cuentas por su cuenta (REQ-29).
@@ -467,13 +649,46 @@ def create_app(
     @app.get("/verificar")
     @requiere_administrador
     def verificar():
-        """CU-04: recalcula la cadena y muestra el dictamen (REQ-27)."""
+        """CU-04: recalcula la cadena, la audita y muestra el panel completo (REQ-27).
+
+        Sigue entregando el dictamen de siempre y suma la auditoría de solo lectura
+        con el sello ya leído. No escribe: ni tablas ni el archivo del sello
+        (REQ-22); las reparaciones son el POST aparte y explícito.
+        """
+        sello_leido, problema = leer_sello()
         with abrir_cadena() as chain:
             return render_template(
                 "verificar.html",
                 dictamen=chain.verify_chain(),
+                auditoria=chain.audit_chain(
+                    sello=sello_leido, problema_del_sello=problema
+                ),
                 **datos_del_panel(chain),
             )
+
+    @app.post("/verificar/reparar")
+    @requiere_administrador
+    def reparar():
+        """Aplica una reparación explícita y vuelve a `/verificar` (spec §4).
+
+        La confirmación y la acción se validan antes de tocar la cadena: sin
+        `confirmar=si` o con una acción inventada no se escribe nada y la bandeja
+        avisa. Todas las ramas responden 303 a la verificación, que es el patrón
+        POST-redirect-GET con el que el panel vuelve a pintar el estado real.
+        """
+        accion = request.form.get("accion", "")
+        if request.form.get("confirmar") != "si":
+            flash(MENSAJE_REPARACION_SIN_CONFIRMAR, "aviso")
+            return redirect(url_for("verificar"), code=303)
+        if accion not in ACCIONES_DE_REPARACION:
+            flash(MENSAJE_REPARACION_DESCONOCIDA, "aviso")
+            return redirect(url_for("verificar"), code=303)
+        if accion == ACCION_DE_FIJAR_SELLO:
+            fijar_sello()
+            return redirect(url_for("verificar"), code=303)
+        aviso, categoria = reparar_cadena(accion)
+        flash(aviso, categoria)
+        return redirect(url_for("verificar"), code=303)
 
     @app.get("/historial/<wallet>")
     @requiere_administrador
