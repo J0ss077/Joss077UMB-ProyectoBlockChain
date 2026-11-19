@@ -4,8 +4,10 @@ Actualización del repositorio: diseño, navegabilidad e integración con la bas
 Documento de apoyo de la entrega; las capturas de pantalla se guardan en
 `docs/evidencias/capturas/`.
 
-- **Rama de la entrega:** `fase-4`.
-- **Fecha de corte:** 4 de noviembre de 2026.
+- **Rama de la entrega:** `main`. La rama `fase-4` sigue publicada en el remoto, pero
+  es el trabajo anterior y no la entrega.
+- **Fecha de corte:** 4 de noviembre de 2026; la evidencia de pruebas y el pentest se
+  actualizaron el 19 de noviembre de 2026.
 - **Repositorio:** https://github.com/J0ss077/Joss077UMB-ProyectoBlockChain
 - **Tecnología:** Python 3.11+, Flask, PostgreSQL y la interfaz web del prototipo
   (tecnología ya aprobada en el eje del proyecto: PostgreSQL está declarado en el
@@ -57,7 +59,7 @@ el encabezado de `src/bootstrap.py` y en el paso 4 del README.
    bienvenida en un bloque propio—, y para la captura de la cola se registró una
    segunda cuenta, `pendiente-demo`, que quedó esperando. Las dos filas están en la
    sección de registro de `consulta-en-la-base.txt`.
-3. **Pruebas automáticas:** `pytest` completo en verde (ver la sección 6) y, en
+3. **Pruebas automáticas:** `pytest` completo en verde (ver la sección 8) y, en
    particular, `tests/integration/test_navegacion.py` y
    `tests/integration/test_conexion.py`, que cubren la navegación y el error de
    conexión sin depender de que la base esté caída para siempre.
@@ -70,9 +72,25 @@ el encabezado de `src/bootstrap.py` y en el paso 4 del README.
 5. **Flujo completo y alteración:** `docs/evidencias/flujo.txt`. El paso a paso de
    wallet → transacción → bloque → verificación, con los identificadores, el hash del
    bloque y el ida y vuelta de la alteración (ver la sección 7).
-6. **Resultados de las pruebas ejecutadas:** `docs/evidencias/pruebas.txt`. La salida
-   real de `pytest` contra una base aparte, con el resumen de la suite y el detalle de
-   las pruebas de firma, firma repetida y alteración (ver la sección 8).
+6. **Resultados de las pruebas del 4 de noviembre:** `docs/evidencias/pruebas.txt`.
+   Es la salida histórica de `pytest` contra una base aparte, con el resumen de la
+   suite y el detalle de las pruebas de firma, firma repetida y alteración. Quedó
+   desactualizada y la reemplaza la evidencia fresca del punto 7.
+7. **Evidencia fresca de la suite:** `docs/evidencias/pruebas-finales-2026-11-19.txt`.
+   Es la corrida del 19 de noviembre de 2026 sobre un PostgreSQL 16 desechable:
+   `525 passed, 1 skipped` en 171,57 s, más `158 passed, 1 skipped` de la suite
+   unitaria sin base. Incluye el lint, el comando exacto de cada corrida y el conteo
+   por archivo; es la evidencia que se cita en la sección 8.
+8. **Informe de pentesting:** `docs/pentesting/informe.md` y
+   `docs/pentesting/informe.pdf`, con la metodología (OWASP WSTG v4.2 sobre las fases
+   de PTES), los cuatro hallazgos abiertos —tres de severidad media y uno baja, ninguno
+   alto ni crítico— y la remediación propuesta. Lo acompañan
+   `docs/pentesting/matriz-trazabilidad.md` y `docs/pentesting/triaje-de-herramientas.md`;
+   las evidencias crudas viven en `docs/pentesting/evidencias/`.
+9. **Documento de entrega final:** `docs/entrega-final.md`, del 19 de noviembre de
+   2026. Consolida el acceso al prototipo, la evidencia de las pruebas, la ficha del
+   servicio de IA, el guion de la demostración, el inventario de evidencias y los
+   pendientes declarados.
 
 > **Cómo se toma la evidencia.** La suite vacía las tablas que usa (ver la
 > dificultad 7), así que la evidencia se toma **después** de correr las pruebas, o con
@@ -146,8 +164,9 @@ plantilla sólo lo pinta cuando hay un servicio externo configurado.
    `NUMERIC(18, 8)`.
 5. **La rama de trabajo llevaba semanas separada de `main`** (el asistente, el perfil
    y el estado del arte por un lado; la documentación y las correcciones de registro
-   por otro). Esta rama `fase-4` parte del trabajo de interfaz y deja `main` intacta
-   hasta que el equipo decida el merge.
+   por otro). Al cierre de esta entrega el trabajo se integró en `main`: la rama
+   `fase-4` sigue publicada en el remoto como antecedente, pero la entrega vive en
+   `main`.
 6. **La semilla no puede ser SQL.** El génesis se calcula y las llaves se cifran con
    la clave maestra de cada equipo; se documentó por qué en vez de inventar filas que
    romperían la verificación de la cadena.
@@ -188,13 +207,19 @@ La consulta 8 muestra la última fila escrita y la 7 el estado de las cuentas.
 
 ```text
 <venv> -m pytest -q
+env -u DATABASE_URL <venv> -m pytest tests/unit -q
 ```
 
-Las de integración necesitan PostgreSQL y vacían las tablas que usan; con
-`TEST_DATABASE_URL` definida usan esa base y no la de la aplicación (ver la dificultad
-7). La suite cubre el dominio, los adaptadores, las rutas, la navegación y el error de
-conexión, y la guarda `tests/unit/test_req_29_presentacion.py` exige que la presentación
-no toque el motor. Los resultados de la corrida de esta entrega están en la sección 8.
+Las de integración necesitan PostgreSQL. `TEST_DATABASE_URL` debe apuntar a una base
+**desechable** con el esquema de `db/init.sql`: la suite vacía las tablas que usa antes
+de cada caso. Si la variable no está definida, cae en `DATABASE_URL` y vacía la base de
+la aplicación (ver la dificultad 7); por eso la corrida de esta entrega usó una base
+aparte y el archivo de evidencia lo deja escrito. La segunda orden corre solo las
+pruebas de reglas, sin base y sin `DATABASE_URL`. La suite cubre el dominio, los
+adaptadores, las rutas, la navegación y el error de conexión, y la guarda
+`tests/unit/test_req_29_presentacion.py` exige que la presentación no toque el motor.
+Los resultados están en `docs/evidencias/pruebas-finales-2026-11-19.txt` y se resumen
+en la sección 8.
 
 ## 7. Flujo completo: wallet, transacción, bloque y verificación
 
@@ -223,28 +248,41 @@ dato alterado falla, con el original vuelve a pasar, sin reiniciar la aplicació
 **Transacciones inválidas y firmas.** La captura `04-transacciones-rechazo.png` muestra
 el rechazo en pantalla con su motivo («el monto debe ser mayor que cero»). Las firmas
 no se pueden falsear desde la interfaz —las firma el servidor con la llave de la
-wallet—, así que su defensa está en las pruebas: `19` pruebas de firma, firma repetida,
-alteración y rechazos, todas en verde (sección 8).
+wallet—, así que su defensa está en las pruebas: 19 pruebas de firma, firma repetida,
+alteración y rechazos (2 de firma, 3 de firma repetida, 3 de alteración y 11 de
+rechazos), todas en verde en la corrida fresca (sección 8).
 
 ## 8. Resultados de las pruebas ejecutadas
 
-`docs/evidencias/pruebas.txt` guarda la salida real de la corrida contra una base
-PostgreSQL 16 aparte (no la de la aplicación) con el esquema de `db/init.sql`:
+La corrida vigente está en `docs/evidencias/pruebas-finales-2026-11-19.txt`: es la
+salida real del 19 de noviembre de 2026 sobre un PostgreSQL 16 desechable (contenedor
+propio en `127.0.0.1:55440`, con el esquema de `db/init.sql`), sin tocar la base de
+desarrollo ni el servidor. El archivo guarda el commit auditado, el entorno, el comando
+exacto de cada corrida, la salida completa y el conteo por archivo.
 
 | Prueba | Resultado |
 | --- | --- |
-| Suite completa (`pytest -q`) | **386 passed y 1 skipped en 80 s** (incluye las 12 de la proyección; la saltada es la del dataset, que necesita pandas) |
-| Firma del emisor contra una ajena (`test_req_02_firma.py`) | Pasa |
+| Suite completa (`pytest tests -q`) | **525 passed y 1 skipped en 171,57 s** (incluye las 12 de la proyección y la del ayudante; la saltada es la del dataset, que necesita pandas) |
+| Suite unitaria sin base (`env -u DATABASE_URL pytest tests/unit -q`) | **158 passed y 1 skipped en 1,96 s** |
+| Lint (`ruff check .`) | Sin hallazgos |
+| Firma del emisor contra una ajena (`test_req_02_firma.py`) | Pasa (2) |
 | Firma repetida rechazada por el motor (`test_req_03_firma_repetida.py`) | Pasa (3) |
 | Alteración y borrado directos detectados (`test_req_10_alteracion.py`) | Pasa (3) |
 | Rechazos del motor y del dominio (`test_req_11_rechazo_en_base.py`) | Pasa (11) |
 
+La evidencia anterior, `docs/evidencias/pruebas.txt` del 4 de noviembre de 2026
+(386 passed y 1 skipped en 80,27 s), quedó desactualizada: es anterior a la wallet con
+dueño, a la auditoría de la cadena y a los REQ-46 y REQ-47, y no incluye las 139 pruebas
+nuevas. Se conserva como registro histórico y no debe citarse como el estado actual.
+
 Para reproducirlas sin tocar los datos de la aplicación hace falta una base aparte:
-`TEST_DATABASE_URL` en el `.env` (ver la dificultad 7).
+`TEST_DATABASE_URL` apuntando a una base desechable con el esquema de `db/init.sql`
+(ver la dificultad 7 y la sección 6).
 
 ## 9. Checklist de la entrega
 
-- [x] Código fuente actualizado en la rama `fase-4`.
+- [x] Código fuente actualizado en `main`; la rama `fase-4` queda como antecedente y
+      no es la rama de la entrega.
 - [x] Módulo independiente de conexión (`src/persistence/conexion.py`).
 - [x] Scripts SQL de tablas (`db/init.sql`) y de consultas de evidencia
       (`db/consultas.sql`).
@@ -263,5 +301,18 @@ Para reproducirlas sin tocar los datos de la aplicación hace falta una base apa
       verificación (`docs/evidencias/flujo.txt`, capturas 14 a 17).
 - [x] Alteración por fuera de la aplicación detectada y luego revertida (capturas 18 y
       19).
-- [x] Resultados de las pruebas documentados (`docs/evidencias/pruebas.txt`).
-- [x] Capturas de la aplicación en `docs/evidencias/capturas/` (23 de 23).
+- [x] Resultados de las pruebas documentados en
+      `docs/evidencias/pruebas-finales-2026-11-19.txt` (525 passed y 1 skipped); el
+      archivo `docs/evidencias/pruebas.txt` queda como registro histórico del 4 de
+      noviembre.
+- [x] Informe de pentesting con sus cuatro hallazgos, metodología y remediación
+      (`docs/pentesting/informe.md`, `docs/pentesting/informe.pdf`).
+- [x] Documento de entrega final con el inventario y los pendientes declarados
+      (`docs/entrega-final.md`).
+- [x] Capturas de la aplicación en `docs/evidencias/capturas/` (23 de 23, incluidas
+      las del ayudante `11-asistente.png` y `23-asistente-conversacion.png` en modo
+      guía local).
+
+Al momento de esta actualización, el `main` local está por delante de `origin/main`;
+el envío al remoto y la comprobación con `git ls-remote` están declarados como
+pendientes en `docs/entrega-final.md` (P0-2).

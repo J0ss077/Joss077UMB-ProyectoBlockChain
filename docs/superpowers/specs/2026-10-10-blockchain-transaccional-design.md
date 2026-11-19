@@ -1,7 +1,7 @@
 # Prototipo transaccional basado en blockchain — diseño de la reconstrucción
 
 - **Fecha**: 2026-10-10
-- **Estado**: aprobado por los desarrolladores el 2026-10-10, con la ampliación de explicabilidad pedida ese mismo día. Pendiente el plan de implementación.
+- **Estado**: aprobado por los desarrolladores el 2026-10-10, con la ampliación de explicabilidad pedida ese mismo día. El plan de implementación está en [`docs/superpowers/plans/2026-10-10-blockchain-transaccional-plan.md`](../plans/2026-10-10-blockchain-transaccional-plan.md).
 - **Eje del proyecto**: `documentacion_proyecto_transaccionales.pdf` (46 páginas, Grupo 1, Universidad Manuela Beltrán)
 
 ## Qué es esto

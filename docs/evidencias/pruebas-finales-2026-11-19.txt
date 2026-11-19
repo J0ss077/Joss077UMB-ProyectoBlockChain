@@ -218,6 +218,8 @@ Pruebas por archivo (conteo de casos colectados):
 - Suite unitaria sin base: 158 passed, 1 skipped, 0 failed, 0 errors, 1.96 s, código 0.
 - Repetición unitaria con el contenedor de PostgreSQL eliminado: 158 passed,
   1 skipped, 0 failed, 0 errors, 1.84 s, código 0 (REQ-17).
+- Piso de Python 3.11: 525 passed, 1 skipped, 0 failed, 0 errors, 156.07 s en
+  python:3.11-slim (Python 3.11.18); véase la última sección de este archivo.
 - Archivos de prueba: 68 (47 de integración, 20 unitarios y 1 en la raíz).
 - Trazabilidad mecánica: tests/test_explicacion.py comprueba que cada REQ-01..REQ-39
   y REQ-46..REQ-47 tiene un archivo test_req_NN_ y que CU-01..CU-05 aparecen en
@@ -280,7 +282,8 @@ Pruebas por archivo (conteo de casos colectados):
 
 - docs/evidencias/pruebas.txt (2026-11-04): 386 passed, 1 skipped. Quedó desactualizada:
   es anterior a la wallet con dueño, a la auditoría de la cadena y a los REQ-46 y
-  REQ-47; hoy la suite tiene 140 casos más.
+  REQ-47; hoy la suite tiene 139 casos más (526 casos actuales frente a 387 de
+  aquella corrida: 525+1 y 386+1).
 - docs/evidencias/flujo.txt, docs/evidencias/recorrido-http.txt,
   docs/evidencias/consulta-en-la-base.txt, docs/evidencias/red-neuronal-entrenamiento.txt
   y docs/evidencias-fase4.md: todos del 2026-11-04, anteriores al código del commit
@@ -289,3 +292,72 @@ Pruebas por archivo (conteo de casos colectados):
   errors=0, skipped=1, time=331.885 s. Es consistente con esta corrida fresca
   (525 passed y 1 skipped), aunque la de este archivo se ejecutó después y se
   conserva aquí como evidencia principal.
+
+## Corrida en el piso de Python 3.11
+
+Fecha y hora (America/Bogota, UTC-05:00): inicio 2026-11-19 16:40:52, fin
+2026-11-19 16:43:29.
+
+Motivo: cerrar el hueco de evidencia del piso declarado en `pyproject.toml`
+(`requires-python = ">=3.11"`) y de la afirmación del README sobre una corrida
+completa dentro de `python:3.11-slim`. La corrida principal de este archivo se hizo en
+Python 3.14.9.
+
+Árbol ejecutado: `HEAD` = `a1327b13a01be1756657da6d7468f09c3343c697` (`a1327b1`), con
+la ronda de documentación de la entrega modificada y sin commitear (solo `.md`, el PDF
+del informe y el registro nuevo de socialización). El código es el mismo de `a1327b1`:
+`git diff --stat 899d252..HEAD -- src/ db/ tests/ red_neuronal/` no produce salida.
+
+Base de datos: PostgreSQL 16.15 en un contenedor desechable propio
+(`postgres:16-alpine`, `postgres@sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea`),
+publicado solo en `127.0.0.1:55441`, con el esquema de `db/init.sql` aplicado al crear
+el volumen (siete tablas verificadas). No se usó la base de desarrollo
+(`127.0.0.1:55432`), ni el contenedor `pentest-bd` (`127.0.0.1:55433`), ni el servidor de
+`127.0.0.1:5000`.
+
+Intérprete: contenedor `python:3.11-slim`
+(`python@sha256:07d4824036af339fa1b6ef769cc99d9c10a141769538b52b3b597c84f7a7b535`),
+Python 3.11.18 con pytest 9.1.1 y las versiones exactas de `requirements.txt`. El
+repositorio se montó en solo lectura; dentro del contenedor se instaló por apt git 2.47.3
+(lo necesita `tests/integration/test_req_21_secretos.py`) y no se agregó nada al
+repositorio. Se exportaron `PYTHONDONTWRITEBYTECODE=1` y se desactivó la caché de pytest
+para no escribir en el montaje de solo lectura.
+
+Comandos (desde el host; los secretos se toman de `.env` sin imprimirlos):
+
+    docker run -d --name piso311-py --network host \
+      -v /home/t1an/Joss077UMB-ProyectoBlockChain:/repo:ro \
+      -w /repo python:3.11-slim sleep infinity
+    docker exec piso311-py sh -c \
+      'apt-get update -qq && apt-get install -y -qq --no-install-recommends git && \
+       python -m pip install -q -r /repo/requirements.txt'
+    docker exec -w /repo \
+      -e DATABASE_URL='postgresql://piso311_user:***@127.0.0.1:55441/piso311_db?connect_timeout=5' \
+      -e TEST_DATABASE_URL='postgresql://piso311_user:***@127.0.0.1:55441/piso311_db?connect_timeout=5' \
+      -e SESSION_SECRET='<valor de .env>' \
+      -e ADMIN_PASSWORD='<valor de .env>' \
+      -e MASTER_KEY='<valor de .env>' \
+      -e PYTHONDONTWRITEBYTECODE=1 -e PYTHONUNBUFFERED=1 \
+      piso311-py python -m pytest tests -q -p no:cacheprovider
+
+Código de salida: 0.
+
+Salida completa:
+
+    ........................................................................ [ 13%]
+    ........................................................................ [ 27%]
+    ........................................................................ [ 41%]
+    ........................................................................ [ 54%]
+    ........................................................................ [ 68%]
+    ........................................................................ [ 82%]
+    ........................................................................ [ 96%]
+    .....................                                                    [100%]
+    525 passed, 1 skipped in 156.07s (0:02:36)
+
+La única omisión es la misma de la corrida principal: `tests/unit/test_dataset.py`, que
+se salta porque `pandas` no está instalado (no es dependencia del proyecto). El resultado
+coincide con la corrida del 19 de noviembre en Python 3.14.9 (`525 passed, 1 skipped` en
+171.57 s): el piso de Python 3.11 no cambia el veredicto de la suite.
+
+Al terminar se eliminaron los contenedores `piso311-py` y `piso311-pg`; la base de
+desarrollo y el servidor de la aplicación no se tocaron.

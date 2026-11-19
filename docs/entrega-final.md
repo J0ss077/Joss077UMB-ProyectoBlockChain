@@ -5,26 +5,37 @@ Reúne el acceso al prototipo, la evidencia de las pruebas, la ficha del servici
 Inteligencia Artificial, el guion de la demostración en vivo, el inventario de
 evidencias y los huecos que quedan antes de entregar.
 
+**Nota de alcance.** La documentación del repositorio se alineó el 19 de noviembre de
+2026 sobre el árbol de trabajo del commit
+`a1327b13a01be1756657da6d7468f09c3343c697` (`a1327b1`). Ese commit ya contenía este
+documento, la evidencia fresca de pruebas y las capturas 11 y 23 del ayudante; sobre ese
+árbol se actualizaron el README, la arquitectura y el alcance, el recorrido de los casos
+de uso, las evidencias, el cronograma y el informe de pentest, y se agregó el registro de
+la socialización. El remoto todavía no tiene esos cambios: la rama local está por delante
+de `origin/main` (véase la sección 6).
+
 | Campo | Valor |
 | --- | --- |
 | Proyecto | Joss077UMB-ProyectoBlockChain |
 | Documento académico de referencia | `documentacion_proyecto_transaccionales.pdf` (Grupo 1, Universidad Manuela Beltrán) |
-| Commit de referencia | `7291dba684516b02e0cc27cae739f1c6d5717944` (`7291dba`, 19 de noviembre de 2026) |
+| Commit de referencia | `a1327b13a01be1756657da6d7468f09c3343c697` (`a1327b1`, 19 de noviembre de 2026); las novedades de la ronda documental están en el árbol de trabajo |
 | Fecha de este documento | 19 de noviembre de 2026 |
 | Repositorio | https://github.com/J0ss077/Joss077UMB-ProyectoBlockChain |
 | Alcance | Nodo único de un ledger transaccional; prototipo local sin despliegue público |
-| Estado global | Prototipo y pruebas: cumple. Servicio de IA: parcial. Enlace público y evidencia de socialización: pendientes (véase la sección 6) |
+| Estado global | Prototipo y pruebas: cumple. Servicio de IA: parcial. Documentación: alineada. Pendientes: decisión del enlace público, subida de los commits y grabación/acta de la socialización (véase la sección 6) |
 
 **Veredicto de conjunto.** El prototipo transaccional está implementado, corriendo y
 probado: la suite completa cierra en `525 passed, 1 skipped` y el lint no reporta
 hallazgos. El servicio de Inteligencia Artificial tiene un componente completo y
 evidenciado —la proyección con red neuronal— y un componente funcional, con evidencia de
 su guía local, pero sin captura de una respuesta de un modelo de lenguaje —el ayudante
-conversacional—. La entrega no tiene despliegue
-público: el acceso es local y reproducible con los comandos del README. La
-socialización y la demostración en vivo se declaran realizadas por el equipo, pero no
-hay grabación ni acta versionada que las respalde. Esos son los tres pendientes que
-bloquean una entrega sin reservas.
+conversacional—. La documentación del repositorio quedó alineada con el estado real del
+prototipo, y la evidencia fresca de pruebas y las capturas del ayudante están versionadas
+en el commit `a1327b1`. La entrega no tiene despliegue público: el acceso es local y
+reproducible con los comandos del README. La socialización y la demostración en vivo se
+documentan en [evidencias/socializacion/README.md](evidencias/socializacion/README.md);
+la grabación y el acta todavía no se anexan. Quedan tres pendientes antes de entregar:
+decidir el enlace o despliegue, subir los commits y anexar la grabación y el acta.
 
 ---
 
@@ -118,14 +129,16 @@ README, sección «Los datos de demostración».
 
 ### 1.4 Estado del repositorio y advertencia
 
-La rama local `main` está **8 commits por delante** de `origin/main`: el remoto apunta a
-`899d252` y la copia local a `7291dba`. Además, al cierre de este documento quedan sin
-versionar la evidencia fresca de pruebas
-(`docs/evidencias/pruebas-finales-2026-11-19.txt`), este documento y las capturas
-regeneradas del ayudante (11 y 23, con el ajuste correspondiente en
-`docs/evidencias-fase4.md`). Eso significa que el enlace al repositorio público, tal
-como está hoy, no contiene el estado auditado: hay que subir los commits y los archivos
-nuevos (véase la sección 6, acción P0-2).
+La rama local `main` está **9 commits por delante** de `origin/main`: el remoto apunta a
+`899d252` y la copia local a `a1327b1`. Además, al cierre de este documento quedan sin
+versionar los cambios de la ronda de alineación documental del 19 de noviembre de 2026
+—el README, la arquitectura y el alcance, el recorrido de los casos de uso, las
+evidencias, el cronograma, el informe de pentest, el ajuste en
+`docs/superpowers/specs/2026-10-10-blockchain-transaccional-design.md` y este
+documento—, junto con el nuevo registro de la socialización. Con el commit de esa ronda
+la rama quedará 10 commits por delante. Eso significa que el enlace al repositorio
+público, tal como está hoy, no contiene el estado documentado ni la evidencia fresca: hay
+que subir los commits y los archivos nuevos (véase la sección 6, acción P0-2).
 
 > **PENDIENTE (a): enlace o despliegue público.** El repositorio no tiene despliegue y
 > la entrega no incluye una URL pública. Se entrega acceso local reproducible. Si la
@@ -159,10 +172,17 @@ Entorno de la corrida: Python 3.14.9 (piso declarado `>=3.11`), pytest 9.1.1, ru
 20 unitarios y 1 en la raíz. La única omisión es
 `tests/unit/test_dataset.py:13`, que se salta porque `pandas` no está instalado en
 `.venv`; es una omisión ambiental declarada, no un fallo ni una prueba inestable.
+Además, la suite completa se corrió dentro de `python:3.11-slim` (Python 3.11.18), con
+un PostgreSQL 16 desechable y el repositorio montado en solo lectura: `525 passed,
+1 skipped` en 156,07 s y código de salida 0. La sección «Corrida en el piso de Python
+3.11» de
+[pruebas-finales-2026-11-19.txt](evidencias/pruebas-finales-2026-11-19.txt) deja el
+comando, el entorno y la salida completa.
 
 La evidencia de Kiwi TCMS es consistente con esta corrida:
 `docs/pentesting/evidencias/kiwi/junit.xml` registra `tests=526, failures=0, errors=0,
-skipped=1` para el mismo commit.
+skipped=1`. El JUnit corresponde al commit `899d252`, el mismo código que el estado
+entregado; la corrida fresca es del `7291dba` y mide ese mismo código.
 
 ### 2.2 Casos de uso y sus pruebas
 
@@ -271,12 +291,17 @@ El informe completo está en [informe.md](pentesting/informe.md) y
 [informe.pdf](pentesting/informe.pdf); la trazabilidad con las pruebas funcionales, en
 [matriz-trazabilidad.md](pentesting/matriz-trazabilidad.md).
 
-### 2.7 Advertencia sobre cifras antiguas
+### 2.7 Estado de las cifras
 
-La evidencia de la Fase 4 es del 4 de noviembre de 2026 y quedó desactualizada. Dice
-`386 passed, 1 skipped` en `docs/evidencias/pruebas.txt`, en
-`docs/proceso-y-alcance.md` y en `docs/evidencias-fase4.md`; la cifra vigente es
-`525 passed, 1 skipped`. Para Canvas debe adjuntarse la evidencia fresca, no la de
+Las cifras quedaron alineadas en la ronda documental del 19 de noviembre de 2026. La
+cifra vigente es `525 passed, 1 skipped` en la suite completa y `158 passed, 1 skipped`
+en la suite unitaria sin base; `docs/proceso-y-alcance.md`, `docs/evidencias-fase4.md` y
+el README ya la usan. La salida literal histórica del 4 de noviembre está en
+`docs/evidencias/pruebas.txt`, que conserva el `386 passed, 1 skipped` de esa fecha y se
+declara desactualizado; las demás menciones —en `docs/proceso-y-alcance.md` y en
+`docs/evidencias-fase4.md`— la identifican como anterior y dan la cifra vigente. Para
+Canvas debe adjuntarse la evidencia fresca
+([pruebas-finales-2026-11-19.txt](evidencias/pruebas-finales-2026-11-19.txt)), no la de
 noviembre 4.
 
 ---
@@ -509,10 +534,12 @@ Con la sesión de administrador abierta, `http://127.0.0.1:5000/verificar` debe 
 `docker compose down` (conserva los datos) o `docker compose down -v` (borra el
 volumen).
 
-> **PENDIENTE (b): evidencia de la socialización y de la demostración en vivo.** El
-> equipo declara que la socialización y la demostración ya se realizaron, pero en el
-> repositorio no hay grabación, video, acta ni registro de una ejecución en vivo. El
-> guion existe y es el de esta sección; falta el respaldo audiovisual o documental.
+> **PENDIENTE (b): grabación y acta de la socialización.** La actividad se documenta en
+> [evidencias/socializacion/README.md](evidencias/socializacion/README.md), que reúne el
+> guion presentado, las cuentas, las evidencias visuales y el guion de esta sección. Lo
+> que todavía no se anexa es la grabación y el acta firmada: el registro tiene los
+> campos y la lista de asistencia listos para completarlos. No se debe afirmar que el
+> video o el acta existen.
 
 ---
 
@@ -520,14 +547,16 @@ volumen).
 
 La ruta es relativa a este documento. Las capturas y los textos marcados con «4 de
 noviembre» son anteriores a la wallet con dueño, a la auditoría/sello/reparación y al
-perfil, y no muestran las funciones nuevas; las marcadas «19 de noviembre» son frescas.
+perfil; las marcadas «19 de noviembre» son frescas. En total son 23 capturas: 21 de
+interfaz y 2 de terminal.
 
-> **PENDIENTE (c): capturas de las funciones nuevas.** Las capturas del 4 de noviembre
-> no muestran el panel de auditoría, el sello de vigilancia ni las reparaciones, ni el
-> perfil, ni la elección entre varias wallets. El inventario las incluye porque son la
-> evidencia histórica de la interfaz, pero para demostrar las funciones nuevas hace
-> falta tomar capturas adicionales (véase la sección 6, acción P1-1). No se deben
-> presentar como si mostraran esas funciones.
+> **Nota de alcance sobre las capturas nuevas.** Las capturas 11 y 23 del ayudante ya se
+> regeneraron el 19 de noviembre y muestran respuestas reales en modo guía local. Las
+> demás capturas del 4 de noviembre no muestran el panel de auditoría, el sello de
+> vigilancia ni las reparaciones, el perfil, ni la elección entre varias wallets. Esa
+> evidencia es documental y de pruebas: la auditoría y la reparación están cubiertas por
+> el recorrido y por las pruebas, y el inventario conserva las capturas históricas como
+> evidencia de la interfaz. No se deben presentar como si mostraran esas funciones.
 
 ### 5.1 Pruebas y resultados
 
@@ -542,6 +571,10 @@ perfil, y no muestran las funciones nuevas; las marcadas «19 de noviembre» son
 | [junit.xml](pentesting/evidencias/kiwi/junit.xml) | JUnit de Kiwi TCMS: `tests=526, failures=0, errors=0, skipped=1` |
 
 ### 5.2 Capturas de la interfaz
+
+Son 23 capturas: 21 de interfaz y 2 de terminal. Las capturas 11 y 23 son del 19 de
+noviembre de 2026; el resto, del 4 de noviembre. El listado completo con el nombre de
+cada archivo está en [evidencias/capturas/](evidencias/capturas/).
 
 | Archivo | Qué demuestra |
 | --- | --- |
@@ -577,10 +610,12 @@ perfil, y no muestran las funciones nuevas; las marcadas «19 de noviembre» son
 | [red-neuronal-capas.png](figuras/red-neuronal-capas.png) / [.svg](figuras/red-neuronal-capas.svg) | Figura 2: un mes de ejemplo capa por capa |
 | [red-neuronal.md](red-neuronal.md) | Apartado completo: propósito, entradas y salidas, capas, dataset, comparación con líneas base, límites y reproducción |
 | [resultados.json](../red_neuronal/resultados.json) | Métricas y tamaño del dataset: 2500 cuentas, 96 meses, 814.023 transacciones, 188.111 ejemplos |
-| [informe.md](pentesting/informe.md) / [informe.pdf](pentesting/informe.pdf) | Informe de pentesting con metodología, hallazgos, CVSS, evidencia y remediación |
+| [informe.md](pentesting/informe.md) / [informe.pdf](pentesting/informe.pdf) | Informe de pentesting con metodología, cuatro hallazgos, CVSS, evidencia y remediación; el PDF tiene 18 páginas e incluye la nota de alcance temporal (1.4) |
 | [matriz-trazabilidad.md](pentesting/matriz-trazabilidad.md) | Trazabilidad entre requerimientos, pruebas funcionales y categorías de OWASP |
-| [evidencias-fase4.md](evidencias-fase4.md) | Evidencias y checklist de la Fase 4; su tabla de pruebas y capturas está desactualizada en cifras |
-| [recorrido-de-casos-de-uso.md](recorrido-de-casos-de-uso.md) | Camino real de cada caso de uso: ruta, método del dominio, tabla y consulta |
+| [triaje-de-herramientas.md](pentesting/triaje-de-herramientas.md) | Triaje de las herramientas del pentest y sus resultados |
+| [evidencias-fase4.md](evidencias-fase4.md) | Evidencias y checklist de la Fase 4, alineadas con la corrida fresca del 19 de noviembre y con las 23 capturas |
+| [presupuesto-y-cronograma.md](presupuesto-y-cronograma.md) | Presupuesto y cronograma; las actividades 1 a 30 cerradas y la nota sobre la grabación y el acta pendientes |
+| [recorrido-de-casos-de-uso.md](recorrido-de-casos-de-uso.md) | Camino real de cada caso de uso: ruta, método del dominio, tabla y consulta, con la auditoría y la reparación |
 | [proceso-y-alcance.md](proceso-y-alcance.md) | Etapas de construcción, lo que no entra y riesgos conocidos |
 | [arquitectura-y-decisiones.md](arquitectura-y-decisiones.md) | Decisiones de diseño y límites del prototipo |
 
@@ -594,78 +629,93 @@ perfil, y no muestran las funciones nuevas; las marcadas «19 de noviembre» son
 | `docs/pentesting/evidencias/kiwi/` | Capturas, planes, ejecuciones y `junit.xml` de Kiwi TCMS |
 | `docs/pentesting/evidencias/ci/` | Ejecución del flujo de integración y sus artefactos |
 
+### 5.5 Documentos de la entrega actualizados el 19 de noviembre de 2026
+
+La ronda de alineación documental dejó estos documentos con el estado real del
+prototipo. Los recuentos vigentes son: 47 requerimientos (REQ-01 a REQ-47), 5 casos de
+uso, 525 pruebas aprobadas y 1 omitida, 158 pruebas unitarias sin base, 68 archivos de
+prueba, 23 capturas, 4 hallazgos de pentest y 18 páginas del informe en PDF.
+
+| Documento | Qué contiene y qué se actualizó |
+| --- | --- |
+| [README.md](../README.md) | Instalación y puesta en marcha, rutas del eje y de la sesión, auditoría/sello/reparación, perfil/contactos/idioma, wallet con dueño y varias wallets, cuentas de demostración, verificación de las pruebas y sección «Documentos y evidencias» |
+| [arquitectura-y-decisiones.md](arquitectura-y-decisiones.md) | Capas actualizadas, modelo de datos con `wallets.owner_id`, decisiones de la auditoría y del sello, y declaración de prototipo local sin despliegue |
+| [proceso-y-alcance.md](proceso-y-alcance.md) | Etapas 1 a 13, los 47 requerimientos, la evidencia fresca y los riesgos; declara que el despliegue público no entra |
+| [recorrido-de-casos-de-uso.md](recorrido-de-casos-de-uso.md) | Recorrido de los cinco casos de uso y de las funciones agregadas, con la auditoría, el sello, la reparación y las capturas |
+| [evidencias-fase4.md](evidencias-fase4.md) | Evidencias de la Fase 4 actualizadas con la corrida fresca, el pentest y las 23 capturas; la rama de la entrega es `main` |
+| [presupuesto-y-cronograma.md](presupuesto-y-cronograma.md) | Actividades 1 a 30 cerradas y nota de que la grabación y el acta de la socialización todavía no se anexan |
+| [pentesting/informe.md](pentesting/informe.md) y [pentesting/informe.pdf](pentesting/informe.pdf) | Informe de pentest actualizado con la nota de alcance temporal (1.4); el PDF regenerado tiene 18 páginas |
+| [pentesting/matriz-trazabilidad.md](pentesting/matriz-trazabilidad.md) | Trazabilidad de los requerimientos de cuentas y del ledger —REQ-30 a REQ-47 con su prueba funcional— y de las categorías de OWASP WSTG |
+| [evidencias/socializacion/README.md](evidencias/socializacion/README.md) | Registro de la socialización y la demostración en vivo del 19 de noviembre: qué se presentó, guion, cuentas, evidencias y acta pendiente |
+| [entrega-final.md](entrega-final.md) | Este documento: acceso, criterios de aceptación, ficha de IA, guion, inventario y pendientes |
+
 ---
 
-## 6. Huecos restantes y acciones antes de entregar
+## 6. Estado final: hecho y pendiente
 
-La lista está priorizada. El esfuerzo es una estimación de trabajo de una persona con
-el entorno ya levantado.
+La sección separa lo que quedó cerrado en la ronda documental y lo que todavía falta
+antes de entregar. El esfuerzo es una estimación de trabajo de una persona con el
+entorno ya levantado.
 
-### P0 — bloquean una entrega sin reservas
+### 6.1 Hecho en la ronda de alineación documental (19 de noviembre de 2026)
 
-**P0-1. Enlace o despliegue público.** El repositorio no tiene despliegue; el acceso es
-local reproducible (sección 1). Decidir una de dos salidas: declarar formalmente que el
-acceso es el repositorio más las instrucciones de la sección 1 (30 minutos), o publicar
-una instancia con una máquina o un túnel y pegar la URL (2 a 4 horas, incluye sembrar la
-base y probar el acceso desde fuera). No se debe afirmar que hay un despliegue que no
-existe.
+| Acción | Estado | Dónde se comprueba |
+| --- | --- | --- |
+| Documentación del repositorio alineada con el prototipo | Hecho | [README.md](../README.md), [arquitectura-y-decisiones.md](arquitectura-y-decisiones.md), [proceso-y-alcance.md](proceso-y-alcance.md), [recorrido-de-casos-de-uso.md](recorrido-de-casos-de-uso.md) |
+| Informe de pentest actualizado y PDF regenerado | Hecho | [informe.md](pentesting/informe.md) y [informe.pdf](pentesting/informe.pdf), 18 páginas, con la nota de alcance temporal (1.4) |
+| Capturas del ayudante regeneradas y descritas | Hecho | [11-asistente.png](evidencias/capturas/11-asistente.png) y [23-asistente-conversacion.png](evidencias/capturas/23-asistente-conversacion.png), del 19 de noviembre, en modo guía local; versionadas en `a1327b1` |
+| Evidencia fresca de la suite | Hecho | [pruebas-finales-2026-11-19.txt](evidencias/pruebas-finales-2026-11-19.txt), versionada en `a1327b1` (local, todavía sin subir al remoto) |
+| Cifras y recuentos corregidos | Hecho | 525 pruebas aprobadas y 1 omitida, 158 unitarias sin base, 47 requerimientos y 23 capturas en los documentos de la sección 5.5 |
+| Registro de la socialización y la demostración en vivo | Hecho | [evidencias/socializacion/README.md](evidencias/socializacion/README.md) |
 
-**P0-2. Subir los 8 commits y la evidencia fresca.** El remoto está en `899d252` y la
-copia local en `7291dba`; `docs/evidencias/pruebas-finales-2026-11-19.txt` está sin
-versionar.
+### 6.2 Pendientes antes de entregar
+
+**P0-1. Decidir el enlace o el despliegue público.** El repositorio no tiene despliegue;
+el acceso es local reproducible (sección 1). Hay dos salidas: declarar formalmente que
+el acceso es el repositorio más las instrucciones de la sección 1 (30 minutos), o
+publicar una instancia con una máquina o un túnel y pegar la URL (2 a 4 horas, incluye
+sembrar la base y probar el acceso desde fuera). No se debe afirmar que hay un
+despliegue que no existe.
+
+**P0-2. Subir los commits.** La rama local está 9 commits por delante de `origin/main`
+(`899d252`) y los cambios de la ronda documental siguen sin commitear; con la subida de
+esta ronda serán 10 commits. Antes de subir conviene revisar `git status --short` y
+confirmar que solo van los archivos de la entrega.
 
 ```text
-git add docs/entrega-final.md docs/evidencias/pruebas-finales-2026-11-19.txt \
-  docs/evidencias/capturas/11-asistente.png \
-  docs/evidencias/capturas/23-asistente-conversacion.png \
-  docs/evidencias-fase4.md
-git commit -m "docs: entrega final, evidencia fresca de la suite y capturas del ayudante"
+git add README.md docs/
+git commit -m "docs: alineación documental y registro de socialización"
 git push
 ```
 
-Después se comprueba que `git ls-remote origin main` coincide con el `HEAD` local.
-Esfuerzo: 10 a 15 minutos.
+Después se comprueba que `git rev-list --count origin/main..HEAD` da 10 y que
+`git ls-remote origin main` coincide con el `HEAD` local. Esfuerzo: 10 a 15 minutos.
 
-**P0-3. Evidencia de la socialización y la demostración en vivo.** No hay video, acta ni
-registro de la ejecución. Grabar la demostración con el guion de la sección 4 —o al
-menos el recorrido de los pasos 1 a 15 y el sabotaje guiado— y guardar el enlace o el
-archivo, junto con un acta breve. Esfuerzo: 1 a 2 horas.
+**P0-3. Anexar la grabación y completar el acta de la socialización.** El registro de la
+actividad ya existe en [evidencias/socializacion/README.md](evidencias/socializacion/README.md)
+con el guion, las cuentas y las evidencias. Falta completar la tabla del acta y la lista
+de asistencia del apartado 6 de ese registro, y anexar la grabación o su enlace. No se
+debe afirmar que el video o el acta existen mientras los campos digan PENDIENTE.
+Esfuerzo: 1 a 2 horas.
 
-### P1 — mejoran la evidencia y evitan observaciones
+### 6.3 Lista de verificación antes de subir
 
-**P1-1. Reponer o ampliar capturas de las funciones nuevas.** Las capturas 11 y 23 del
-ayudante ya se regeneraron el 19 de noviembre y muestran respuestas reales en modo guía
-local. Las capturas del 4 de noviembre que quedan no muestran la
-auditoría/sello/reparación, el perfil ni la elección entre varias wallets. Hacen falta
-capturas nuevas de `/verificar` con el panel de auditoría y la cadena válida, de la
-detección y la reparación, del perfil y de `POST /mi-wallet`. Esfuerzo: 1 a 2 horas con
-la aplicación levantada.
+1. `git status --short` no muestra archivos inesperados y los pendientes de la sección
+   6.2 están resueltos o declarados.
+2. Los enlaces de este documento y del registro de socialización resuelven; las rutas
+   citadas existen.
+3. Los adjuntos de Canvas están listos: evidencia fresca de pruebas, informe de pentest
+   en PDF, figuras de la red, capturas de los flujos principales y registro de
+   socialización.
+4. La decisión sobre el enlace o despliegue quedó escrita en la entrega.
+5. La grabación y el acta están donde el registro de socialización las indique.
 
-**P1-2. Cerrar la evidencia del ayudante.** La evidencia visual del modo guía local ya
-está hecha y rotulada. Si la rúbrica exige una respuesta de un modelo de lenguaje, hay
-que configurar `ASISTENTE_API_KEY` y `ASISTENTE_PROVEEDOR` en `.env`, reiniciar el
-servidor con `.venv-tf` y capturar una respuesta con el aviso de privacidad visible
-(1 hora). La clave no se imprime ni se versiona.
-
-**P1-3. Actualizar cifras y documentación desactualizadas.** Cambiar `386` por `525` en
-`docs/proceso-y-alcance.md`, `docs/evidencias-fase4.md` y `docs/evidencias/pruebas.txt`;
-añadir al README las menciones de auditoría, sello, reparación, wallet con dueño
-(REQ-46 y REQ-47) y pentest, y documentar `POST /verificar/reparar`; corregir en
-`docs/evidencias-fase4.md` la rama de la entrega (dice `fase-4`, hoy es `main`). La
-descripción de la captura 11 ya quedó corregida con la regeneración del 19 de
-noviembre. Esfuerzo: 45 a 60 minutos. Queda fuera de la escritura de este documento; lo
-ejecuta quien tenga el alcance de edición de esos archivos.
-
-**P1-4. Revisión final de los adjuntos de Canvas.** Comprobar nombres, tamaños y que
-cada archivo del inventario de la sección 5 exista antes de subirlo; adjuntar como
-mínimo la evidencia fresca de pruebas, el informe de pentesting en PDF, las figuras de
-la red y las capturas de los flujos principales. Esfuerzo: 15 minutos.
-
-### Lo que no se debe afirmar
+### 6.4 Lo que no se debe afirmar
 
 - No existe una URL pública ni un despliegue del prototipo.
 - No hay captura de una respuesta de un modelo de lenguaje; las capturas del 19 de
   noviembre muestran el ayudante en modo guía local y así deben rotularse.
-- No hay grabación ni acta de la socialización y la demostración en vivo.
+- El registro de la socialización existe, pero la grabación y el acta todavía no se
+  anexan: no se deben presentar como si existieran.
 - Las capturas del 4 de noviembre no muestran las funciones agregadas después de esa
   fecha.

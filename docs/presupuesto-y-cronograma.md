@@ -78,22 +78,28 @@ equipo.*
 *Nota. Los recursos con valor $0 son software de código abierto, planes gratuitos o
 equipos propios del equipo. La API del asistente funciona con la cuenta gratuita del
 equipo y, sin clave, el ayudante responde con su guía local: no es un costo obligatorio
-para ejecutar el prototipo. Elaboración propia, Elaboración propia.*
+para ejecutar el prototipo. Elaboración propia.*
 
 # Cronograma
 
 El cronograma cubre las diez semanas del proyecto, desde el 10 de septiembre de 2026
 —cuando se presentó la propuesta de la idea con la ficha técnica profesional— hasta el
-19 de noviembre, fecha prevista de entrega y sustentación. Las actividades están
+19 de noviembre, fecha de entrega y sustentación. Las actividades están
 agrupadas en seis etapas: planeación, diseño, desarrollo, pruebas, implementación y
 cierre.
 
-**Estado al 4 de noviembre de 2026.** Las actividades 1 a 23 están cerradas, incluida la
-red neuronal (modelado, implementación e integración) y las tres de la Fase 4 que pedía
-el repositorio. Quedan pendientes el merge de las ramas a `main` (24), los ajustes
-finales del documento (26) y la entrega con la sustentación (27). El corte coincide con
-lo desarrollado hasta hoy; las fechas de la columna «Fin» son las planificadas y varias
-actividades terminaron antes.
+**Estado al 19 de noviembre de 2026.** Las actividades 1 a 30 están cerradas. A las
+etapas iniciales se sumaron, después de la Fase 4, el perfil y los contactos (13), la
+wallet con dueño y las varias wallets por cuenta (28), la auditoría de la cadena con el
+sello de vigilancia y las reparaciones guiadas (29) y el pentesting con OWASP WSTG y
+PTES (30). El merge de la Fase 4 a `main` (24) quedó cerrado el 4 de noviembre y el
+repositorio está publicado. Los ajustes del documento final (26) y la entrega con la
+sustentación (27) se cerraron el 19 de noviembre: la socialización y la demostración en
+vivo se realizaron ese día. La grabación y el acta de esa demostración todavía no se
+anexan al repositorio; su registro se está preparando en
+`docs/evidencias/socializacion/`. El corte coincide con lo desarrollado hasta hoy; las
+fechas de la columna «Fin» son las planificadas y varias actividades terminaron antes o
+después.
 
 ## Cronograma general
 
@@ -122,14 +128,21 @@ actividades terminaron antes.
 | 21 | Desarrollo / ejecución | Fase 4: diseño uniforme de la interfaz y mensajes claros de éxito y error | Sebastián Revelo | 02/11/2026 | 04/11/2026 | 3 | Completada |
 | 22 | Desarrollo / ejecución | Fase 4: menú principal y navegación entre módulos | Sebastián Revelo | 04/11/2026 | 04/11/2026 | 1 | Completada |
 | 23 | Desarrollo / ejecución | Fase 4: conexión a la base de datos, validación previa y manejo de errores | José Pérez | 04/11/2026 | 04/11/2026 | 1 | Completada |
-| 24 | Implementación | Fase 4: integración de la rama de la Fase 4 a main y publicación del repositorio | Equipo | 05/11/2026 | 07/11/2026 | 3 | Pendiente |
+| 24 | Implementación | Fase 4: integración de la rama de la Fase 4 a main y publicación del repositorio | Equipo | 05/11/2026 | 07/11/2026 | 3 | Completada |
 | 25 | Cierre | Fase 4: evidencias (capturas, consulta y registro en BD, cambios y dificultades) y entrega | Tomás Santiago | 04/11/2026 | 04/11/2026 | 1 | Completada |
-| 26 | Cierre | Ajustes del documento final (estado del arte, red neuronal, presupuesto, cronograma y conclusiones) | Equipo | 12/11/2026 | 17/11/2026 | 6 | Pendiente |
-| 27 | Cierre | Entrega final y sustentación del proyecto | Equipo | 19/11/2026 | 19/11/2026 | 1 | Pendiente |
+| 26 | Cierre | Ajustes del documento final (estado del arte, red neuronal, presupuesto, cronograma y conclusiones) | Equipo | 12/11/2026 | 17/11/2026 | 6 | Completada |
+| 27 | Cierre | Entrega final y sustentación del proyecto | Equipo | 19/11/2026 | 19/11/2026 | 1 | Completada |
+| 28 | Desarrollo / ejecución | Wallet con dueño y varias wallets por cuenta (REQ-46 y REQ-47) | Equipo | 19/11/2026 | 19/11/2026 | 1 | Completada |
+| 29 | Desarrollo / ejecución | Auditoría de la cadena, sello de vigilancia y reparaciones guiadas | Equipo | 19/11/2026 | 19/11/2026 | 1 | Completada |
+| 30 | Pruebas / validación | Pentesting del prototipo con OWASP WSTG v4.2 sobre PTES | Equipo | 19/11/2026 | 19/11/2026 | 1 | Completada |
 
 *Nota. Las actividades 19 a 25 se cerraron al 4 de noviembre, antes de su fecha
 planificada, porque el trabajo se adelantó para llegar a la entrega de la Fase 4 con la
-red neuronal ya integrada. Elaboración propia.*
+red neuronal ya integrada; el merge de la Fase 4 a `main` (24) también quedó cerrado ese día y el
+repositorio quedó publicado. Los ajustes del documento final (26) y la entrega con la
+sustentación (27) se cerraron el 19 de noviembre. Las actividades 28 a 30 se agregaron
+después de la Fase 4 y se cerraron el 19 de noviembre según los commits del repositorio;
+la grabación y el acta de la socialización todavía no se anexan. Elaboración propia.*
 
 ## Vista semanal
 
@@ -162,7 +175,11 @@ red neuronal ya integrada. Elaboración propia.*
 | 25. Fase 4: evidencias y entrega | | | | | | | | | ● | ● | |
 | 26. Ajustes del documento final | | | | | | | | | | ● | |
 | 27. Entrega final y sustentación | | | | | | | | | | | ● |
+| 28. Wallet con dueño y varias wallets | | | | | | | | | | | ● |
+| 29. Auditoría, sello y reparaciones | | | | | | | | | | | ● |
+| 30. Pentesting con OWASP WSTG y PTES | | | | | | | | | | | ● |
 
 *Nota. Cada punto indica una semana de trabajo; cada semana empieza el jueves, desde el
-10 de septiembre (S1) hasta el 19 de noviembre de 2026 (S11): diez semanas de trabajo,
-con una fecha de inicio de semana por columna. Elaboración propia.*
+10 de septiembre (S1) hasta el 12 de noviembre de 2026 (S10): diez semanas de trabajo,
+con una fecha de inicio de semana por columna. La columna S11, del 19 de noviembre de
+2026, es la semana de cierre y de la entrega con la sustentación. Elaboración propia.*

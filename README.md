@@ -11,8 +11,11 @@ El eje del proyecto es el documento académico **`documentacion_proyecto_transac
 (46 páginas, Grupo 1, Universidad Manuela Beltrán). Ese documento fija el problema, los
 29 requerimientos (REQ) con su criterio de aceptación, los 5 casos de uso (CU), las
 clases del dominio, la arquitectura en capas, las rutas HTTP y el modelo relacional.
-Este repositorio agrega los diez requerimientos del sistema de usuarios (REQ-30 a
-REQ-39), que también tienen su prueba.
+Este repositorio agrega dieciocho requerimientos más (REQ-30 a REQ-47), que también
+tienen su prueba: el sistema de usuarios y la autorización por rol (REQ-30 a REQ-39),
+el perfil, la foto, los contactos, el idioma y el ayudante (REQ-40 a REQ-45) y la
+wallet con dueño y las varias wallets por cuenta (REQ-46 y REQ-47). En total son 47
+requerimientos (REQ-01 a REQ-47) y cinco casos de uso.
 **Este repositorio no vuelve a decidir nada de eso: existe para hacer verdadero lo que
 el eje describe como prototipo.** Su página 43 afirma que "el núcleo del prototipo ya
 está implementado y probado"; este repositorio es la evidencia de ese párrafo.
@@ -24,7 +27,8 @@ la construcción, con lo que queda afuera y los límites declarados, en
 siguen en `docs/superpowers/specs/2026-10-10-blockchain-transaccional-design.md`, y
 los de las funciones de las fases siguientes, en `docs/superpowers/specs/`.
 La explicación de cómo se ejecuta cada caso de uso está en
-`docs/recorrido-de-casos-de-uso.md`.
+`docs/recorrido-de-casos-de-uso.md`. La consolidación para la entrega y el guion de la
+sustentación están en `docs/entrega-final.md`.
 
 ## Requisitos previos
 
@@ -233,7 +237,44 @@ historial. En la portada del administrador el panel muestra también el saldo di
 de cada wallet, que es la celda de la matriz de permisos del diseño de usuarios. El CU-05 se
 alcanza desde ese panel: no hay que teclear el identificador a mano.
 
-### Las rutas de la sesión y del usuario común
+Los formularios de `POST /wallets`, `POST /transacciones` y `POST /bloques` se abren con
+un `GET` sobre la misma ruta, que sólo pinta la página; el `POST` es el que ejecuta la
+operación del caso de uso.
+
+### La auditoría, el sello y la reparación de la cadena
+
+`GET /verificar` ya no entrega sólo el dictamen: además audita la cadena completa con
+`Blockchain.audit_chain` (`src/domain/blockchain.py:356`), que delega en
+`src/domain/auditoria.py`. La auditoría recorre todos los bloques, las transacciones
+confirmadas y el pool, y comprueba encadenamiento, hashes, coherencia de estado, wallets,
+montos, firmas y sello; no escribe nada (REQ-22) y no se detiene en la primera
+discrepancia. Los hallazgos se clasifican en tres severidades —`critico`, `aviso` y
+`nota`—: los avisos no invalidan el dictamen y las notas no lo tocan. La firma se
+verifica contra la llave pública actual del emisor, así que el cambio de llave de una
+wallet, una pendiente con firma inventada o un monto alterado también quedan a la vista,
+no sólo el hash del bloque.
+
+El sello de vigilancia es un ancla externa contra el recorte de la cola: un archivo JSON
+con la altura y el hash de la cabeza, firmado con HMAC-SHA256 con la clave maestra. Vive
+por defecto en `datos/sello-de-vigilancia.json` y la variable `SELLO_DE_VIGILANCIA`
+cambia la ruta (`src/persistence/factory.py`). No se actualiza solo: lo fija la persona
+después de sembrar, de reparar o de comprobar el estado. La lectura nunca levanta: un
+archivo ausente se informa como `ausente` y uno ilegible como `ilegible`, y el panel de
+la auditoría los muestra; la escritura es atómica (`src/persistence/sello.py`).
+
+El panel ofrece reparaciones explícitas en `POST /verificar/reparar`
+(`src/web/app.py:711`), con acceso de administrador y confirmación en el formulario. Las
+acciones válidas son seis y las declara `src/web/app.py:123`: `reparar-todo` (rechaza el
+pool inválido, aísla las confirmadas inválidas y reencadena, en ese orden), `encadenar`
+(recalcula los hashes de todos los bloques), `aislar` (pasa a `rejected` las confirmadas
+que no pertenecen a la cadena), `rechazar-pendientes` (saca del pool las pendientes
+inválidas), `reagrupar` (cierra el pool en un bloque nuevo) y `fijar-sello` (escribe el
+ancla externa en la cabeza actual). Sin `confirmar=si` o con una acción inventada no se
+escribe nada: cada rama vuelve a `/verificar` con el aviso en la bandeja, que es el
+estado real después de la reparación. Las reparaciones son un `POST` aparte y explícito
+porque `GET /verificar` sólo lee.
+
+### Las rutas de la sesión, del usuario común y del administrador
 
 La barra superior es el menú principal: cambia sus enlaces según el rol de la sesión
 —el logo vuelve a la portada y el botón de tema claro/oscuro queda al final—, y la
@@ -241,11 +282,13 @@ pestaña del ayudante viaja con `?desde=` la pantalla de origen para explicarla.
 
 | Ruta                                                                                      | Qué hace                                                                        | Quién entra   |
 | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- | ------------- |
+| `GET /`                                                                                   | Portada con los conteos del ledger y el panel de wallets                        | cualquiera    |
 | `GET,POST /ingresar`                                                                      | Abre la sesión con usuario y contraseña (REQ-32)                                | cualquiera    |
 | `GET,POST /registrarme`                                                                   | Alta moderada: la cuenta queda pendiente de aprobación (REQ-30)                 | cualquiera    |
 | `POST /salir`                                                                             | Cierra la sesión (REQ-37)                                                       | con sesión    |
 | `GET /mi-tablero`                                                                         | Saldo, formulario de envío y últimos movimientos                                | usuario común |
 | `POST /mi-envio`                                                                          | Firma y registra un envío de la wallet de la sesión (REQ-34)                    | usuario común |
+| `POST /mi-wallet`                                                                         | Elige con qué wallet de la cuenta opera la sesión (REQ-47)                      | usuario común |
 | `GET /mi-historial`                                                                       | Historial de la wallet de la sesión, con verificación (REQ-39)                  | usuario común |
 | `GET /mi-verificacion`                                                                    | Dictamen de la cadena en palabras simples                                       | usuario común |
 | `GET,POST /mis-contactos`                                                                 | Agenda de a quién le envía, por nombre (REQ-35)                                 | usuario común |
@@ -257,8 +300,46 @@ pestaña del ayudante viaja con `?desde=` la pantalla de origen para explicarla.
 | `GET /admin/estadisticas?usuario=<nombre>`                                                | El administrador elige a qué usuario común mirar                                | administrador |
 | `GET /admin/pendientes`, `POST /admin/pendientes/<id>/aprobar`, `.../rechazar`            | Cola de altas pendientes (REQ-31)                                               | administrador |
 | `POST /admin/contrasenas/<id>/<accion>`                                                   | Aprobar o rechazar un cambio de contraseña (REQ-36)                             | administrador |
+| `POST /verificar/reparar`                                                                 | Aplica una reparación explícita de la cadena                                    | administrador |
 | `GET /asistente`, `POST /asistente/preguntar`, `GET /asistente/ahora`                     | El ayudante en palabras simples                                                 | con sesión    |
 | `POST /idioma`                                                                            | Guarda el idioma elegido                                                        | cualquiera    |
+
+### El perfil, los contactos y el idioma
+
+`GET /perfil` reúne los datos de la cuenta, sus wallets y el estado de su último cambio
+de contraseña (`src/web/perfil.py:63`). La foto es opcional: se sube con
+`POST /perfil/foto`, se quita con `POST /perfil/foto/quitar` y se sirve por
+`GET /foto/<username>` sólo a quien tiene sesión, con `nosniff` y política de contenido
+vacía; los bytes viven en la carpeta de `FOTOS_DIR` y la base guarda el nombre, el tipo y
+la fecha (`db/init.sql`, tabla `fotos_de_perfil`). La contraseña cambia con
+`POST /perfil/contrasena`: en una cuenta común el cambio queda pendiente en
+`solicitudes_de_contrasena` hasta que el administrador lo aprueba o lo rechaza en
+`POST /admin/contrasenas/<id>/<accion>`; el administrador lo aplica directo.
+
+`/mis-contactos` es la agenda por nombre de usuario: no repite contactos, no deja
+agregarse a sí mismo y no opera sobre la agenda de otra cuenta
+(`src/web/user.py:224`), y `/mis-contactos/sugerencias` es la vista previa de los campos
+de destinatario. El idioma de la interfaz se guarda con `POST /idioma`
+(`src/web/app.py:367`) en una cookie de un año y se puede ver en español o en inglés
+(`src/web/traducciones.py`).
+
+### La wallet con dueño y las varias wallets
+
+Una wallet puede pertenecer a una cuenta (REQ-46): la columna `wallets.owner_id` es nula
+para la wallet sin dueño y apunta a `users` en el resto (`db/init.sql:23`). El registro
+de `POST /wallets` suma un selector con las cuentas comunes aprobadas; una cuenta
+pendiente, rechazada o inexistente deja la wallet sin crear y el formulario repite el
+motivo (`src/web/app.py:587`). Sólo una cuenta común aprobada puede ser dueña: el
+administrador no tiene ninguna y las altas pendientes o rechazadas tampoco. La semilla
+liga las cinco wallets de demostración a sus cinco cuentas; la aprobación de un alta crea
+la wallet de bienvenida ya con la cuenta como dueña, dentro de la misma transacción.
+
+Una cuenta aprobada puede tener varias wallets (REQ-47). El tablero, el historial, la
+verificación, la agenda y el ayudante operan con la wallet elegida, que se guarda en la
+sesión con `POST /mi-wallet` y sólo se acepta si pertenece a la cuenta; sin elección se
+usa la principal, la más antigua (`src/web/user.py:171`). El envío por nombre de usuario
+apunta a la wallet principal del destinatario y las demás sólo se alcanzan por su
+identificador.
 
 ### El ayudante y la IA
 
@@ -276,6 +357,13 @@ manda nada. `ASISTENTE_URL` permite cualquier servicio compatible con la API de 
 —saldo y últimos movimientos, con el nombre de las contrapartes— salen hacia ese
 servicio, y la página lo advierte antes de preguntar. El tope es de cinco preguntas por
 cuenta y por minuto.
+
+El ayudante vive en `src/web/asistente.py:940` y el conector en `src/web/ia.py:225`. Las
+capturas [11-asistente.png](docs/evidencias/capturas/11-asistente.png) y
+[23-asistente-conversacion.png](docs/evidencias/capturas/23-asistente-conversacion.png)
+lo muestran en modo guía local con la cuenta `asociado1` el 19 de noviembre de 2026; por
+eso la respuesta lleva el sello «Guía rápida» y no aparece el aviso de privacidad —la
+plantilla sólo lo pinta cuando hay un proveedor externo configurado—.
 
 ## La conexión con la base de datos
 
@@ -497,9 +585,9 @@ cronológico.
 ### Las cuentas sembradas
 
 `python -m src.bootstrap` crea, además de las wallets, seis cuentas aprobadas. El
-administrador no tiene wallet: es la única cuenta a la que el esquema se lo permite,
-y no la necesita para ver el sistema entero. Cada una de las otras cinco maneja una
-de las wallets de la semilla.
+administrador no tiene wallet: el servicio no admite que sea dueño de una y no la
+necesita para ver el sistema entero. Cada una de las otras cinco maneja una de las
+wallets de la semilla.
 
 | Usuario         | Rol             | Wallet que maneja    | Contraseña                          |
 | --------------- | --------------- | -------------------- | ----------------------------------- |
@@ -599,8 +687,11 @@ pruebas van siempre a una carpeta temporal, nunca a `FOTOS_DIR`.
 
 La suite incluye las pruebas de reglas, las de integración contra PostgreSQL y
 `tests/test_explicacion.py`, que comprueba que cada caso de uso está en el recorrido y
-que cada uno de los 39 requerimientos tiene una prueba `test_req_NN_` (REQ-17, REQ-20
-y REQ-23 incluidos).
+que cada uno de los 39 requerimientos numerados —los 29 del eje (REQ-01 a REQ-29) y los
+diez del sistema de usuarios (REQ-30 a REQ-39)— tiene una prueba `test_req_NN_` (REQ-17,
+REQ-20 y REQ-23 incluidos). Los REQ-46 y REQ-47 también tienen su archivo
+`test_req_NN_`, y los REQ-40 a REQ-45 se cubren en las pruebas de perfil, contactos,
+fotos, idioma y ayudante. En total son 47 requerimientos.
 
 Para correr solo la integración:
 
@@ -772,11 +863,11 @@ sobre una base desechable.
 **Qué se puede borrar sin miedo.** Nada de esto está versionado (`.gitignore`), así que
 borrarlo no ensucia el repositorio:
 
-| Ruta               | Qué es                                                            | Si la borra                                                                                              |
-| ------------------ | ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| `.venv/`           | El entorno virtual con las dependencias fijadas                   | Se recrea con `python -m venv .venv` y la instalación de `requirements.txt`.                             |
-| `.reference/`      | El extracto del documento del eje y el material de consulta       | No rompe nada: no lo importan el código ni las pruebas. Se pierde la copia local del extracto del eje.   |
-| `.legacy-project/` | El prototipo anterior, que solo se conserva como referencia       | No rompe nada: no lo importa nadie. Se pierde el prototipo anterior, que no es el entregable.            |
+| Ruta               | Qué es                                                                                                | Si la borra                                                                                                |
+| ------------------ | ----------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `.venv/`           | El entorno virtual con las dependencias fijadas                                                       | Se recrea con `python -m venv .venv` y la instalación de `requirements.txt`.                               |
+| `.reference/`      | El extracto del documento del eje y el material de consulta                                           | No rompe nada: no lo importan el código ni las pruebas. Se pierde la copia local del extracto del eje.     |
+| `.legacy-project/` | El prototipo anterior, que solo se conserva como referencia                                           | No rompe nada: no lo importa nadie. Se pierde el prototipo anterior, que no es el entregable.              |
 | `.env`             | Los secretos locales: `DATABASE_URL`, `POSTGRES_*`, `MASTER_KEY`, `SESSION_SECRET` y `ADMIN_PASSWORD` | Obliga a copiar `.env.example` otra vez y a generar una `MASTER_KEY` nueva; véase la advertencia de abajo. |
 
 **Antes de borrar `.env`.** `.env` guarda la `MASTER_KEY` con la que se cifra el material
@@ -793,15 +884,61 @@ con la clave nueva. El arranque solo siembra cuando la tabla de wallets está va
   guion de inicialización de un contenedor `postgres:16-alpine` (PostgreSQL 16.15) y
   quedaron las siete tablas, `uuid-ossp`, los veinte índices y todos los `CHECK` del eje;
   una transacción de una wallet a sí misma la rechazó el motor.
-- **Las reglas sin base de datos (REQ-17)**: `pytest tests/unit` pasa con
-  `DATABASE_URL` sin definir y sin contenedor, porque el dominio no importa el driver.
-- **La suite completa** contra el clúster PostgreSQL del equipo de desarrollo: las
-  reglas, la integración y la coherencia de la explicación. La cobertura de los 39
-  requerimientos no se cuenta a mano: la exige `tests/test_explicacion.py`.
+- **Las reglas sin base de datos (REQ-17)**: `env -u DATABASE_URL .venv/bin/pytest
+  tests/unit -q` cierra en `158 passed, 1 skipped` sin contenedor y sin `.env`, porque
+  el dominio no importa el driver. La única omisión es `tests/unit/test_dataset.py`, que
+  se salta porque `pandas` no está instalado en el entorno; no es un fallo ni una prueba
+  inestable.
+- **La suite completa** contra un PostgreSQL 16 desechable (`postgres:16-alpine`), con
+  Python 3.14.9 y el `TEST_DATABASE_URL` apuntando a esa base: `525 passed, 1 skipped` en
+  171,57 s, código de salida 0. Son 68 archivos de prueba —47 de integración, 20
+  unitarios y 1 en la raíz—. La corrida completa está en
+  [docs/evidencias/pruebas-finales-2026-11-19.txt](docs/evidencias/pruebas-finales-2026-11-19.txt).
+  La cobertura de los 47 requerimientos no se cuenta a mano: `tests/test_explicacion.py`
+  exige la de REQ-01 a REQ-39, REQ-46 y REQ-47, y las pruebas de perfil, contactos,
+  fotos, idioma y ayudante cubren REQ-40 a REQ-45.
+- **El lint**: `.venv/bin/ruff check .` responde `All checks passed!`, con código de
+  salida 0 y ningún hallazgo.
 - **La suite completa dentro del contenedor del piso de Python** (`python:3.11-slim`):
-  con el repositorio montado en solo lectura, `requirements.txt` instalado y `pytest`
-  corriendo contra el contenedor PostgreSQL 16, el veredicto fue el código de salida 0.
-  El piso lo declara `pyproject.toml` (`requires-python = ">=3.11"`).
+  la corrida del 19 de noviembre de 2026, con Python 3.11.18, las versiones exactas de
+  `requirements.txt`, el repositorio montado en solo lectura y un PostgreSQL 16
+  desechable, cerró en `525 passed, 1 skipped` en 156,07 s con código de salida 0; la
+  única omisión es la misma de `pandas`. El piso lo declara `pyproject.toml`
+  (`requires-python = ">=3.11"`), y la corrida está en la sección «Corrida en el piso de
+  Python 3.11» de
+  [docs/evidencias/pruebas-finales-2026-11-19.txt](docs/evidencias/pruebas-finales-2026-11-19.txt).
+- **El pentest del 19 de noviembre de 2026**: se ejecutó sobre el commit `899d252` con
+  OWASP WSTG v4.2 y encontró cuatro hallazgos —tres de severidad media y uno baja—,
+  ninguno alto ni crítico. El informe está en `docs/pentesting/informe.md` y
+  `docs/pentesting/informe.pdf`. El código de la aplicación (`src/`, `db/`, `tests/` y
+  `red_neuronal/`) no cambió entre ese commit y el `HEAD` actual
+  (`a1327b1`): los commits posteriores son las herramientas del pentest y documentación,
+  así que el informe describe el mismo código que este README.
+- **El acceso**: no hay URL pública ni despliegue. El prototipo se levanta en local con
+  los comandos de esta página y responde en `http://127.0.0.1:5000`; la corrida fresca
+  de pruebas usó un contenedor desechable y no tocó la base de desarrollo ni `.env`.
+
+## Documentos y evidencias
+
+| Documento                                                                                        | Qué contiene                                                                                                                                                  |
+| ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [docs/entrega-final.md](docs/entrega-final.md)                                                   | La consolidación para la entrega: acceso, ficha de la IA, guion de la sustentación, inventario de evidencias y pendientes                                     |
+| [docs/evidencias-fase4.md](docs/evidencias-fase4.md)                                             | Las evidencias de la Fase 4: diseño, navegabilidad e integración con la base, con las capturas de esa etapa                                                   |
+| [docs/evidencias/pruebas-finales-2026-11-19.txt](docs/evidencias/pruebas-finales-2026-11-19.txt) | La salida literal de ruff y de las tres corridas de pytest del 19 de noviembre de 2026 (Python 3.14.9 y el piso 3.11), con el entorno y el conteo por archivo |
+| [docs/evidencias/capturas/](docs/evidencias/capturas/)                                           | Las 23 capturas de la aplicación: 21 de interfaz y 2 de terminal; la 11 y la 23 muestran el ayudante en modo guía local                                       |
+| [docs/pentesting/informe.md](docs/pentesting/informe.md)                                         | El informe de pentesting con los cuatro hallazgos, su remediación propuesta y el procedimiento de retest                                                      |
+| [docs/pentesting/informe.pdf](docs/pentesting/informe.pdf)                                       | El mismo informe en PDF, para adjuntar a la entrega                                                                                                           |
+| [docs/pentesting/matriz-trazabilidad.md](docs/pentesting/matriz-trazabilidad.md)                 | La trazabilidad de cada requerimiento y cada categoría de WSTG con su prueba, su caso de Kiwi y su hallazgo                                                   |
+| [docs/red-neuronal.md](docs/red-neuronal.md)                                                     | El apartado de la red neuronal para el documento maestro, con el dataset y las métricas del entrenamiento                                                     |
+| [docs/recorrido-de-casos-de-uso.md](docs/recorrido-de-casos-de-uso.md)                           | El camino real de cada caso de uso: ruta, método del dominio, tabla y consulta                                                                                |
+| [docs/arquitectura-y-decisiones.md](docs/arquitectura-y-decisiones.md)                           | El mapa de conjunto y las decisiones de diseño que el eje no fija                                                                                             |
+| [docs/proceso-y-alcance.md](docs/proceso-y-alcance.md)                                           | El recorrido de la construcción, lo entregado en cada etapa y lo que queda afuera                                                                             |
+| [docs/sistema-de-diseno.md](docs/sistema-de-diseno.md)                                           | El sistema de diseño de la interfaz y sus tokens                                                                                                              |
+| [docs/presupuesto-y-cronograma.md](docs/presupuesto-y-cronograma.md)                             | El presupuesto del proyecto y el cronograma de trabajo                                                                                                        |
+
+Las capturas de los flujos principales y la evidencia fresca de la suite se enlazan
+desde las secciones de arriba: «El ayudante y la IA» lleva a la 11 y a la 23, y «Qué
+está verificado» lleva a la salida completa de las pruebas.
 
 ## Por dónde empezar a leer el código
 
@@ -822,8 +959,12 @@ con la clave nueva. El arranque solo siembra cuando la tabla de wallets está va
    `src/persistence/postgres.py`: el módulo que abre la conexión y la deja en UTC, los
    protocolos que aíslan al dominio del motor (REQ-16) y los adaptadores que no traducen
    los errores de PostgreSQL (REQ-19).
-7. `src/web/app.py` y `src/web/templates/`: las cinco rutas y sus plantillas, sin
-   reglas de negocio ni SQL (REQ-24 a REQ-29).
-8. `tests/`: la explicación ejecutable. Cada prueba se llama `test_req_NN_*` y lleva
+7. `src/domain/auditoria.py`, `src/domain/reparacion.py` y `src/persistence/sello.py`:
+   la auditoría profunda de la cadena, las reparaciones que el panel aplica y el sello
+   de vigilancia como ancla externa.
+8. `src/web/app.py` y `src/web/templates/`: las rutas del eje, la verificación con
+   auditoría y reparaciones, el idioma y las plantillas, sin reglas de negocio ni SQL
+   (REQ-24 a REQ-29).
+9. `tests/`: la explicación ejecutable. Cada prueba se llama `test_req_NN_*` y lleva
    el criterio de aceptación en su docstring, así que para explicar una regla alcanza
    con mostrar la prueba que la demuestra.

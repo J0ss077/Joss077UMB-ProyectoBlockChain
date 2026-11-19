@@ -29,10 +29,14 @@ administradora —la de demostración está en el README—; las pantallas del u
 La interfaz no explica el proyecto: los títulos nombran la acción —«Registrar wallet»,
 «Nueva transacción», «Cerrar bloque», «Verificar cadena», «Historial»— y ninguna página
 lleva párrafos sobre el eje ni números de caso de uso. `base.html` pinta una barra
-superior con el nombre de la aplicación y los enlaces del administrador —Pendientes,
-Registrar wallet, Nueva transacción, Cerrar bloque y Verificar cadena—, un panel lateral
-con las wallets —forma corta en monoespaciada, botón que copia la clave y enlace a su
-historial; «Todavía no hay wallets» cuando no hay ninguna— y el área de contenido.
+superior con el nombre de la aplicación y dos navegaciones: la del administrador
+—Resumen, Pendientes, Wallets, Transacciones, Bloques, Verificar, Estadísticas y
+Ayudante— y la del usuario común —Mi tablero, Mi historial, Mis contactos, Estadísticas
+y Ayudante—; el nombre de la sesión abre el perfil y el botón «Salir» la cierra. Debajo
+va un panel lateral con las wallets —la forma corta de la clave pública en
+monoespaciada, el nombre de la cuenta dueña o «Sin dueño», el saldo, el botón que copia
+la clave y el enlace a su historial; «Todavía no hay wallets» cuando no hay ninguna— y
+el área de contenido.
 Todas las páginas del administrador muestran además el saldo disponible de cada wallet:
 las páginas del usuario común no llevan panel, a propósito, porque les mostraría wallets
 de otros (REQ-35). El panel lo pasa cada ruta del administrador con `datos_del_panel(chain)`
@@ -49,27 +53,50 @@ atributo `title` —también el de cada `option`— y en `data-copiar`, que es l
 los botones con el guion de `base.html`: avisa «copiado» cuando la escritura sale bien y
 «no se pudo copiar» cuando el navegador no ofrece el portapapeles o la rechaza.
 
-## CU-01: registrar una wallet
+## CU-01: registrar una wallet con su dueño
 
-**Qué hace la persona.** Entra a `GET /wallets`, ve el formulario, lo envía por
-`POST /wallets` y recibe la clave pública con la que su wallet queda identificada.
+**Qué hace la persona.** Entra a `GET /wallets`, elige en el formulario a qué cuenta se
+le asigna la wallet —o deja la opción vacía, «Déjala sin dueño»— y lo envía por
+`POST /wallets`. Recibe la ficha de la wallet creada con su dueño, su identificador,
+su clave pública y su saldo.
 
-**Qué ruta la recibe.** `wallets()` en `src/web/app.py` (REQ-24). El `GET` pinta
-`wallet.html` sin wallet; el `POST` llama a la fachada y pinta la misma plantilla con
-la wallet creada. La lista de wallets no la pinta esta ruta: vive en el panel lateral,
-así que el CU-05 queda a un clic desde cualquier página.
+**Qué ruta la recibe.** `wallets()` en `src/web/app.py` (REQ-24, REQ-46). El `GET`
+llama a `_formulario_de_wallet()`, que abre el ledger para el panel lateral y las
+cuentas para el selector (`usuarios_aprobados()`), y pinta `wallet.html` sin wallet.
+El `POST` lee el campo `dueno` y lo convierte con `a_uuid`: si viene texto y no es un
+UUID, repinta el formulario con `MENSAJE_DUENO_INVALIDO` y no llega al servicio. Si el
+texto es válido o vacío, llama a `cuentas.registrar_wallet(dueno_id)`; un
+`DuenoInvalido` del servicio repinta el formulario con el motivo del servicio y sin
+crear la wallet, y el camino correcto pinta la misma plantilla con la wallet creada,
+la lista de cuentas vacía y el panel. La ruta exige sesión de administrador (REQ-38).
+La lista de wallets no la pinta esta ruta: vive en el panel lateral, así que el CU-05
+queda a un clic desde cualquier página.
 
-**Qué método del dominio decide.** `Blockchain.register_wallet()`
-(`src/domain/blockchain.py`) llama a `create_wallet()` (`src/domain/wallet.py`), que
-genera el par con `generate_private_key()` sobre `secp256k1`, serializa la pública
-como punto comprimido en hexadecimal (`public_key_hex`), cifra el DER de la privada
-con `Fernet` y la clave maestra (`encrypt_private_key`) y fija el identificador con
-`uuid4` y la marca de tiempo con el reloj inyectado. Ninguna capa decide reglas: solo
-se generan llaves y se guardan.
+**Qué método decide.** `Cuentas.registrar_wallet()` (`src/accounts/service.py`) es la
+puerta de la regla del dueño: `_puede_ser_dueno()` exige que la cuenta exista, esté
+aprobada y sea de rol `usuario`; el administrador, una cuenta pendiente, una rechazada
+o un identificador inexistente levantan `DuenoInvalido` antes de escribir nada. Con un
+dueño válido llama a `Blockchain.register_wallet()` (`src/domain/blockchain.py`), que
+delega en `create_wallet()` (`src/domain/wallet.py`): genera el par con
+`generate_private_key()` sobre `secp256k1`, serializa la pública como punto comprimido
+en hexadecimal (`public_key_hex`), cifra el DER de la privada con `Fernet` y la clave
+maestra (`encrypt_private_key`) y fija el identificador con `uuid4` y la marca de
+tiempo con el reloj inyectado. La wallet nace sin dueño en la tabla y el servicio le
+escribe el dueño con `asignar_wallet()`, que solo actualiza una fila con `owner_id IS
+NULL`. Las dos escrituras van dentro de la misma transacción y se confirman una sola
+vez; si la asignación fallara, `DuenoInvalido` impide confirmar una wallet que diga
+tener dueño y no lo tenga.
 
-**Qué tabla se toca.** `wallets`, con una fila nueva.
+**Qué tabla se toca.** `wallets`: una fila nueva y, si se eligió dueño, el `UPDATE`
+que le escribe `owner_id`. `users` se lee para el selector y para validar al dueño.
 
-**Qué consulta se ejecuta.**
+**Qué consultas se ejecutan.**
+
+```sql
+SELECT * FROM users
+WHERE role = 'usuario' AND estado = 'aprobado'
+ORDER BY username
+```
 
 ```sql
 INSERT INTO wallets (id, public_key, private_key_encrypted, created_at)
@@ -77,16 +104,43 @@ VALUES (%s, %s, %s, %s)
 RETURNING *
 ```
 
+```sql
+UPDATE wallets SET owner_id = %s
+WHERE id = %s AND owner_id IS NULL
+```
+
 `RETURNING *` devuelve la fila tal como quedó en la base y no la que se propuso. Si
 la pública chocara con `uq_wallets_public_key`, el error del motor sube sin traducir
 (REQ-19), que es el flujo alterno de la ficha.
+
+**Qué se muestra.** La ficha de resultado saluda con «Wallet registrada a nombre de
+{nombre}.» o «Wallet registrada sin dueño.»; el nombre lo resuelve `nombre_de_wallet()`
+con `nombres_por_wallet()`, que lee la base una vez por petición. La ficha lleva
+Dueño, Identificador, Clave pública —con el valor completo en el `title` y el botón de
+copiar— y Saldo disponible, y dos enlaces: «Ver su historial» y «Proponer una
+transacción». La captura `14-flujo-wallet-creada.png` es del 4 de noviembre y muestra
+la ficha anterior, cuando el formulario todavía no pedía dueño y la wallet recién
+creada quedaba «Sin dueño»; el formulario de hoy es el `select` de dueño descrito.
+
+**Varias wallets por cuenta (REQ-47).** Una cuenta común aprobada puede tener varias
+wallets: la primera la crea la aprobación de la cuenta (REQ-33) y las demás se
+registran por esta ruta. La principal es la más antigua. `GET /perfil` las lista todas
+y, cuando hay más de una, el tablero pinta el selector «Tus wallets» con el saldo de
+cada una; `POST /mi-wallet` valida que la elegida pertenezca a la sesión y la guarda
+en `wallet_elegida`, y el envío por nombre de usuario apunta siempre a la principal del
+destinatario.
 
 **Qué prueba lo demuestra.** `tests/unit/test_req_01_wallet.py`
 (`test_req_01_la_privada_no_esta_en_claro_en_la_wallet`,
 `test_req_01_dos_wallets_no_comparten_publica`),
 `tests/integration/test_req_01_wallet_en_base.py` (la pública queda única y no vacía,
-y el texto plano de la privada no aparece en la base) y
-`tests/integration/test_req_24_rutas.py::test_req_24_post_wallets_devuelve_200_con_la_publica`.
+y el texto plano de la privada no aparece en la base),
+`tests/integration/test_req_24_rutas.py::test_req_24_post_wallets_devuelve_200_con_la_publica`,
+`tests/integration/test_req_46_registro_con_dueno.py` (el dueño aprobado queda en
+`owner_id`, la opción vacía lo deja nulo y un dueño que no sirve no crea la wallet),
+`tests/integration/test_req_47_varias_wallets.py` (varias wallets de la misma cuenta y
+la elección de la activa) y `tests/integration/test_nombres_por_wallet.py` (el panel
+muestra el dueño de cada wallet y omite las que no lo tienen).
 
 ## CU-02: crear una transacción
 
@@ -234,13 +288,20 @@ confirmación no queda el bloque), `tests/integration/test_req_12_coherencia.py`
 `tests/integration/test_req_14_genesis.py` y
 `tests/integration/test_req_24_rutas.py::test_req_26_post_bloques_devuelve_el_bloque_creado`.
 
-## CU-04: verificar la integridad de la cadena
+## CU-04: verificar la integridad de la cadena y auditarla
 
-**Qué hace la persona.** Entra a `GET /verificar` y recibe el dictamen: la cadena es
-válida o el índice del primer bloque que no encaja.
+**Qué hace la persona.** Entra a `GET /verificar` y recibe dos lecturas del mismo
+estado. Arriba, el dictamen de siempre: la cadena es válida o el índice del primer
+bloque que no encaja. Debajo, el panel de auditoría: las cifras del ledger, la cabeza,
+el sello de vigilancia, los hallazgos con su severidad, la revisión de cada bloque, los
+límites de la auditoría y las reparaciones que se pueden aplicar. La página no repara
+nada; reparar es una acción aparte y explícita.
 
-**Qué ruta la recibe.** `verificar()` en `src/web/app.py` (REQ-27) llama a
-`Blockchain.verify_chain()` y pinta `verificar.html`.
+**Qué ruta la recibe.** `verificar()` en `src/web/app.py` (REQ-27). Primero lee el
+sello inyectado con `leer_sello()` —sin adaptador configurado devuelve `ausente`— y
+después abre la cadena y pinta `verificar.html` con `dictamen=chain.verify_chain()`,
+`auditoria=chain.audit_chain(sello=..., problema_del_sello=...)` y el panel de wallets.
+La ruta exige sesión de administrador (REQ-38).
 
 **Qué método del dominio decide.** `Blockchain.verify_chain()`
 (`src/domain/blockchain.py`):
@@ -259,17 +320,97 @@ válida o el índice del primer bloque que no encaja.
 5. Ante la primera discrepancia detiene el recorrido y devuelve su índice; si todo
    encaja, devuelve `valid=True` y `altered_block_index=None`.
 
-**Qué tabla se toca.** Ninguna por la verificación: `verify_chain` solo lee `blocks` y
-`transactions` (REQ-22). La ruta sí puede escribir una fila antes de verificar, porque
-`abrir_cadena()` asegura el génesis con `ensure_genesis`: si la cadena no tiene eslabón
-cero, lo inserta. Es el único caso, y es idempotente: con el génesis ya presente solo
-consulta `blocks.get_by_index(0)`.
+Ese dictamen se detiene en el primer fallo. La auditoría que lo acompaña es otra
+lectura más profunda: `Blockchain.audit_chain()` delega en `src/domain/auditoria.py`
+(`auditar`), que recorre **todos** los bloques y **todas** las transacciones sin
+detenerse, y calcula un `Resumen` (bloques, altura, hash y fecha de la cabeza, génesis,
+confirmadas, pendientes, rechazadas y wallets). Sus comprobaciones:
 
-**Qué consultas se ejecutan.**
+1. Encadenamiento, índices, cabeza y hash recalculado de cada bloque; una revisión por
+   bloque con estado `correcto`, `cabeza`, `hueco`, `encadenamiento` o `alterado`.
+2. Coherencia de estado y bloque de cada transacción, wallets inexistentes y montos
+   fuera de la escala.
+3. Firma de cada confirmada y de cada pendiente contra la llave pública **actual** del
+   emisor con `verify` y el `signing_payload`; así se detecta el cambio de llave de una
+   wallet o una firma inventada sin depender solo del hash del bloque.
+4. Firmas repetidas, sin importar el estado de las filas.
+5. El sello de vigilancia ya leído, que se compara con la cadena.
+
+Cada hallazgo lleva un código estable, una severidad —`critico`, `aviso` o `nota`—,
+una ubicación, el detalle técnico sin traducir y, si existe, la reparación que lo
+atendería. `Auditoria.limpia` es verdadera sin críticos ni avisos; una nota no ensucia
+el dictamen. La auditoría declara además sus `limites`: el del recorte de la cola solo
+aparece sin un sello utilizable, y siempre están el origen del sello, el alcance del
+reencadenado y los huecos o borrados que la interfaz no repara.
+
+**El sello de vigilancia.** Es un archivo JSON fuera de la base
+(`datos/sello-de-vigilancia.json` por defecto, o `SELLO_DE_VIGILANCIA`) con la altura y
+el hash de la cabeza, firmados con HMAC-SHA256 usando la clave maestra
+(`src/persistence/sello.py`). Como el ancla vive fuera de la base, un recorte de la
+cola deja de ser indistinguible de una cadena que nunca tuvo esos bloques. La lectura
+nunca levanta: un archivo ausente da `ausente` y uno ilegible —JSON roto, forma
+equivocada o firma que no cuadra— da `ilegible`, y el panel lo muestra como «Sin
+fijar» o «Ilegible». El sello no se actualiza solo: lo fija la persona. La escritura va
+primero a un temporal y se reemplaza con `os.replace`, que es atómico en el mismo
+sistema de archivos, así que un corte a mitad no deja un JSON truncado.
+
+**La reparación (`POST /verificar/reparar`).** El panel ofrece las acciones que
+sugieren los hallazgos, y cada formulario lleva la casilla `confirmar` con valor `si`.
+La ruta valida antes de tocar la cadena: sin `confirmar=si` o con una acción que no
+existe, no se escribe nada y la bandeja lo avisa; después redirige con 303 a
+`/verificar` (POST-redirect-GET) y el panel vuelve a pintar el estado real. Acepta seis
+claves estables:
+
+| Acción                | Qué hace                                                                                                                                                                | Dónde                                       |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| `reparar-todo`        | Rechaza las pendientes inválidas, aísla las confirmadas inválidas y reencadena, en ese orden; es idempotente                                                            | `Blockchain.repair_all()`                   |
+| `encadenar`           | Recalcula `previous_hash` y `hash` desde el bloque 0 sin tocar índices ni marcas de tiempo; sin bloques crea el génesis y, si el primer bloque no es el 0, no se aplica | `Blockchain.repair_chain()`                 |
+| `aislar`              | Pasa a `rejected` las confirmadas que no pertenecen a la cadena y reencadena si la cadena empieza en el génesis                                                         | `Blockchain.isolate_invalid_transactions()` |
+| `rechazar-pendientes` | Pasa a `rejected` las filas del pool que no serían admitidas; no reencadena                                                                                             | `Blockchain.reject_invalid_pending()`       |
+| `reagrupar`           | Cierra el pool en un bloque nuevo, que es la agrupación de siempre                                                                                                      | `Blockchain.group_pending()`                |
+| `fijar-sello`         | Escribe el sello en la cabeza actual; sin adaptador o sin bloques avisa y no escribe                                                                                    | `SelloDeVigilancia.fijar()`                 |
+
+El panel solo pinta tres botones —`reparar-todo`, `reagrupar` y `fijar-sello`—, que
+son los que resuelven los hallazgos que la interfaz puede ofrecer; las tres claves
+restantes de la ruta se ejercitan en las pruebas de integración. Cada reparación que
+reencadena o cambia estados va dentro de una sola unidad de trabajo: o se aplican
+todas sus escrituras o ninguna. Reencadenar devuelve la coherencia, no el contenido
+original de un dato alterado o borrado; un hueco de índices o un bloque borrado en
+medio no se repara desde la interfaz.
+
+**Qué tablas se tocan.** La verificación y la auditoría, ninguna: `verify_chain` solo
+lee `blocks` y `transactions` (REQ-22), y `auditar` lee `blocks`, `transactions` y
+`wallets` y no escribe ni tablas ni el archivo del sello. La ruta de verificación sí
+puede insertar una fila antes de verificar, porque `abrir_cadena()` asegura el génesis
+con `ensure_genesis`: si la cadena no tiene eslabón cero, lo inserta. Es el único caso,
+y es idempotente: con el génesis ya presente solo consulta `blocks.get_by_index(0)`.
+Las reparaciones escriben `blocks` (`UPDATE` de los dos hashes), `transactions`
+(`UPDATE` de estado y `block_id`) y, al reagrupar, las dos tablas de la agrupación.
+
+**Qué consultas se ejecutan.** La verificación y la auditoría leen:
 
 ```sql
 SELECT * FROM blocks ORDER BY block_index
 SELECT * FROM transactions WHERE block_id = %s ORDER BY created_at, id
+SELECT * FROM transactions ORDER BY created_at, id
+SELECT * FROM wallets WHERE id = %s
+SELECT count(*) FROM wallets
+```
+
+El `SELECT` de `transactions` de la auditoría es único y completo: las filas se
+agrupan por bloque en memoria y una caché evita repetir la lectura de la misma wallet,
+así que no hay una consulta por bloque. Las reparaciones escriben:
+
+```sql
+UPDATE blocks SET previous_hash = %s, hash = %s
+WHERE id = %s
+RETURNING *
+```
+
+```sql
+UPDATE transactions
+SET status = 'rejected', block_id = NULL
+WHERE id = ANY(%s)
 ```
 
 **Qué prueba lo demuestra.** `tests/unit/test_req_10_verificacion.py` (con los dobles
@@ -278,9 +419,21 @@ en memoria de `tests/dobles.py`: cadena intacta, monto alterado, hueco en los
 `tests/integration/test_req_10_alteracion.py` (altera una confirmada con `UPDATE`
 directo y comprueba que la verificación señala su bloque),
 `tests/integration/test_req_22_solo_lee.py` (el contenido de las tres tablas es el
-mismo antes y después) y
-`tests/integration/test_req_24_rutas.py::test_req_27_get_verificar_devuelve_el_dictamen_y_el_bloque_alterado`.
-El procedimiento manual, con la aplicación corriendo, está en el README.
+mismo antes y después),
+`tests/integration/test_req_24_rutas.py::test_req_27_get_verificar_devuelve_el_dictamen_y_el_bloque_alterado`
+y, para la auditoría y las reparaciones, `tests/unit/test_auditoria.py`,
+`tests/integration/test_auditoria.py`, `tests/unit/test_sello.py`,
+`tests/integration/test_sello.py`, `tests/unit/test_reparacion.py`,
+`tests/integration/test_reparacion.py`,
+`tests/integration/test_persistencia_de_reparacion.py` y
+`tests/integration/test_verificar_auditoria.py` (el panel, la confirmación obligatoria,
+la acción desconocida, el reencadenado, el aislamiento, el reagrupado y el sellado).
+
+**Evidencia visual.** Las capturas `17-flujo-cadena-verificada.png`,
+`18-alteracion-detectada.png` y `19-alteracion-revertida.png` son del 4 de noviembre y
+muestran el dictamen y el ida y vuelta de la alteración, pero corresponden a la versión
+anterior de la página: no incluyen el panel de auditoría ni el sello. Esa captura
+sigue pendiente y así queda declarado en `docs/entrega-final.md` (P1-1).
 
 ## CU-05: consultar el historial de una wallet
 
@@ -325,11 +478,12 @@ y `...::test_req_28_rf5_historial_con_uuid_invalido_o_inexistente_responde_una_p
 ## El perfil, los contactos y el ayudante
 
 Estas funciones no son casos de uso del eje: son lo que convierte el sistema en algo que
-se usa como producto. El camino es el mismo para las tres: alguien se registra, el
+se usa como producto. El camino es el mismo para todas: alguien se registra, el
 administrador aprueba su cuenta y entra.
 
-**El perfil (`GET /perfil`).** Muestra el nombre de usuario, el rol, el estado y la foto.
-La foto es opcional: se acepta un JPEG, PNG o WebP de hasta 2 MB, el servidor reconoce el
+**El perfil (`GET /perfil`).** Muestra el nombre de usuario, el tipo de cuenta, la fecha
+de alta, la foto y, en las cuentas comunes, todas sus wallets (REQ-47). La foto es
+opcional: se acepta un JPEG, PNG o WebP de hasta 2 MB, el servidor reconoce el
 tipo por los primeros bytes (un SVG se rechaza porque puede llevar código) y guarda el
 archivo en `FOTOS_DIR` mientras la base apunta a él. Sin foto —o si el archivo ya no
 está— la interfaz pinta la inicial del nombre.
@@ -357,6 +511,14 @@ que funciona sin red. Con `ASISTENTE_API_KEY` configurada, una pregunta escrita 
 responde un servicio de IA, con el resumen de la cuenta de la sesión y un aviso visible de
 que esos datos salen del equipo. No escribe, no firma y no mueve dinero.
 
+Estas funciones cubren del REQ-40 al REQ-45 del diseño de perfil, contactos, fotos y
+ayudante, y la wallet con dueño añade el REQ-46 y el REQ-47. La captura
+`22-mis-contactos.png` muestra la agenda con el número de movimientos y la última fecha de
+cada contacto; `11-asistente.png` y `23-asistente-conversacion.png` muestran el ayudante en
+modo guía local, sin proveedor de IA configurado. El perfil, el cambio de contraseña y la
+elección entre varias wallets no tienen captura todavía (pendiente P1-1 de
+`docs/entrega-final.md`).
+
 **Qué prueba lo demuestra.** `tests/integration/test_perfil.py`, `test_foto.py`,
 `test_contactos.py`, `test_idioma.py` y `test_asistente.py`; el diseño con sus
 requerimientos está en `docs/superpowers/specs/2026-10-31-perfil-contactos-fotos-asistente-design.md`.
@@ -381,4 +543,14 @@ requerimientos está en `docs/superpowers/specs/2026-10-31-perfil-contactos-foto
 | ¿La página de error depende de la base de datos?                         | No: no recibe el panel y `base.html` lo omite si no está definido, así que un 404 se pinta aunque el ledger no abra y nunca escribe el génesis                                                                                           | `src/web/app.py`, `base.html`, `tests/integration/test_req_24_rutas.py::test_req_28_rf5_la_pagina_de_error_no_depende_del_ledger`                                                                                                                                            |
 | ¿Cómo se sabe que corre en el piso de Python 3.11?                       | `pyproject.toml` declara `requires-python = ">=3.11"`; la corrida dentro del contenedor del piso es la que lo confirma                                                                                                                   | `pyproject.toml`, `tests/test_explicacion.py::test_req_20_el_interprete_cumple_el_piso_declarado`, README                                                                                                                                                                    |
 | ¿Qué pasa si se pide el historial de una wallet que no existe?           | La ruta valida el identificador y responde la página de error con 404 (RF-5)                                                                                                                                                             | `src/web/app.py`, `tests/integration/test_req_24_rutas.py::test_req_28_rf5_historial_con_uuid_invalido_o_inexistente_responde_una_pagina_clara`                                                                                                                              |
-| ¿Cómo se sabe que la explicación no se separó del código?                | Una prueba exige que los cinco casos de uso estén en este recorrido y que los 39 requerimientos tengan su `test_req_NN_`                                                                                                                 | `tests/test_explicacion.py`                                                                                                                                                                                                                                                  |
+| ¿Quién puede ser dueño de una wallet?                                    | Solo una cuenta común aprobada; el servicio valida existencia, estado y rol antes de escribir, y un dueño que no sirve no crea la wallet (REQ-46)                                                                                        | `Cuentas.registrar_wallet`, `_puede_ser_dueno`, `tests/integration/test_req_46_registro_con_dueno.py`                                                                                                                                                                        |
+| ¿Puede una cuenta tener varias wallets y cómo elige con cuál opera?      | Sí (REQ-47): la propiedad vive en `wallets.owner_id`; la principal es la más antigua y el tablero guarda la elegida en `wallet_elegida` (`POST /mi-wallet`)                                                                              | `src/web/user.py`, `src/web/templates/perfil.html`, `tests/integration/test_req_47_varias_wallets.py`                                                                                                                                                                        |
+| ¿Qué es el sello de vigilancia y qué detecta?                            | Un archivo JSON fuera de la base con la altura y el hash de la cabeza, firmado con HMAC-SHA256; detecta el recorte de la cola                                                                                                            | `src/persistence/sello.py`, `src/domain/auditoria.py`, `tests/unit/test_sello.py`                                                                                                                                                                                            |
+| ¿Qué pasa si no hay un sello fijado?                                     | La auditoría lo declara como nota, muestra «Sin fijar» y añade el límite del recorte: sin ancla externa, un recorte es indistinguible de una cadena que nunca tuvo esos bloques                                                          | `_revisar_sello`, `_limites`, `tests/unit/test_auditoria.py`, `tests/integration/test_verificar_auditoria.py`                                                                                                                                                                |
+| ¿La auditoría de `/verificar` repara algo?                               | No: solo lee y enumera hallazgos; reparar es `POST /verificar/reparar` con la casilla `confirmar=si` y una redirección 303 al panel                                                                                                      | `verificar()`, `reparar()`, `tests/integration/test_verificar_auditoria.py`                                                                                                                                                                                                  |
+| ¿Qué repara «reparar todo» y qué deja sin resolver?                      | Rechaza el pool inválido, aísla las confirmadas inválidas y reencadena; no recupera el contenido alterado ni borrado, no cierra huecos de índices y no renumera                                                                          | `Blockchain.repair_all`, `src/domain/reparacion.py`, `tests/unit/test_reparacion.py`                                                                                                                                                                                         |
+| ¿Cómo se sabe que la auditoría no escribe nada?                          | Una prueba compara el contenido de las tablas antes y después, y la de `/verificar` comprueba además que no se escribe el archivo del sello (REQ-22)                                                                                     | `tests/integration/test_auditoria.py`, `tests/integration/test_verificar_auditoria.py::test_verificar_sigue_sin_escribir_filas`                                                                                                                                              |
+| ¿El ayudante usa inteligencia artificial?                                | Siempre responde la guía local sin red; con `ASISTENTE_API_KEY` configurada, una pregunta escrita a mano la contesta el proveedor con el resumen de la cuenta de la sesión y el aviso de privacidad visible                              | `src/web/asistente.py`, `src/web/ia.py`, `tests/integration/test_asistente.py`, `tests/unit/test_asistente_ia.py`                                                                                                                                                            |
+| ¿Qué encontró el pentest?                                                | Cuatro hallazgos abiertos con remediación propuesta —tres de severidad media y uno baja—, ninguno alto ni crítico; no apareció inyección de SQL ni XSS                                                                                   | `docs/pentesting/informe.md`, `docs/pentesting/informe.pdf`, `docs/pentesting/matriz-trazabilidad.md`                                                                                                                                                                        |
+| ¿Cuántos requerimientos y casos de uso tiene el proyecto?                | Cinco casos de uso y cuarenta y siete requerimientos (REQ-01 a REQ-47); la guarda exige los cinco CU y los 39 numerados (REQ-01 a REQ-39) más REQ-46/REQ-47, y REQ-40 a REQ-45 se verifican en sus archivos por caso                     | `tests/test_explicacion.py`, `docs/entrega-final.md`                                                                                                                                                                                                                         |
+| ¿Cómo se sabe que la explicación no se separó del código?                | Una prueba exige que los cinco casos de uso estén en este recorrido y que cada requerimiento tenga su prueba: los 39 numerados (REQ-01 a REQ-39) y REQ-46/REQ-47 con `test_req_NN_`, y REQ-40 a REQ-45 en sus archivos por caso          | `tests/test_explicacion.py`                                                                                                                                                                                                                                                  |
