@@ -118,9 +118,12 @@ la pública chocara con `uq_wallets_public_key`, el error del motor sube sin tra
 con `nombres_por_wallet()`, que lee la base una vez por petición. La ficha lleva
 Dueño, Identificador, Clave pública —con el valor completo en el `title` y el botón de
 copiar— y Saldo disponible, y dos enlaces: «Ver su historial» y «Proponer una
-transacción». La captura `14-flujo-wallet-creada.png` es del 4 de noviembre y muestra
-la ficha anterior, cuando el formulario todavía no pedía dueño y la wallet recién
-creada quedaba «Sin dueño»; el formulario de hoy es el `select` de dueño descrito.
+transacción». La captura `24-registro-wallet-con-dueno.png` muestra el formulario con
+«¿A quién se la asignas?» y la cuenta `asociado1` elegida, y
+`25-wallet-asignada-a-cliente.png` la ficha resultante, «Wallet registrada a nombre de
+asociado1.», con el dueño en su campo. La captura `14-flujo-wallet-creada.png` es del
+4 de noviembre y muestra la ficha anterior, cuando el formulario todavía no pedía dueño
+y la wallet recién creada quedaba «Sin dueño».
 
 **Varias wallets por cuenta (REQ-47).** Una cuenta común aprobada puede tener varias
 wallets: la primera la crea la aprobación de la cuenta (REQ-33) y las demás se
@@ -128,7 +131,9 @@ registran por esta ruta. La principal es la más antigua. `GET /perfil` las list
 y, cuando hay más de una, el tablero pinta el selector «Tus wallets» con el saldo de
 cada una; `POST /mi-wallet` valida que la elegida pertenezca a la sesión y la guarda
 en `wallet_elegida`, y el envío por nombre de usuario apunta siempre a la principal del
-destinatario.
+destinatario. La captura `26-multiwallets-tablero.png` muestra el tablero de `asociado1`
+con el selector «Tus wallets» y el saldo de la wallet elegida, y
+`27-multiwallets-perfil.png` el perfil con los tres códigos de wallet de la cuenta.
 
 **Qué prueba lo demuestra.** `tests/unit/test_req_01_wallet.py`
 (`test_req_01_la_privada_no_esta_en_claro_en_la_wallet`,
@@ -429,11 +434,15 @@ y, para la auditoría y las reparaciones, `tests/unit/test_auditoria.py`,
 `tests/integration/test_verificar_auditoria.py` (el panel, la confirmación obligatoria,
 la acción desconocida, el reencadenado, el aislamiento, el reagrupado y el sellado).
 
-**Evidencia visual.** Las capturas `17-flujo-cadena-verificada.png`,
+**Evidencia visual.** La captura `06-verificar.png` muestra el panel completo: «La
+cadena es válida», las cifras de la auditoría, el sello de vigilancia en «Coincide»,
+cero hallazgos, la reparación sugerida y la tabla de bloques.
+`28-auditoria-detecta-sello-no-coincide.png` muestra el mismo panel con el sello en
+«No coincide» y un hallazgo crítico («El sello no coincide con la cadena») junto con la
+reparación de fijarlo. Las capturas `17-flujo-cadena-verificada.png`,
 `18-alteracion-detectada.png` y `19-alteracion-revertida.png` son del 4 de noviembre y
-muestran el dictamen y el ida y vuelta de la alteración, pero corresponden a la versión
-anterior de la página: no incluyen el panel de auditoría ni el sello. Esa captura
-sigue pendiente y así queda declarado en `docs/entrega-final.md` (P1-1).
+muestran el dictamen y el ida y vuelta de la alteración en la versión anterior de la
+página, sin panel de auditoría.
 
 ## CU-05: consultar el historial de una wallet
 
@@ -515,9 +524,10 @@ Estas funciones cubren del REQ-40 al REQ-45 del diseño de perfil, contactos, fo
 ayudante, y la wallet con dueño añade el REQ-46 y el REQ-47. La captura
 `22-mis-contactos.png` muestra la agenda con el número de movimientos y la última fecha de
 cada contacto; `11-asistente.png` y `23-asistente-conversacion.png` muestran el ayudante en
-modo guía local, sin proveedor de IA configurado. El perfil, el cambio de contraseña y la
-elección entre varias wallets no tienen captura todavía (pendiente P1-1 de
-`docs/entrega-final.md`).
+modo guía local, sin proveedor de IA configurado. `26-multiwallets-tablero.png` y
+`27-multiwallets-perfil.png` muestran la elección entre varias wallets y el perfil con
+todas ellas; el cambio de contraseña aparece en su formulario dentro de
+`27-multiwallets-perfil.png`, aunque no hay captura del flujo de aprobación.
 
 **Qué prueba lo demuestra.** `tests/integration/test_perfil.py`, `test_foto.py`,
 `test_contactos.py`, `test_idioma.py` y `test_asistente.py`; el diseño con sus

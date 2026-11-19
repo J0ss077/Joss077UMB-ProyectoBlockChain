@@ -547,16 +547,16 @@ volumen).
 
 La ruta es relativa a este documento. Las capturas y los textos marcados con «4 de
 noviembre» son anteriores a la wallet con dueño, a la auditoría/sello/reparación y al
-perfil; las marcadas «19 de noviembre» son frescas. En total son 23 capturas: 21 de
+perfil; las marcadas «19 de noviembre» son frescas. En total son 28 capturas: 26 de
 interfaz y 2 de terminal.
 
-> **Nota de alcance sobre las capturas nuevas.** Las capturas 11 y 23 del ayudante ya se
-> regeneraron el 19 de noviembre y muestran respuestas reales en modo guía local. Las
-> demás capturas del 4 de noviembre no muestran el panel de auditoría, el sello de
-> vigilancia ni las reparaciones, el perfil, ni la elección entre varias wallets. Esa
-> evidencia es documental y de pruebas: la auditoría y la reparación están cubiertas por
-> el recorrido y por las pruebas, y el inventario conserva las capturas históricas como
-> evidencia de la interfaz. No se deben presentar como si mostraran esas funciones.
+> **Nota de alcance sobre las capturas nuevas.** Las capturas 03, 06, 11 y 23 se
+> regeneraron el 19 de noviembre y las 24 a 28 son nuevas: muestran la asignación de
+> dueño al registrar una wallet, las varias wallets de una cuenta, la auditoría con el
+> sello coincidente y la auditoría detectando un sello no coincidente. Las capturas del
+> 4 de noviembre que siguen —01, 02, 04, 05, 07 a 10 y 12 a 22— no muestran esas
+> funciones: el inventario las conserva como evidencia histórica de la interfaz y no se
+> deben presentar como si mostraran lo agregado después de esa fecha.
 
 ### 5.1 Pruebas y resultados
 
@@ -572,24 +572,24 @@ interfaz y 2 de terminal.
 
 ### 5.2 Capturas de la interfaz
 
-Son 23 capturas: 21 de interfaz y 2 de terminal. Las capturas 11 y 23 son del 19 de
-noviembre de 2026; el resto, del 4 de noviembre. El listado completo con el nombre de
-cada archivo está en [evidencias/capturas/](evidencias/capturas/).
+Son 28 capturas: 26 de interfaz y 2 de terminal (20 y 21). Las capturas 03, 06, 11, 23 y
+24 a 28 son del 19 de noviembre de 2026; el resto, del 4 de noviembre. El listado
+completo con el nombre de cada archivo está en
+[evidencias/capturas/](evidencias/capturas/).
 
 | Archivo | Qué demuestra |
 | --- | --- |
 | [01-ingreso.png](evidencias/capturas/01-ingreso.png) | Pantalla de ingreso con el tema de la aplicación |
 | [02-portada-admin.png](evidencias/capturas/02-portada-admin.png) | Portada del administrador: conteos, cadena, últimas transacciones y panel de wallets con saldos |
-| [03-wallets.png](evidencias/capturas/03-wallets.png) | Gestión de wallets con la clave pública y el botón de copiar |
+| [03-wallets.png](evidencias/capturas/03-wallets.png) | Registro de wallet con el selector «¿A quién se la asignas?» y el panel de wallets con sus saldos (19 de noviembre; REQ-46) |
 | [04-transacciones-rechazo.png](evidencias/capturas/04-transacciones-rechazo.png) | Formulario de transacción con un monto inválido y el motivo del rechazo |
 | [05-bloques.png](evidencias/capturas/05-bloques.png) | Cierre de bloque con el pool en espera |
-| [06-verificar.png](evidencias/capturas/06-verificar.png) | Dictamen de integridad de la cadena (4 de noviembre; no muestra el panel de auditoría, sello ni reparaciones) |
+| [06-verificar.png](evidencias/capturas/06-verificar.png) | Dictamen de cadena válida con el panel de auditoría del estado, el sello de vigilancia «Coincide», cero hallazgos y las reparaciones (19 de noviembre) |
 | [07-pendientes.png](evidencias/capturas/07-pendientes.png) | Cola de aprobación con una cuenta pendiente y su fecha |
 | [08-tablero-comun.png](evidencias/capturas/08-tablero-comun.png) | Tablero del usuario común: saldo y formulario de envío |
 | [09-estadisticas-comun.png](evidencias/capturas/09-estadisticas-comun.png) | Estadísticas propias con la tarjeta «Proyección del próximo mes» |
 | [10-estadisticas-admin.png](evidencias/capturas/10-estadisticas-admin.png) | Estadísticas desde el administrador, con selector de usuario y proyección |
 | [11-asistente.png](evidencias/capturas/11-asistente.png) | Pestaña del ayudante con «Lo que pasa ahora», preguntas sugeridas y una respuesta de la guía local (19 de noviembre) |
-| [23-asistente-conversacion.png](evidencias/capturas/23-asistente-conversacion.png) | Conversación del ayudante con pregunta escrita a mano y respuesta, en modo guía local (19 de noviembre) |
 | [12-tema-oscuro.png](evidencias/capturas/12-tema-oscuro.png) | La misma pantalla de estadísticas en tema oscuro |
 | [13-error-503.png](evidencias/capturas/13-error-503.png) | Página de error cuando la base no responde |
 | [14-flujo-wallet-creada.png](evidencias/capturas/14-flujo-wallet-creada.png) | Wallet recién registrada con identificador y clave pública |
@@ -601,6 +601,12 @@ cada archivo está en [evidencias/capturas/](evidencias/capturas/).
 | [20-consulta-psql.png](evidencias/capturas/20-consulta-psql.png) | Terminal con `psql -f db/consultas.sql`: conteos, saldos y cadena eslabonada |
 | [21-registro-en-bd.png](evidencias/capturas/21-registro-en-bd.png) | `SELECT` de una cuenta registrada con su estado y fecha |
 | [22-mis-contactos.png](evidencias/capturas/22-mis-contactos.png) | Agenda del usuario común con sus contactos y el movimiento de cada uno |
+| [23-asistente-conversacion.png](evidencias/capturas/23-asistente-conversacion.png) | Conversación del ayudante con pregunta escrita a mano y respuesta, en modo guía local (19 de noviembre) |
+| [24-registro-wallet-con-dueno.png](evidencias/capturas/24-registro-wallet-con-dueno.png) | Registro de wallet con una cuenta común elegida en el selector de dueño, antes de enviar el formulario (REQ-46) |
+| [25-wallet-asignada-a-cliente.png](evidencias/capturas/25-wallet-asignada-a-cliente.png) | Confirmación de la wallet registrada a nombre de `asociado1`, con dueño, identificador, clave pública y saldo 0 (REQ-46) |
+| [26-multiwallets-tablero.png](evidencias/capturas/26-multiwallets-tablero.png) | Tablero del usuario común con el selector «Tus wallets» y el botón «Elegir» para operar con una de sus wallets (REQ-47) |
+| [27-multiwallets-perfil.png](evidencias/capturas/27-multiwallets-perfil.png) | Perfil de `asociado1` con las tres wallets de la cuenta listadas junto a sus demás datos (REQ-47) |
+| [28-auditoria-detecta-sello-no-coincide.png](evidencias/capturas/28-auditoria-detecta-sello-no-coincide.png) | Auditoría con la cadena válida pero el sello de vigilancia «No coincide»: hallazgo crítico y las reparaciones «Reagrupar el pool» y «Fijar el sello» (19 de noviembre) |
 
 ### 5.3 Figuras y documentos de soporte
 
@@ -613,7 +619,7 @@ cada archivo está en [evidencias/capturas/](evidencias/capturas/).
 | [informe.md](pentesting/informe.md) / [informe.pdf](pentesting/informe.pdf) | Informe de pentesting con metodología, cuatro hallazgos, CVSS, evidencia y remediación; el PDF tiene 18 páginas e incluye la nota de alcance temporal (1.4) |
 | [matriz-trazabilidad.md](pentesting/matriz-trazabilidad.md) | Trazabilidad entre requerimientos, pruebas funcionales y categorías de OWASP |
 | [triaje-de-herramientas.md](pentesting/triaje-de-herramientas.md) | Triaje de las herramientas del pentest y sus resultados |
-| [evidencias-fase4.md](evidencias-fase4.md) | Evidencias y checklist de la Fase 4, alineadas con la corrida fresca del 19 de noviembre y con las 23 capturas |
+| [evidencias-fase4.md](evidencias-fase4.md) | Evidencias y checklist de la Fase 4, alineadas con la corrida fresca del 19 de noviembre y con las 28 capturas |
 | [presupuesto-y-cronograma.md](presupuesto-y-cronograma.md) | Presupuesto y cronograma; las actividades 1 a 30 cerradas y la nota sobre la grabación y el acta pendientes |
 | [recorrido-de-casos-de-uso.md](recorrido-de-casos-de-uso.md) | Camino real de cada caso de uso: ruta, método del dominio, tabla y consulta, con la auditoría y la reparación |
 | [proceso-y-alcance.md](proceso-y-alcance.md) | Etapas de construcción, lo que no entra y riesgos conocidos |
@@ -634,7 +640,7 @@ cada archivo está en [evidencias/capturas/](evidencias/capturas/).
 La ronda de alineación documental dejó estos documentos con el estado real del
 prototipo. Los recuentos vigentes son: 47 requerimientos (REQ-01 a REQ-47), 5 casos de
 uso, 525 pruebas aprobadas y 1 omitida, 158 pruebas unitarias sin base, 68 archivos de
-prueba, 23 capturas, 4 hallazgos de pentest y 18 páginas del informe en PDF.
+prueba, 28 capturas, 4 hallazgos de pentest y 18 páginas del informe en PDF.
 
 | Documento | Qué contiene y qué se actualizó |
 | --- | --- |
@@ -642,7 +648,7 @@ prueba, 23 capturas, 4 hallazgos de pentest y 18 páginas del informe en PDF.
 | [arquitectura-y-decisiones.md](arquitectura-y-decisiones.md) | Capas actualizadas, modelo de datos con `wallets.owner_id`, decisiones de la auditoría y del sello, y declaración de prototipo local sin despliegue |
 | [proceso-y-alcance.md](proceso-y-alcance.md) | Etapas 1 a 13, los 47 requerimientos, la evidencia fresca y los riesgos; declara que el despliegue público no entra |
 | [recorrido-de-casos-de-uso.md](recorrido-de-casos-de-uso.md) | Recorrido de los cinco casos de uso y de las funciones agregadas, con la auditoría, el sello, la reparación y las capturas |
-| [evidencias-fase4.md](evidencias-fase4.md) | Evidencias de la Fase 4 actualizadas con la corrida fresca, el pentest y las 23 capturas; la rama de la entrega es `main` |
+| [evidencias-fase4.md](evidencias-fase4.md) | Evidencias de la Fase 4 actualizadas con la corrida fresca, el pentest y las 28 capturas; la rama de la entrega es `main` |
 | [presupuesto-y-cronograma.md](presupuesto-y-cronograma.md) | Actividades 1 a 30 cerradas y nota de que la grabación y el acta de la socialización todavía no se anexan |
 | [pentesting/informe.md](pentesting/informe.md) y [pentesting/informe.pdf](pentesting/informe.pdf) | Informe de pentest actualizado con la nota de alcance temporal (1.4); el PDF regenerado tiene 18 páginas |
 | [pentesting/matriz-trazabilidad.md](pentesting/matriz-trazabilidad.md) | Trazabilidad de los requerimientos de cuentas y del ledger —REQ-30 a REQ-47 con su prueba funcional— y de las categorías de OWASP WSTG |
@@ -665,7 +671,7 @@ entorno ya levantado.
 | Informe de pentest actualizado y PDF regenerado | Hecho | [informe.md](pentesting/informe.md) y [informe.pdf](pentesting/informe.pdf), 18 páginas, con la nota de alcance temporal (1.4) |
 | Capturas del ayudante regeneradas y descritas | Hecho | [11-asistente.png](evidencias/capturas/11-asistente.png) y [23-asistente-conversacion.png](evidencias/capturas/23-asistente-conversacion.png), del 19 de noviembre, en modo guía local; versionadas en `a1327b1` |
 | Evidencia fresca de la suite | Hecho | [pruebas-finales-2026-11-19.txt](evidencias/pruebas-finales-2026-11-19.txt), versionada en `a1327b1` (local, todavía sin subir al remoto) |
-| Cifras y recuentos corregidos | Hecho | 525 pruebas aprobadas y 1 omitida, 158 unitarias sin base, 47 requerimientos y 23 capturas en los documentos de la sección 5.5 |
+| Cifras y recuentos corregidos | Hecho | 525 pruebas aprobadas y 1 omitida, 158 unitarias sin base, 47 requerimientos y 28 capturas en los documentos de la sección 5.5 |
 | Registro de la socialización y la demostración en vivo | Hecho | [evidencias/socializacion/README.md](evidencias/socializacion/README.md) |
 
 ### 6.2 Pendientes antes de entregar

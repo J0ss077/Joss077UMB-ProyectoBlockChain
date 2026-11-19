@@ -99,25 +99,29 @@ el encabezado de `src/bootstrap.py` y en el paso 4 del README.
 ## 3. Capturas de pantalla
 
 Están en `docs/evidencias/capturas/` y son la aplicación de este repositorio
-funcionando contra PostgreSQL, no un diseño aparte. Las veintiuna de la interfaz se
+funcionando contra PostgreSQL, no un diseño aparte. Las veintiséis de la interfaz se
 tomaron con un navegador sin interfaz sobre las páginas que sirve la propia aplicación,
 con las animaciones de entrada detenidas para que se vea el estado final; las dos de
 terminal son capturas de pantalla de una sesión real de `psql` contra la base de la
-aplicación. Las veintitrés están hechas.
+aplicación. Las veintiocho están hechas.
 
 Las dos capturas del ayudante (`11` y `23`) se tomaron el 19 de noviembre de 2026 con
 la cuenta `asociado1` y el ayudante en modo guía local, sin proveedor de IA configurado.
 Por eso la respuesta lleva el sello «Guía rápida» y no se ve el aviso de privacidad: la
 plantilla sólo lo pinta cuando hay un servicio externo configurado.
 
+Las capturas `03`, `06` y `24` a `28` se tomaron el 19 de noviembre de 2026 con la
+interfaz de la entrega: el registro de wallet con dueño, la auditoría de la cadena y las
+varias wallets de una cuenta común.
+
 | Archivo | Qué muestra | Estado |
 | --- | --- | --- |
 | `01-ingreso.png` | La pantalla de ingreso con el tema de la aplicación | Hecha |
 | `02-portada-admin.png` | Portada del administrador: conteos, cadena, últimas transacciones y panel de wallets con saldos | Hecha |
-| `03-wallets.png` | La gestión de wallets con la clave pública y el botón de copiar | Hecha |
+| `03-wallets.png` | El registro de wallet con el selector de dueño «¿A quién se la asignas?» y el panel de wallets con el dueño y el saldo de cada una | Hecha |
 | `04-transacciones-rechazo.png` | El formulario de transacción con un monto inválido y el mensaje que explica el rechazo | Hecha |
 | `05-bloques.png` | El cierre de bloque con el pool en espera | Hecha |
-| `06-verificar.png` | El dictamen de integridad de la cadena | Hecha |
+| `06-verificar.png` | El dictamen de integridad de la cadena, la auditoría del estado con el sello de vigilancia coincidente y sin hallazgos, el bloque de reparaciones y la tabla de bloques y los límites | Hecha |
 | `07-pendientes.png` | La cola de aprobación con una cuenta pendiente y su fecha de registro | Hecha |
 | `08-tablero-comun.png` | El tablero del usuario común: saldo y envío | Hecha |
 | `09-estadisticas-comun.png` | Las estadísticas propias: filtros, cifras, gráficas y la tarjeta de proyección del próximo mes | Hecha |
@@ -135,6 +139,11 @@ plantilla sólo lo pinta cuando hay un servicio externo configurado.
 | `21-registro-en-bd.png` | `SELECT` de la cuenta `evidencia-fase4` con su estado y su fecha de registro | Hecha |
 | `22-mis-contactos.png` | La agenda del usuario común con sus contactos y el movimiento de cada uno | Hecha |
 | `23-asistente-conversacion.png` | Una conversación del ayudante: la pregunta escrita a mano sobre un envío «En espera» y su respuesta de la guía rápida | Hecha |
+| `24-registro-wallet-con-dueno.png` | El formulario de registro de wallet con `asociado1` elegido en el selector de dueño, antes de enviarlo | Hecha |
+| `25-wallet-asignada-a-cliente.png` | La ficha de la wallet recién registrada a nombre de `asociado1`, con la fila Dueño, el identificador y la clave pública | Hecha |
+| `26-multiwallets-tablero.png` | El tablero de `asociado1` con el selector «Tus wallets», que sólo aparece con más de una, y el saldo de la wallet elegida | Hecha |
+| `27-multiwallets-perfil.png` | El perfil de `asociado1` con la ficha «Tus wallets», que lista sus tres wallets | Hecha |
+| `28-auditoria-detecta-sello-no-coincide.png` | La auditoría detectando el sello de vigilancia no coincidente, con su hallazgo crítico y las reparaciones «Reagrupar el pool» y «Fijar el sello» | Hecha |
 
 ## 4. Dificultades técnicas encontradas
 
@@ -309,9 +318,10 @@ Para reproducirlas sin tocar los datos de la aplicación hace falta una base apa
       (`docs/pentesting/informe.md`, `docs/pentesting/informe.pdf`).
 - [x] Documento de entrega final con el inventario y los pendientes declarados
       (`docs/entrega-final.md`).
-- [x] Capturas de la aplicación en `docs/evidencias/capturas/` (23 de 23, incluidas
+- [x] Capturas de la aplicación en `docs/evidencias/capturas/` (28 de 28, incluidas
       las del ayudante `11-asistente.png` y `23-asistente-conversacion.png` en modo
-      guía local).
+      guía local, las de wallet con dueño y varias wallets `24` a `27`, y la de la
+      auditoría detectando el sello no coincidente `28-auditoria-detecta-sello-no-coincide.png`).
 
 Al momento de esta actualización, el `main` local está por delante de `origin/main`;
 el envío al remoto y la comprobación con `git ls-remote` están declarados como

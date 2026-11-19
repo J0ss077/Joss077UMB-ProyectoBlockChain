@@ -17,7 +17,7 @@ están las decisiones.
 | 6. Perfil, contactos, fotos e idioma | Perfil de la cuenta, foto, agenda de contactos, solicitud de cambio de contraseña e interfaz en español o inglés | `REQ-40` a `REQ-43`, cada uno con su prueba |
 | 7. El ayudante | Guía local que responde sin red y, con `ASISTENTE_API_KEY`, un modelo externo en sólo lectura | `REQ-44` y `REQ-45`: sólo consulta y no expone datos de otras cuentas |
 | 8. Interfaz | Sistema de diseño «Bloques», tema claro y oscuro, navegación por rol, mensajes de éxito y de error | Capturas de todas las pantallas y pruebas de navegación |
-| 9. Fase 4 | Estadísticas con filtros y gráficas, proyección del próximo mes con red neuronal, manejo del error de conexión y evidencias | 22 capturas en esa etapa (hoy son 23), pruebas de navegación, de conexión, de estadísticas y de la proyección |
+| 9. Fase 4 | Estadísticas con filtros y gráficas, proyección del próximo mes con red neuronal, manejo del error de conexión y evidencias | 22 capturas en esa etapa (hoy son 28), pruebas de navegación, de conexión, de estadísticas y de la proyección |
 | 10. Wallet con dueño y varias wallets | La propiedad pasa de `users` a `wallets.owner_id`; el registro pregunta el dueño y el tablero elige con qué wallet se opera | `REQ-46` y `REQ-47`, y la suite corrida sobre el esquema nuevo |
 | 11. Auditoría, sello y reparación | Auditoría completa del estado, sello de vigilancia externo, panel en `/verificar` y `POST /verificar/reparar` | Pruebas de auditoría, de sello, de reparación y de persistencia de la reparación |
 | 12. Pentest | OWASP WSTG v4.2 sobre las fases de PTES, en una instancia local aislada, con triaje e informe | [informe.md](pentesting/informe.md): cuatro hallazgos abiertos con remediación propuesta |

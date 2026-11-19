@@ -131,13 +131,17 @@ README y en el `.env` local, respectivamente; no se escriben en este archivo.
 
 ### 4.1 Evidencias visuales del prototipo
 
+El repositorio cuenta con 28 capturas: 26 de interfaz y 2 de terminal. Las que siguen
+respaldan la demostración; las nuevas del 19 de noviembre muestran las funciones que se
+presentaron.
+
 | Evidencia | Qué muestra |
 | --- | --- |
 | [01-ingreso.png](../capturas/01-ingreso.png) | Pantalla de ingreso |
 | [02-portada-admin.png](../capturas/02-portada-admin.png) | Portada del administrador con conteos, cadena y panel de wallets |
-| [03-wallets.png](../capturas/03-wallets.png) | Registro y clave pública de una wallet |
+| [03-wallets.png](../capturas/03-wallets.png) | Registro de wallet con el selector de dueño y el panel de wallets con saldos (19 de noviembre) |
 | [05-bloques.png](../capturas/05-bloques.png) | Cierre de bloque con el pool en espera |
-| [06-verificar.png](../capturas/06-verificar.png) | Dictamen de integridad (captura del 4 de noviembre; anterior al panel de auditoría) |
+| [06-verificar.png](../capturas/06-verificar.png) | Dictamen de cadena válida con la auditoría del estado y el sello de vigilancia «Coincide» (19 de noviembre) |
 | [07-pendientes.png](../capturas/07-pendientes.png) | Cola de aprobación del administrador |
 | [08-tablero-comun.png](../capturas/08-tablero-comun.png) | Tablero del usuario común |
 | [14-flujo-wallet-creada.png](../capturas/14-flujo-wallet-creada.png) | Wallet recién registrada con su identificador |
@@ -148,6 +152,11 @@ README y en el `.env` local, respectivamente; no se escriben en este archivo.
 | [19-alteracion-revertida.png](../capturas/19-alteracion-revertida.png) | Vuelta a la cadena válida |
 | [20-consulta-psql.png](../capturas/20-consulta-psql.png) | Consulta de evidencia contra la base |
 | [22-mis-contactos.png](../capturas/22-mis-contactos.png) | Agenda de contactos del usuario común |
+| [24-registro-wallet-con-dueno.png](../capturas/24-registro-wallet-con-dueno.png) | Registro de wallet con una cuenta elegida en el selector de dueño (REQ-46) |
+| [25-wallet-asignada-a-cliente.png](../capturas/25-wallet-asignada-a-cliente.png) | Confirmación de la wallet asignada a `asociado1`, con su dueño y saldo 0 (REQ-46) |
+| [26-multiwallets-tablero.png](../capturas/26-multiwallets-tablero.png) | Tablero del usuario común con el selector «Tus wallets» (REQ-47) |
+| [27-multiwallets-perfil.png](../capturas/27-multiwallets-perfil.png) | Perfil de la cuenta con sus tres wallets listadas (REQ-47) |
+| [28-auditoria-detecta-sello-no-coincide.png](../capturas/28-auditoria-detecta-sello-no-coincide.png) | Auditoría con la cadena válida y el sello de vigilancia no coincidente: hallazgo crítico y reparaciones disponibles |
 
 ### 4.2 Evidencias de las pruebas
 
