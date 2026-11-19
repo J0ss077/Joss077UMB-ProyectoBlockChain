@@ -1,0 +1,265 @@
+# Workflow de seguridad del proyecto (T7).
+#
+# No se publica: se valida en local con actionlint y act y el resumen de
+# `docs/pentesting/evidencias/ci/resumen.json` declara que no corrió en
+# GitHub. Los cuatro jobs corresponden a §7.6 del diseño de pentesting:
+#
+# - `lint`: ruff sobre todo el árbol.
+# - `sast`: bandit, pip-audit y gitleaks (árbol e historial) sobre `src/`.
+# - `pruebas`: la suite contra un PostgreSQL 16 de servicio.
+# - `dast-anonimo`: arranque de la aplicación y ZAP pasivo.
+#
+# Todos suben sus artefactos con `if: always()`: la evidencia es el punto,
+# aunque el job falle.
+
+name: Seguridad
+
+on:
+  push:
+    branches:
+      - main
+      - pentest
+  pull_request:
+  schedule:
+    - cron: "0 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: seguridad-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.11"
+  EVIDENCIAS: docs/pentesting/evidencias
+
+jobs:
+  lint:
+    name: lint (ruff)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Descargar el repositorio
+        uses: actions/checkout@v4
+      - name: Preparar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Instalar ruff
+        run: python -m pip install --upgrade pip ruff==0.17.0
+      - name: Ejecutar ruff
+        run: |
+          set -o pipefail
+          ruff check . 2>&1 | tee ruff-report.txt
+      - name: Subir el informe de lint
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lint-ruff
+          path: ruff-report.txt
+          if-no-files-found: ignore
+
+  sast:
+    name: sast (bandit, pip-audit y gitleaks)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Descargar el repositorio
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Preparar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Instalar analizadores
+        run: python -m pip install --upgrade pip bandit pip-audit
+      - name: Preparar la carpeta de evidencias
+        run: mkdir -p "$EVIDENCIAS/sast"
+      - name: Bandit sobre src
+        run: bandit -r src -f json -o "$EVIDENCIAS/sast/bandit.json" -q || true
+      - name: pip-audit sobre requirements.txt
+        run: pip-audit -r requirements.txt -f json -o "$EVIDENCIAS/sast/pip-audit.json" || true
+      - name: gitleaks sobre el árbol
+        run: |
+          docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:latest \
+            detect --no-git --source /repo --report-format json \
+            --report-path "/repo/$EVIDENCIAS/sast/gitleaks-arbol.json" --exit-code 0
+      - name: gitleaks sobre el historial
+        run: |
+          docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:latest \
+            detect --source /repo --report-format json \
+            --report-path "/repo/$EVIDENCIAS/sast/gitleaks-historial.json" --exit-code 0
+      - name: Subir los informes de SAST
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sast-informes
+          path: ${{ env.EVIDENCIAS }}/sast/
+          if-no-files-found: ignore
+
+  pruebas:
+    name: pruebas (pytest con PostgreSQL)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: blockchain_user
+          POSTGRES_PASSWORD: blockchain_password
+          POSTGRES_DB: blockchain_pruebas
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U blockchain_user -d blockchain_pruebas"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - name: Descargar el repositorio
+        uses: actions/checkout@v4
+      - name: Preparar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Instalar dependencias
+        run: python -m pip install --upgrade pip -r requirements.txt
+      - name: Generar secretos sintéticos
+        run: |
+          python - <<'PY'
+          import secrets
+          from pathlib import Path
+
+          from cryptography.fernet import Fernet
+
+          Path(".env").write_text(
+              f"MASTER_KEY={Fernet.generate_key().decode()}\n"
+              f"SESSION_SECRET={secrets.token_hex(32)}\n"
+              f"ADMIN_PASSWORD={secrets.token_urlsafe(12)}\n",
+              encoding="utf-8",
+          )
+          PY
+      - name: Aplicar el esquema con db/init.sql
+        env:
+          TEST_DATABASE_URL: postgresql://blockchain_user:blockchain_password@127.0.0.1:5432/blockchain_pruebas?connect_timeout=5
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+
+          import psycopg
+
+          sql = Path("db/init.sql").read_text(encoding="utf-8")
+          with psycopg.connect(os.environ["TEST_DATABASE_URL"], autocommit=True) as conexion:
+              conexion.execute(sql)
+          print("Esquema aplicado a la base de pruebas")
+          PY
+      - name: Ejecutar la suite
+        env:
+          TEST_DATABASE_URL: postgresql://blockchain_user:blockchain_password@127.0.0.1:5432/blockchain_pruebas?connect_timeout=5
+        run: |
+          mkdir -p "$EVIDENCIAS"
+          pytest tests -q --junitxml="$EVIDENCIAS/junit.xml"
+      - name: Subir el JUnit de la suite
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pruebas-junit
+          path: ${{ env.EVIDENCIAS }}/junit.xml
+          if-no-files-found: ignore
+
+  dast-anonimo:
+    name: dast-anonimo (ZAP pasivo)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: blockchain_user
+          POSTGRES_PASSWORD: blockchain_password
+          POSTGRES_DB: blockchain_pruebas
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U blockchain_user -d blockchain_pruebas"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - name: Descargar el repositorio
+        uses: actions/checkout@v4
+      - name: Preparar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Instalar dependencias
+        run: python -m pip install --upgrade pip -r requirements.txt
+      - name: Generar secretos sintéticos
+        run: |
+          python - <<'PY'
+          import secrets
+          from pathlib import Path
+
+          from cryptography.fernet import Fernet
+
+          Path(".env").write_text(
+              f"MASTER_KEY={Fernet.generate_key().decode()}\n"
+              f"SESSION_SECRET={secrets.token_hex(32)}\n"
+              f"ADMIN_PASSWORD={secrets.token_urlsafe(12)}\n",
+              encoding="utf-8",
+          )
+          PY
+      - name: Sembrar la base y arrancar la aplicación
+        env:
+          DATABASE_URL: postgresql://blockchain_user:blockchain_password@127.0.0.1:5432/blockchain_pruebas?connect_timeout=5
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+
+          import psycopg
+
+          sql = Path("db/init.sql").read_text(encoding="utf-8")
+          with psycopg.connect(os.environ["DATABASE_URL"], autocommit=True) as conexion:
+              conexion.execute(sql)
+          print("Esquema aplicado a la base de la aplicación")
+          PY
+          python -m src.bootstrap
+          mkdir -p "$EVIDENCIAS/dast"
+          nohup python -m src.web.__main__ > app.log 2>&1 &
+          echo $! > app.pid
+          for intento in $(seq 1 30); do
+            if curl -sf -o /dev/null http://127.0.0.1:5000/ingresar; then
+              echo "La aplicación responde en el intento $intento"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "La aplicación no respondió"; cat app.log; exit 1
+      - name: ZAP pasivo
+        continue-on-error: true
+        run: |
+          docker run --rm --network host \
+            -v "$PWD/$EVIDENCIAS/dast:/zap/out:rw" \
+            ghcr.io/zaproxy/zap-stable zap-baseline.py \
+            -t http://127.0.0.1:5000 \
+            -J /zap/out/pasivo-informe.json \
+            -r /zap/out/pasivo-informe.html \
+            -w /zap/out/pasivo-informe.md
+      - name: Detener la aplicación
+        if: always()
+        run: |
+          if [ -f app.pid ]; then kill "$(cat app.pid)" || true; fi
+      - name: Subir los informes de ZAP
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dast-anonimo-zap
+          path: |
+            ${{ env.EVIDENCIAS }}/dast/
+            app.log
+          if-no-files-found: ignore
