@@ -81,11 +81,16 @@ el encabezado de `src/bootstrap.py` y en el paso 4 del README.
 ## 3. Capturas de pantalla
 
 Están en `docs/evidencias/capturas/` y son la aplicación de este repositorio
-funcionando contra PostgreSQL, no un diseño aparte. Las veinte de la interfaz se
+funcionando contra PostgreSQL, no un diseño aparte. Las veintiuna de la interfaz se
 tomaron con un navegador sin interfaz sobre las páginas que sirve la propia aplicación,
 con las animaciones de entrada detenidas para que se vea el estado final; las dos de
 terminal son capturas de pantalla de una sesión real de `psql` contra la base de la
-aplicación. Las veintidós están hechas.
+aplicación. Las veintitrés están hechas.
+
+Las dos capturas del ayudante (`11` y `23`) se tomaron el 19 de noviembre de 2026 con
+la cuenta `asociado1` y el ayudante en modo guía local, sin proveedor de IA configurado.
+Por eso la respuesta lleva el sello «Guía rápida» y no se ve el aviso de privacidad: la
+plantilla sólo lo pinta cuando hay un servicio externo configurado.
 
 | Archivo | Qué muestra | Estado |
 | --- | --- | --- |
@@ -99,7 +104,7 @@ aplicación. Las veintidós están hechas.
 | `08-tablero-comun.png` | El tablero del usuario común: saldo y envío | Hecha |
 | `09-estadisticas-comun.png` | Las estadísticas propias: filtros, cifras, gráficas y la tarjeta de proyección del próximo mes | Hecha |
 | `10-estadisticas-admin.png` | El selector del administrador y las estadísticas de un usuario, con su proyección | Hecha |
-| `11-asistente.png` | La pestaña del ayudante | Hecha |
+| `11-asistente.png` | El ayudante con «Lo que pasa ahora» del tablero, las preguntas sugeridas y la respuesta de la guía rápida a una de ellas | Hecha |
 | `12-tema-oscuro.png` | La misma pantalla de estadísticas con el tema oscuro | Hecha |
 | `13-error-503.png` | La página de error cuando la base no responde | Hecha |
 | `14-flujo-wallet-creada.png` | Una wallet recién registrada, con su identificador y su clave pública | Hecha |
@@ -111,6 +116,7 @@ aplicación. Las veintidós están hechas.
 | `20-consulta-psql.png` | La terminal con `psql -f db/consultas.sql`: conteos por tabla, saldos por wallet y la cadena eslabonada | Hecha |
 | `21-registro-en-bd.png` | `SELECT` de la cuenta `evidencia-fase4` con su estado y su fecha de registro | Hecha |
 | `22-mis-contactos.png` | La agenda del usuario común con sus contactos y el movimiento de cada uno | Hecha |
+| `23-asistente-conversacion.png` | Una conversación del ayudante: la pregunta escrita a mano sobre un envío «En espera» y su respuesta de la guía rápida | Hecha |
 
 ## 4. Dificultades técnicas encontradas
 
@@ -258,4 +264,4 @@ Para reproducirlas sin tocar los datos de la aplicación hace falta una base apa
 - [x] Alteración por fuera de la aplicación detectada y luego revertida (capturas 18 y
       19).
 - [x] Resultados de las pruebas documentados (`docs/evidencias/pruebas.txt`).
-- [x] Capturas de la aplicación en `docs/evidencias/capturas/` (22 de 22).
+- [x] Capturas de la aplicación en `docs/evidencias/capturas/` (23 de 23).

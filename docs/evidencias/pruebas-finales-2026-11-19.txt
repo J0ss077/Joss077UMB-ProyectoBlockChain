@@ -1,0 +1,291 @@
+Evidencia fresca de la suite de pruebas
+=======================================
+
+Proyecto: Joss077UMB-ProyectoBlockChain
+Fecha de la corrida: 2026-11-19, hora de Colombia (America/Bogota, UTC-05:00)
+Commit auditado: 7291dba684516b02e0cc27cae739f1c6d5717944 (7291dba, merge del 2026-11-19)
+Directorio: /home/t1an/Joss077UMB-ProyectoBlockChain
+Responsable: auditoría de pruebas (agente pruebas-auditor)
+
+Esta captura se generó sobre el árbol de trabajo limpio de ese commit. Es la
+salida literal de los tres comandos de verificación que declara AGENTS.md, más el
+detalle de la única omisión y el conteo por archivo.
+
+## Entorno de la corrida
+
+- Python: 3.14.9 (intérprete de .venv; piso declarado >=3.11)
+- pytest: 9.1.1
+- ruff: 0.17.0
+- PostgreSQL: contenedor desechable propio "auditoria-pruebas-pg", imagen
+  postgres:16-alpine (sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea),
+  publicado solo en 127.0.0.1:55440. El esquema db/init.sql se aplicó al crear el
+  volumen del contenedor.
+- Aislamiento: DATABASE_URL y TEST_DATABASE_URL apuntaron al contenedor desechable
+  (127.0.0.1:55440). No se usó la base de desarrollo (127.0.0.1:55432), ni el
+  contenedor "pentest-bd" (127.0.0.1:55433), ni el servidor de 127.0.0.1:5000. El
+  archivo .env no se modificó; de allí solo se leyeron MASTER_KEY, SESSION_SECRET
+  y ADMIN_PASSWORD, que la suite necesita.
+- El contenedor de pruebas se eliminó al terminar la captura.
+
+## 1. Lint: ruff
+
+Comando:
+
+    .venv/bin/ruff check .
+
+Inicio: 2026-11-19 15:03:22 -05:00
+Código de salida: 0
+
+Salida completa:
+
+    All checks passed!
+
+## 2. Suite completa contra PostgreSQL
+
+Comando:
+
+    DATABASE_URL='postgresql://pruebas_user:pruebas_pass@127.0.0.1:55440/pruebas_db?connect_timeout=5' \
+    TEST_DATABASE_URL='postgresql://pruebas_user:pruebas_pass@127.0.0.1:55440/pruebas_db?connect_timeout=5' \
+    .venv/bin/pytest tests -q
+
+Inicio: 2026-11-19 15:03:43 -05:00
+Fin: 2026-11-19 15:06:35 -05:00
+Código de salida: 0
+
+Salida completa:
+
+    ........................................................................ [ 13%]
+    ........................................................................ [ 27%]
+    ........................................................................ [ 41%]
+    ........................................................................ [ 54%]
+    ........................................................................ [ 68%]
+    ........................................................................ [ 82%]
+    ........................................................................ [ 96%]
+    .....................                                                    [100%]
+    525 passed, 1 skipped in 171.57s (0:02:51)
+
+## 3. Suite unitaria sin DATABASE_URL
+
+Comando:
+
+    env -u DATABASE_URL .venv/bin/pytest tests/unit -q
+
+Inicio: 2026-11-19 15:06:45 -05:00
+Fin: 2026-11-19 15:06:48 -05:00
+Código de salida: 0
+
+Salida completa:
+
+    ........................................................................ [ 45%]
+    ........................................................................ [ 91%]
+    ..............                                                           [100%]
+    158 passed, 1 skipped in 1.96s
+
+## 3-bis. Repetición de la suite unitaria con el contenedor de pruebas ya eliminado
+
+Comando:
+
+    env -u DATABASE_URL .venv/bin/pytest tests/unit -q
+
+Inicio: 2026-11-19 15:08:44 -05:00
+Fin: 2026-11-19 15:08:47 -05:00
+Código de salida: 0
+
+Salida completa:
+
+    ........................................................................ [ 45%]
+    ........................................................................ [ 91%]
+    ..............                                                           [100%]
+    158 passed, 1 skipped in 1.84s
+
+Esta repetición se hizo después de eliminar el contenedor "auditoria-pruebas-pg",
+con lo que las pruebas unitarias corren sin ninguna base disponible. Confirma
+REQ-17: las pruebas de reglas no dependen de PostgreSQL.
+
+## 4. Detalle de la única omisión
+
+Comando:
+
+    env -u DATABASE_URL .venv/bin/pytest tests/unit -q -rs
+
+Salida completa (extracto final):
+
+    =========================== short test summary info ============================
+    SKIPPED [1] tests/unit/test_dataset.py:13: could not import 'pandas': No module named 'pandas'
+    158 passed, 1 skipped in 1.95s
+
+La omisión es la prueba del dataset, que se salta a propósito en este equipo porque
+la dependencia opcional pandas no está instalada en .venv. No es un fallo ni una
+prueba inestable. En la corrida con base, la misma omisión aparece dentro de los
+525 casos aprobados más 1 omitido.
+
+## 5. Conteo de casos
+
+Comando:
+
+    .venv/bin/pytest tests -q --collect-only
+
+Salida:
+
+    525 tests collected in 0.84s
+
+Comando:
+
+    env -u DATABASE_URL .venv/bin/pytest tests/unit -q --collect-only
+
+Salida:
+
+    158 tests collected in 0.50s
+
+Las 525 colecciones más el módulo tests/unit/test_dataset.py, que se omite al
+importarse, forman los 526 casos que contabiliza el informe de la corrida: 525
+aprobados y 1 omitido.
+
+Pruebas por archivo (conteo de casos colectados):
+
+    15 tests/integration/test_asistente.py
+     6 tests/integration/test_auditoria.py
+     3 tests/integration/test_bootstrap.py
+    10 tests/integration/test_conexion.py
+    24 tests/integration/test_contactos.py
+     7 tests/integration/test_estadisticas.py
+    20 tests/integration/test_foto.py
+    15 tests/integration/test_idioma.py
+     5 tests/integration/test_inicio.py
+     5 tests/integration/test_navegacion.py
+     2 tests/integration/test_nombres_por_wallet.py
+    12 tests/integration/test_perfil.py
+     6 tests/integration/test_persistencia_de_reparacion.py
+    11 tests/integration/test_reparacion.py
+     2 tests/integration/test_req_01_wallet_en_base.py
+     3 tests/integration/test_req_03_firma_repetida.py
+     2 tests/integration/test_req_08_encadenamiento.py
+     2 tests/integration/test_req_09_agrupacion.py
+     3 tests/integration/test_req_10_alteracion.py
+    11 tests/integration/test_req_11_rechazo_en_base.py
+     2 tests/integration/test_req_12_coherencia.py
+     7 tests/integration/test_req_13_historial.py
+     2 tests/integration/test_req_14_genesis.py
+    10 tests/integration/test_req_15_esquema.py
+     1 tests/integration/test_req_18_atomicidad.py
+     3 tests/integration/test_req_19_errores_del_motor.py
+     1 tests/integration/test_req_21_secretos.py
+     1 tests/integration/test_req_22_solo_lee.py
+    16 tests/integration/test_req_24_rutas.py
+     1 tests/integration/test_req_28_historial_desde_la_lista.py
+     4 tests/integration/test_req_30_registro.py
+     7 tests/integration/test_req_30_semilla.py
+    12 tests/integration/test_req_30_usuarios.py
+     9 tests/integration/test_req_31_cola.py
+     6 tests/integration/test_req_32_ingreso.py
+     4 tests/integration/test_req_33_aprobacion.py
+     5 tests/integration/test_req_33_emision.py
+     7 tests/integration/test_req_34_envio.py
+     6 tests/integration/test_req_35_alcance.py
+    19 tests/integration/test_req_37_sesion.py
+     9 tests/integration/test_req_38_autorizacion.py
+     4 tests/integration/test_req_39_verificacion.py
+     8 tests/integration/test_req_46_registro_con_dueno.py
+     9 tests/integration/test_req_47_varias_wallets.py
+    28 tests/integration/test_sabotaje.py
+     2 tests/integration/test_sello.py
+    15 tests/integration/test_verificar_auditoria.py
+     5 tests/test_explicacion.py
+    12 tests/unit/test_asistente_ia.py
+    29 tests/unit/test_auditoria.py
+     9 tests/unit/test_dobles_nuevos.py
+    12 tests/unit/test_proyeccion.py
+    25 tests/unit/test_reparacion.py
+     2 tests/unit/test_req_01_wallet.py
+     2 tests/unit/test_req_02_firma.py
+     4 tests/unit/test_req_02_transaction.py
+     6 tests/unit/test_req_04_formato.py
+     4 tests/unit/test_req_05_saldo.py
+     4 tests/unit/test_req_07_hash.py
+     8 tests/unit/test_req_10_verificacion.py
+     1 tests/unit/test_req_16_dominio_aislado.py
+     6 tests/unit/test_req_21_cadena_de_conexion.py
+     3 tests/unit/test_req_29_presentacion.py
+     3 tests/unit/test_req_33_emision.py
+     8 tests/unit/test_req_36_credenciales.py
+     9 tests/unit/test_req_37_sesion.py
+    11 tests/unit/test_sello.py
+
+## Resumen
+
+- ruff: "All checks passed!", 0 hallazgos, código de salida 0.
+- Suite completa: 525 passed, 1 skipped, 0 failed, 0 errors, 171.57 s, código 0.
+- Suite unitaria sin base: 158 passed, 1 skipped, 0 failed, 0 errors, 1.96 s, código 0.
+- Repetición unitaria con el contenedor de PostgreSQL eliminado: 158 passed,
+  1 skipped, 0 failed, 0 errors, 1.84 s, código 0 (REQ-17).
+- Archivos de prueba: 68 (47 de integración, 20 unitarios y 1 en la raíz).
+- Trazabilidad mecánica: tests/test_explicacion.py comprueba que cada REQ-01..REQ-39
+  y REQ-46..REQ-47 tiene un archivo test_req_NN_ y que CU-01..CU-05 aparecen en
+  docs/recorrido-de-casos-de-uso.md. Los REQ-40..REQ-45 se verifican en sus archivos
+  por caso (perfil, contactos, idioma y ayudante).
+- La única omisión (pandas ausente en tests/unit/test_dataset.py) es ambiental y
+  declarada; no hay pruebas inestables ni fallos intermitentes.
+
+## Correspondencia con los procesos principales
+
+    CU-01 registrar una wallet:
+        tests/unit/test_req_01_wallet.py
+        tests/integration/test_req_01_wallet_en_base.py
+        tests/integration/test_req_24_rutas.py
+        tests/integration/test_req_46_registro_con_dueno.py
+    CU-02 crear una transacción:
+        tests/unit/test_req_02_firma.py
+        tests/unit/test_req_02_transaction.py
+        tests/unit/test_req_04_formato.py
+        tests/unit/test_req_05_saldo.py
+        tests/integration/test_req_24_rutas.py
+        tests/integration/test_req_34_envio.py
+    CU-03 agrupar en un bloque:
+        tests/integration/test_req_09_agrupacion.py
+        tests/integration/test_req_12_coherencia.py
+        tests/integration/test_req_18_atomicidad.py
+    CU-04 verificar la integridad:
+        tests/unit/test_req_10_verificacion.py
+        tests/integration/test_req_10_alteracion.py
+        tests/integration/test_req_22_solo_lee.py
+        tests/integration/test_req_39_verificacion.py
+        tests/integration/test_verificar_auditoria.py
+        tests/integration/test_reparacion.py
+    CU-05 consultar el historial:
+        tests/integration/test_req_13_historial.py
+        tests/integration/test_req_28_historial_desde_la_lista.py
+        tests/integration/test_req_35_alcance.py
+    Usuarios, sesión y autorización (REQ-30 a REQ-39):
+        tests/integration/test_req_30_*.py
+        tests/integration/test_req_31_cola.py
+        tests/integration/test_req_32_ingreso.py
+        tests/integration/test_req_33_*.py
+        tests/integration/test_req_37_sesion.py
+        tests/integration/test_req_38_autorizacion.py
+        tests/unit/test_req_36_credenciales.py
+        tests/unit/test_req_37_sesion.py
+    Perfil, contactos, fotos, idioma y ayudante (REQ-40 a REQ-45):
+        tests/integration/test_perfil.py
+        tests/integration/test_foto.py
+        tests/integration/test_contactos.py
+        tests/integration/test_idioma.py
+        tests/integration/test_asistente.py
+        tests/unit/test_asistente_ia.py
+    Wallet con dueño y varias wallets (REQ-46 y REQ-47):
+        tests/integration/test_req_46_registro_con_dueno.py
+        tests/integration/test_req_47_varias_wallets.py
+        tests/integration/test_req_30_usuarios.py
+
+## Estado de las evidencias anteriores
+
+- docs/evidencias/pruebas.txt (2026-11-04): 386 passed, 1 skipped. Quedó desactualizada:
+  es anterior a la wallet con dueño, a la auditoría de la cadena y a los REQ-46 y
+  REQ-47; hoy la suite tiene 140 casos más.
+- docs/evidencias/flujo.txt, docs/evidencias/recorrido-http.txt,
+  docs/evidencias/consulta-en-la-base.txt, docs/evidencias/red-neuronal-entrenamiento.txt
+  y docs/evidencias-fase4.md: todos del 2026-11-04, anteriores al código del commit
+  auditado (7291dba).
+- docs/pentesting/evidencias/kiwi/junit.xml (2026-11-19 13:39): tests=526, failures=0,
+  errors=0, skipped=1, time=331.885 s. Es consistente con esta corrida fresca
+  (525 passed y 1 skipped), aunque la de este archivo se ejecutó después y se
+  conserva aquí como evidencia principal.
