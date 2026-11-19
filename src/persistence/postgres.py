@@ -153,6 +153,29 @@ class PostgresBlockRepository:
         cursor.execute("SELECT * FROM blocks ORDER BY block_index")
         return [_row_to_block(row) for row in cursor.fetchall()]
 
+    def set_hashes(self, block: Block) -> Block:
+        """Reescribe `previous_hash` y `hash` del bloque por su identificador (REQ-10).
+
+        Solo cambian los dos hashes: el índice, la marca de tiempo y las
+        transacciones agrupadas se conservan. El `id` tiene que existir en la
+        tabla; si no está, la fila no existe y se informa en vez de devolver un
+        objeto que nunca se escribió.
+        """
+        cursor = self._connection.cursor(row_factory=dict_row)
+        cursor.execute(
+            """
+            UPDATE blocks
+            SET previous_hash = %s, hash = %s
+            WHERE id = %s
+            RETURNING *
+            """,
+            (block.previous_hash, block.hash, block.id),
+        )
+        row = cursor.fetchone()
+        if row is None:
+            raise LookupError("el bloque que se quiere reencadenar no está en la base")
+        return _row_to_block(row)
+
     def count(self) -> int:
         """Cuántos bloques tiene la cadena."""
         return self._connection.execute("SELECT count(*) FROM blocks").fetchone()[0]
@@ -200,6 +223,39 @@ class PostgresTransactionRepository:
             WHERE id = ANY(%s) AND status = 'pending'
             """,
             (block_id, list(transaction_ids)),
+        )
+        return cursor.rowcount
+
+    def all(self) -> Sequence[Transaction]:
+        """Todas las transacciones, sin filtro ni tope, de la más antigua a la más nueva.
+
+        La auditoría agrupa por bloque en memoria y revisa también el pool y las
+        rechazadas, así que una sola lectura completa reemplaza la consulta por
+        bloque. El orden es el de las lecturas parciales: `created_at` y el `id`
+        como desempate.
+        """
+        cursor = self._connection.cursor(row_factory=dict_row)
+        cursor.execute("SELECT * FROM transactions ORDER BY created_at, id")
+        return [_row_to_transaction(row) for row in cursor.fetchall()]
+
+    def reject(self, transaction_ids: Sequence[UUID]) -> int:
+        """Pasa a `rejected` y sin bloque las transacciones indicadas; devuelve cuántas.
+
+        El bloque nulo mantiene la coherencia estado/bloque que exige REQ-12: una
+        fila rechazada no puede quedar ligada a un bloque. No filtra por estado, así
+        que también deja sin bloque una confirmada inválida. Con la lista vacía no
+        hay nada que escribir y se devuelve cero.
+        """
+        if not transaction_ids:
+            return 0
+        cursor = self._connection.cursor()
+        cursor.execute(
+            """
+            UPDATE transactions
+            SET status = 'rejected', block_id = NULL
+            WHERE id = ANY(%s)
+            """,
+            (list(transaction_ids),),
         )
         return cursor.rowcount
 

@@ -68,6 +68,15 @@ class InMemoryBlockRepository:
     def list(self) -> Sequence[Block]:
         return sorted(self.rows, key=lambda block: block.block_index)
 
+    def set_hashes(self, block: Block) -> Block:
+        """Reescribe los dos hashes de la fila con ese identificador, como el adaptador real."""
+        fila = next((fila for fila in self.rows if fila.id == block.id), None)
+        if fila is None:
+            raise LookupError("el bloque que se quiere reencadenar no está en la lista")
+        fila.previous_hash = block.previous_hash
+        fila.hash = block.hash
+        return fila
+
     def count(self) -> int:
         return len(self.rows)
 
@@ -94,6 +103,21 @@ class InMemoryTransactionRepository:
 
     def get(self, transaction_id: UUID) -> Transaction | None:
         return next((t for t in self.rows if t.id == transaction_id), None)
+
+    def all(self) -> Sequence[Transaction]:
+        """Todas las filas, en el orden de la consulta real: creación y luego identificador."""
+        return sorted(self.rows, key=lambda transaction: (transaction.created_at, transaction.id))
+
+    def reject(self, transaction_ids: Sequence[UUID]) -> int:
+        """Pasa a rechazadas y sin bloque las filas con esos identificadores."""
+        ids = set(transaction_ids)
+        rechazadas = 0
+        for transaction in self.rows:
+            if transaction.id in ids:
+                transaction.status = TransactionStatus.REJECTED
+                transaction.block_id = None
+                rechazadas += 1
+        return rechazadas
 
     def list(
         self,
@@ -179,24 +203,29 @@ def build_chain(
     *,
     blocks: Sequence[Block] = (),
     transactions: Sequence[Transaction] = (),
+    wallets: Sequence[Wallet] = (),
     master_key: bytes | None = None,
 ) -> Blockchain:
     """Ledger sobre dobles en memoria, con la cadena que se le pase ya poblada.
+
+    `wallets` siembra el repositorio de wallets: las pruebas que auditan firmas
+    necesitan las públicas registradas, porque la auditoría verifica contra la llave
+    pública actual del emisor y no solo contra el hash del bloque.
 
     `master_key` se fija cuando la prueba tiene que armar wallets que el ledger
     pueda descifrar —como la emisión, que firma con la privada de su emisor—; sin
     él se genera una clave nueva, que es lo que necesitan las pruebas que solo
     verifican hashes y saldos.
     """
-    wallets = InMemoryWalletRepository()
+    wallets_repository = InMemoryWalletRepository(wallets)
     block_repository = InMemoryBlockRepository(blocks)
     transaction_repository = InMemoryTransactionRepository(transactions)
     return Blockchain(
-        wallets=wallets,
+        wallets=wallets_repository,
         blocks=block_repository,
         transactions=transaction_repository,
         unit_of_work=lambda: InMemoryUnitOfWork(
-            wallets, block_repository, transaction_repository
+            wallets_repository, block_repository, transaction_repository
         ),
         master_key=Fernet.generate_key() if master_key is None else master_key,
         clock=lambda: BLOCK_AT,

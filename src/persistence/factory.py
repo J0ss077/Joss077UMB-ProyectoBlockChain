@@ -6,7 +6,8 @@ tres repositorios PostgreSQL y la unidad de trabajo de REQ-18. `open_ledger` tra
 sobre una conexión que no abre —así la reutilizan el arranque y las pruebas—,
 `transaction()` abre la conexión que comparten el ledger y las cuentas para la
 aprobación atómica (REQ-33) y `ledger()` es el punto de entrada que sí la abre y la
-cierra.
+cierra. `sello_de_vigilancia()` arma el ancla externa contra el recorte de la cola:
+el arranque la fija y la auditoría la lee (spec §2).
 """
 from __future__ import annotations
 
@@ -28,6 +29,7 @@ from src.persistence.postgres import (
     PostgresTransactionRepository,
     PostgresWalletRepository,
 )
+from src.persistence.sello import SelloDeVigilancia
 from src.persistence.unit_of_work import PostgresUnitOfWork
 
 # `.env` vive en la raíz del repositorio y está en `.gitignore` (REQ-21): es el
@@ -42,6 +44,14 @@ VARIABLE_DE_LA_CARPETA_DE_FOTOS = "FOTOS_DIR"
 # con ella definida, la suite no toca la base de la aplicación.
 VARIABLE_DE_LA_BASE_DE_PRUEBAS = "TEST_DATABASE_URL"
 CARPETA_DE_FOTOS_POR_DEFECTO = RAIZ_DEL_PROYECTO / "datos" / "fotos"
+# El sello de vigilancia es un archivo JSON fuera de la base (spec §2): vive en
+# `datos/`, que `.gitignore` deja fuera del repositorio igual que las fotos.
+RUTA_DEL_SELLO_DE_VIGILANCIA = RAIZ_DEL_PROYECTO / "datos" / "sello-de-vigilancia.json"
+# La ruta anterior se puede reemplazar por esta variable, igual que `FOTOS_DIR`
+# reemplaza la carpeta de fotos: la suite le da un archivo en una carpeta temporal
+# para que el arranque que corre en un subproceso no escriba el sello real de la
+# aplicación y `/verificar` no muestre un desajuste que las pruebas provocaron.
+VARIABLE_DEL_SELLO = "SELLO_DE_VIGILANCIA"
 # El servicio de IA del ayudante flotante: basta la clave; el resto es opcional.
 VARIABLES_DEL_ASISTENTE = (
     "ASISTENTE_API_KEY",
@@ -163,6 +173,30 @@ def master_key() -> bytes:
         'print(Fernet.generate_key().decode())"`; la plantilla `.env.example` la trae '
         "de relleno y el lector la rechaza."
     )
+
+
+def sello_de_vigilancia() -> SelloDeVigilancia:
+    """El sello de vigilancia: el archivo firmado con la clave maestra.
+
+    Se compone acá y no en el arranque ni en la web para que ambos usen la misma
+    ruta y la misma clave: el sello que escribe el arranque es el que lee la
+    auditoría. La clave es la maestra (la misma que cifra las llaves privadas), así
+    que un cambio a mano del archivo sin la clave invalida la firma.
+
+    La ruta sale de `SELLO_DE_VIGILANCIA` si está definida y, si no, de
+    `RUTA_DEL_SELLO_DE_VIGILANCIA`. La variable existe por la suite: el arranque
+    que corre en un subproceso hereda el entorno, y con la ruta por defecto cada
+    corrida de las pruebas dejaría en `datos/` el sello de la base de pruebas. Una
+    ruta relativa se toma desde la raíz del proyecto, igual que `FOTOS_DIR`.
+    """
+    valor = _env_value(VARIABLE_DEL_SELLO)
+    if valor:
+        ruta = Path(valor).expanduser()
+        if not ruta.is_absolute():
+            ruta = RAIZ_DEL_PROYECTO / ruta
+    else:
+        ruta = RUTA_DEL_SELLO_DE_VIGILANCIA
+    return SelloDeVigilancia(ruta, master_key())
 
 
 def session_secret() -> bytes:

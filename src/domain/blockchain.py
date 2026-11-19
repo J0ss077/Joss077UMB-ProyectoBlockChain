@@ -7,8 +7,13 @@ de bienvenida en un bloque propio sin pasar por esa regla (REQ-33) y
 `group_pending` encadena un bloque nuevo con el último (REQ-08), confirma las
 transacciones del pool (REQ-09) y hace las dos escrituras dentro de una sola
 transacción de base de datos (REQ-18). `ensure_genesis` registra el eslabón cero
-de forma idempotente (REQ-14) y `verify_chain` recalcula la cadena y localiza la
-alteración sin escribir nada (REQ-10, REQ-22).
+de forma idempotente (REQ-14), `verify_chain` recalcula la cadena y localiza la
+alteración sin escribir nada (REQ-10, REQ-22) y `audit_chain` enumera todo lo que la
+cadena y el pool tienen mal, también sin escribir (REQ-22). Las reparaciones guiadas
+—`repair_chain`, `isolate_invalid_transactions`, `reject_invalid_pending` y
+`repair_all`— son las únicas escrituras de recuperación: cada una va dentro de una
+sola unidad de trabajo y reescribe hashes o estados sin tocar índices ni marcas de
+tiempo.
 
 El dominio no conoce el motor: habla con los protocolos de
 `src/persistence/ports.py` (REQ-16), y por eso la agrupación recibe una fábrica de
@@ -32,6 +37,14 @@ from src.domain.transaction import (
 from src.domain.wallet import Wallet, create_wallet, sign_payload
 
 if TYPE_CHECKING:
+    # La auditoría importa este módulo para reutilizar la fachada; acá se importa
+    # solo para anotar y el import real es local al método, para no cerrar el ciclo.
+    from src.domain.auditoria import Auditoria, Sello
+
+    # Igual que `auditoria`: `reparacion` importa este módulo para el hash del
+    # génesis, así que el import real es local a cada método.
+    from src.domain.reparacion import Reparacion
+
     # Solo para las anotaciones: importar los protocolos en tiempo de ejecución
     # cerraría el ciclo ports -> blockchain -> ports (y no hace falta, REQ-16).
     from src.persistence.ports import (
@@ -340,6 +353,254 @@ class Blockchain:
             anterior = block
         return VerificationReport(valid=True, altered_block_index=None)
 
+    def audit_chain(
+        self,
+        *,
+        sello: Sello | None = None,
+        problema_del_sello: str | None = None,
+    ) -> Auditoria:
+        """Audita todos los bloques y el pool sin escribir nada (REQ-22).
+
+        Delega en `src.domain.auditoria` con los tres repositorios de la fachada y el
+        sello ya leído. El import es local porque `auditoria` importa de este módulo:
+        hacerlo arriba cerraría el ciclo `blockchain -> auditoria -> blockchain`.
+
+        `sello` es el ancla externa contra el recorte de la cola y
+        `problema_del_sello` dice si no se pudo leer; con un problema, la auditoría
+        lo trata como ausente y declara el límite del recorte. La auditoría no escribe
+        tablas ni el sello: las reparaciones son un paso aparte y explícito.
+        """
+        from src.domain.auditoria import auditar
+
+        return auditar(
+            blocks=self.blocks,
+            transactions=self.transactions,
+            wallets=self.wallets,
+            sello=sello,
+            problema_del_sello=problema_del_sello,
+        )
+
+    def repair_chain(self) -> Reparacion:
+        """«encadenar»: recalcula los hashes de la cadena en orden y escribe los cambios.
+
+        Sin bloques, crea el génesis como el arranque (`ensure_genesis`). Si el
+        primer bloque no es el índice 0 no aplica y lo explica: renumerar cambiaría el
+        hash de cada eslabón y reasignaría la historia, así que un hueco de índices se
+        declara y queda. En el caso normal recalcula `previous_hash` y `hash` con las
+        transacciones agrupadas por `block_id` —una sola lectura de `all()`— y escribe
+        con `set_hashes` solo los bloques que cambian, todo dentro de una sola unidad
+        de trabajo. No toca el reloj ni las marcas de tiempo y no toca los índices.
+        """
+        from src.domain.auditoria import ENCADENAR
+        from src.domain.reparacion import (
+            Reparacion,
+            agrupar_por_bloque,
+            detalle_de_encadenado,
+            recalcular_cadena,
+        )
+
+        if not self.blocks.list():
+            ensure_genesis(self)
+            return Reparacion(
+                accion=ENCADENAR,
+                aplicada=True,
+                detalle="No había ningún bloque: se creó el génesis.",
+                cambios=1,
+            )
+
+        with self._unit_of_work() as work:
+            bloques = list(work.blocks.list())
+            if bloques[0].block_index != 0:
+                return Reparacion(
+                    accion=ENCADENAR,
+                    aplicada=False,
+                    detalle=(
+                        f"El primer bloque es el {bloques[0].block_index} y no el "
+                        "génesis: el reencadenado no se aplica y no se renumera."
+                    ),
+                    cambios=0,
+                )
+            transacciones = list(work.transactions.all())
+            reencadenado = recalcular_cadena(
+                bloques, agrupar_por_bloque(transacciones)
+            )
+            for original, nuevo in zip(
+                bloques, reencadenado.bloques, strict=True
+            ):
+                if (original.previous_hash, original.hash) != (
+                    nuevo.previous_hash,
+                    nuevo.hash,
+                ):
+                    work.blocks.set_hashes(nuevo)
+            work.commit()
+
+        return Reparacion(
+            accion=ENCADENAR,
+            aplicada=reencadenado.cambios > 0,
+            detalle=detalle_de_encadenado(reencadenado),
+            cambios=reencadenado.cambios,
+        )
+
+    def isolate_invalid_transactions(self) -> Reparacion:
+        """«aislar»: pasa a `rejected` las confirmadas inválidas y reencadena los bloques.
+
+        Revalida firma, monto, wallets y coherencia estado/bloque de cada confirmada
+        y rechaza las que no pertenecen a la cadena; después recalcula los hashes de
+        todos los bloques porque su contenido cambió. Las dos escrituras van dentro de
+        una sola unidad de trabajo, así que no queda una transacción rechazada con su
+        bloque viejo ni un bloque con un hash que ya no corresponde.
+
+        El reencadenado solo se aplica si la cadena empieza en el bloque 0: sin el
+        génesis, recalcular encadenaría el primer bloque que haya a los ceros del
+        eslabón cero, fabricaría un encadenamiento que nunca existió y borraría el
+        rastro de la cabeza eliminada. En ese caso se rechazan las inválidas y se
+        informa que el reencadenado no se aplicó.
+        """
+        from src.domain.auditoria import AISLAR
+        from src.domain.reparacion import (
+            Reparacion,
+            agrupar_por_bloque,
+            cantidad,
+            detalle_de_huecos,
+            esta_desencajada,
+            recalcular_cadena,
+            se_puede_reencadenar,
+        )
+
+        with self._unit_of_work() as work:
+            bloques = list(work.blocks.list())
+            ids_de_bloques = {bloque.id for bloque in bloques}
+            filas = list(work.transactions.all())
+            cache: dict[UUID, Wallet | None] = {}
+            invalidas = [
+                fila
+                for fila in filas
+                if fila.status is TransactionStatus.CONFIRMED
+                and (
+                    esta_desencajada(fila, ids_de_bloques=ids_de_bloques)
+                    or self._motivo_de_invalidez(fila, cache) is not None
+                )
+            ]
+            if not invalidas:
+                return Reparacion(
+                    accion=AISLAR,
+                    aplicada=False,
+                    detalle=(
+                        "No hay transacciones confirmadas inválidas: no se aisló "
+                        "ninguna."
+                    ),
+                    cambios=0,
+                )
+            aisladas = {fila.id for fila in invalidas}
+            work.transactions.reject([fila.id for fila in invalidas])
+            # Sin el génesis no se recalcula nada: encadenar el primer bloque a los
+            # ceros del eslabón cero inventaría un encadenamiento y borraría el
+            # rastro de la cabeza eliminada.
+            reencadenado = None
+            if se_puede_reencadenar(bloques):
+                # Las rechazadas ya no agrupan, aunque la lectura se hizo antes del
+                # UPDATE: el hash del bloque se calcula con lo que queda en él.
+                por_bloque = agrupar_por_bloque(
+                    [fila for fila in filas if fila.id not in aisladas]
+                )
+                reencadenado = recalcular_cadena(bloques, por_bloque)
+                for original, nuevo in zip(
+                    bloques, reencadenado.bloques, strict=True
+                ):
+                    if (original.previous_hash, original.hash) != (
+                        nuevo.previous_hash,
+                        nuevo.hash,
+                    ):
+                        work.blocks.set_hashes(nuevo)
+            work.commit()
+
+        detalle = (
+            "Se aislaron "
+            f"{cantidad(len(invalidas), 'transacción', 'transacciones')}."
+        )
+        if reencadenado is None:
+            detalle += (
+                " El reencadenado no se aplicó porque la cadena no empieza en el "
+                "génesis: no se renumera."
+            )
+            cambios = len(invalidas)
+        else:
+            if reencadenado.cambios:
+                detalle += (
+                    " Se reencadenaron "
+                    f"{cantidad(reencadenado.cambios, 'bloque', 'bloques')}."
+                )
+            huecos = detalle_de_huecos(reencadenado.huecos)
+            if huecos is not None:
+                detalle = f"{detalle} {huecos}"
+            cambios = len(invalidas) + reencadenado.cambios
+        return Reparacion(
+            accion=AISLAR,
+            aplicada=True,
+            detalle=detalle,
+            cambios=cambios,
+        )
+
+    def reject_invalid_pending(self) -> Reparacion:
+        """«rechazar-pendientes»: pasa a `rejected` las del pool que no serían admitidas.
+
+        Revalida firma, monto, wallets y coherencia de cada pendiente con las mismas
+        reglas que la auditoría; las válidas no se tocan. No reencadena: una fila del
+        pool no está en ningún bloque, así que rechazarla no cambia ningún hash. Toda
+        la escritura va dentro de una sola unidad de trabajo.
+        """
+        from src.domain.auditoria import RECHAZAR_PENDIENTES
+        from src.domain.reparacion import Reparacion, cantidad
+
+        with self._unit_of_work() as work:
+            filas = list(work.transactions.all())
+            cache: dict[UUID, Wallet | None] = {}
+            invalidas = [
+                fila
+                for fila in filas
+                if fila.status is TransactionStatus.PENDING
+                and (
+                    fila.block_id is not None
+                    or self._motivo_de_invalidez(fila, cache) is not None
+                )
+            ]
+            if not invalidas:
+                return Reparacion(
+                    accion=RECHAZAR_PENDIENTES,
+                    aplicada=False,
+                    detalle=(
+                        "El pool no tiene transacciones inválidas: no se rechazó "
+                        "ninguna."
+                    ),
+                    cambios=0,
+                )
+            work.transactions.reject([fila.id for fila in invalidas])
+            work.commit()
+
+        return Reparacion(
+            accion=RECHAZAR_PENDIENTES,
+            aplicada=True,
+            detalle=(
+                "Se rechazaron "
+                f"{cantidad(len(invalidas), 'transacción', 'transacciones')} del pool."
+            ),
+            cambios=len(invalidas),
+        )
+
+    def repair_all(self) -> tuple[Reparacion, ...]:
+        """Las tres reparaciones en orden: rechazar el pool, aislar y encadenar.
+
+        Es el botón «reparar todo lo que se pueda». El orden importa: lo que se
+        rechaza del pool deja de poder confirmarse y lo que se aísla cambia el
+        contenido de los bloques, así que el reencadenado va al final. Es idempotente:
+        una segunda pasada no encuentra nada que escribir.
+        """
+        return (
+            self.reject_invalid_pending(),
+            self.isolate_invalid_transactions(),
+            self.repair_chain(),
+        )
+
     def wallet_history(self, wallet_id: UUID, limit: int = 100) -> Sequence[Transaction]:
         """Los envíos y las recepciones de una wallet, en cualquier estado (CU-05, REQ-13).
 
@@ -365,6 +626,38 @@ class Blockchain:
             "blocks": self.blocks.count(),
             "transactions": self.transactions.count(),
         }
+
+    def _publicas_de(
+        self, transaction: Transaction, cache: dict[UUID, Wallet | None]
+    ) -> tuple[str | None, str | None]:
+        """Públicas actuales del emisor y del receptor, con una consulta por wallet.
+
+        La caché dura lo que dura una reparación; la revalidación la necesita para
+        comprobar la firma contra la llave pública que la wallet tiene hoy.
+        """
+        if transaction.sender_id not in cache:
+            cache[transaction.sender_id] = self.wallets.get(transaction.sender_id)
+        if transaction.receiver_id not in cache:
+            cache[transaction.receiver_id] = self.wallets.get(transaction.receiver_id)
+        emisor = cache[transaction.sender_id]
+        receptor = cache[transaction.receiver_id]
+        return (
+            None if emisor is None else emisor.public_key,
+            None if receptor is None else receptor.public_key,
+        )
+
+    def _motivo_de_invalidez(
+        self, transaction: Transaction, cache: dict[UUID, Wallet | None]
+    ) -> RejectionReason | None:
+        """Motivo por el que la fila no pertenece a la cadena, o `None` si es válida."""
+        from src.domain.reparacion import motivo_de_invalidez
+
+        emisor, receptor = self._publicas_de(transaction, cache)
+        return motivo_de_invalidez(
+            transaction,
+            sender_public_key=emisor,
+            receiver_public_key=receptor,
+        )
 
     def _build_block(
         self, *, block_index: int, previous_hash: str, transactions: Sequence[Transaction]

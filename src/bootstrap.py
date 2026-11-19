@@ -35,7 +35,13 @@ from src.domain.wallet import CURVE, Wallet, encrypt_private_key, public_key_hex
 from src.emision import CONSTITUYENTE_ID, CONSTITUYENTE_SEED
 from src.errores import NoHayConexion
 from src.persistence.conexion import abrir
-from src.persistence.factory import admin_password, database_url, ledger, transaction
+from src.persistence.factory import (
+    admin_password,
+    database_url,
+    ledger,
+    sello_de_vigilancia,
+    transaction,
+)
 
 # Semilla del par de llaves del fondo: fijarla hace que su clave pública sea la
 # misma en cada corrida. Sin eso, el fondo quedaría con una pública distinta cada
@@ -405,6 +411,36 @@ def _sembrar_todo() -> None:
             )
         else:
             print("cuentas: sin cambios, ya estaban")
+        _fijar_sello_de_vigilancia(chain)
+
+
+def _fijar_sello_de_vigilancia(chain: Blockchain) -> None:
+    """Fija el sello de vigilancia con la cabeza de la cadena sembrada (spec §2).
+
+    El sello es un ancla externa que la auditoría compara con la cadena, así que
+    después de sembrar se fija con la última fila. No es parte de la siembra: si no
+    hay bloques o el archivo no se puede escribir, se avisa y el arranque sigue,
+    porque la base quedó sembrada y el sello se puede volver a fijar a mano.
+    """
+    try:
+        cabeza = chain.blocks.last()
+        if cabeza is None:
+            print(
+                "sello de vigilancia: no se fijó porque la cadena no tiene bloques",
+                file=sys.stderr,
+            )
+            return
+        sello = sello_de_vigilancia().fijar(
+            altura=cabeza.block_index, hash=cabeza.hash
+        )
+    except (OSError, RuntimeError, ValueError) as error:
+        print(
+            f"sello de vigilancia: no se pudo fijar ({error}); la siembra terminó "
+            "igual y el sello se puede volver a fijar a mano",
+            file=sys.stderr,
+        )
+        return
+    print(f"sello de vigilancia: bloque {sello.altura}")
 
 
 if __name__ == "__main__":

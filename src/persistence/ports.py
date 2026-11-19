@@ -40,6 +40,14 @@ class BlockRepository(Protocol):
 
     def list(self) -> Sequence[Block]: ...
 
+    def set_hashes(self, block: Block) -> Block:
+        """Reescribe `previous_hash` y `hash` del bloque por su identificador (REQ-10).
+
+        Es la escritura que necesita el reencadenado: solo toca los dos hashes, así
+        que el índice, la marca de tiempo y las transacciones agrupadas no cambian.
+        """
+        ...
+
     def count(self) -> int: ...
 
 
@@ -49,6 +57,24 @@ class TransactionRepository(Protocol):
     def add(self, transaction: Transaction) -> Transaction: ...
 
     def confirm(self, transaction_ids: Sequence[UUID], block_id: UUID) -> int: ...
+
+    def all(self) -> Sequence[Transaction]:
+        """Todas las transacciones, sin filtro ni tope, para la auditoría (REQ-22).
+
+        La auditoría agrupa por bloque en memoria y revisa también el pool y las
+        rechazadas, así que necesita una lectura completa y no una consulta por
+        bloque. El orden es el de la más antigua a la más nueva.
+        """
+        ...
+
+    def reject(self, transaction_ids: Sequence[UUID]) -> int:
+        """Pasa a `rejected` y sin bloque las transacciones indicadas; devuelve cuántas.
+
+        Es la escritura que necesitan la reparación de confirmadas inválidas y el
+        rechazo de las pendientes inválidas; el bloque nulo mantiene la coherencia
+        estado/bloque que exige REQ-12.
+        """
+        ...
 
     def get(self, transaction_id: UUID) -> Transaction | None: ...
 
