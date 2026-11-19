@@ -113,36 +113,95 @@ def test_req_15_el_esquema_aplicado_tiene_las_siete_tablas_y_el_indice_unico(
 
 
 def test_req_30_el_esquema_tiene_la_tabla_de_usuarios(conexion):
-    """REQ-30: la tabla `users` existe con sus restricciones."""
+    """REQ-30: la tabla `users` existe con sus restricciones y sin la wallet.
+
+    La propiedad de la wallet vive en `wallets.owner_id` (decisión 1), así que
+    `users` ya no guarda `wallet_id` ni su índice único ni el CHECK que la
+    obligaba, y el bloque no puede quedar con restos de la forma vieja.
+    """
     columnas = columnas_de(conexion, "users")
     assert set(columnas) == {"id", "username", "password_hash", "role", "estado",
-                             "motivo_rechazo", "wallet_id", "creado_en", "aprobado_en"}
-    assert indices_y_restricciones(conexion, "users") >= {
+                             "motivo_rechazo", "creado_en", "aprobado_en"}
+    restricciones = indices_y_restricciones(conexion, "users")
+    assert restricciones >= {
         "users_username_key",
         "users_username_minusculas",
-        "users_wallet_id_key",
         "users_role_check",
         "users_estado_check",
         "chk_users_motivo_rechazo_requerido",
-        "chk_users_wallet_coherente_con_el_estado",
+    }
+    assert not {nombre for nombre in restricciones if "wallet" in nombre}
+
+
+def test_req_15_la_wallet_guarda_su_dueno_con_llave_foranea_e_indice(conexion):
+    """REQ-15: `wallets.owner_id` existe, apunta a `users` y se indexa por dueño.
+
+    La llave foránea llega con un `ALTER TABLE` posterior a `users` (el diseño lo
+    exige así) y el índice resuelve las consultas de REQ-41 —las wallets de una
+    cuenta y su principal— sin recorrer la tabla.
+    """
+    assert "owner_id" in columnas_de(conexion, "wallets")
+    assert indices_y_restricciones(conexion, "wallets") >= {
+        "fk_wallets_owner",
+        "idx_wallets_owner",
     }
 
 
-def test_req_31_un_rechazado_puede_quedarse_sin_wallet(conexion, base_limpia):
-    """REQ-31: el rechazo guarda el motivo y deja al usuario sin wallet.
+def test_req_15_la_wallet_rechaza_un_dueno_inexistente(conexion, base_limpia, emisora):
+    """REQ-15: la llave foránea impide apuntar a una cuenta que no existe."""
+    with pytest.raises(psycopg.errors.ForeignKeyViolation) as error:
+        conexion.execute(
+            "UPDATE wallets SET owner_id = %s WHERE id = %s", (uuid4(), emisora.id)
+        )
+    assert error.value.diag.constraint_name == "fk_wallets_owner"
 
-    Es la regresión del CHECK: si se lo vuelve a escribir contra `pendiente`, el
-    rechazado queda obligado a tener wallet y esta inserción falla.
+
+def test_req_15_no_se_puede_borrar_una_cuenta_duena_de_una_wallet(
+    conexion, base_limpia, emisora
+):
+    """REQ-15: el `ON DELETE RESTRICT` conserva el dueño mientras haya wallets suyas.
+
+    El borrado de una cuenta dueña tiene que fallar en el motor, no quedar a cargo
+    de que ninguna ruta borre cuentas con wallets.
+    """
+    cuenta = conexion.execute(
+        """
+        INSERT INTO users (username, password_hash, role, estado)
+        VALUES ('dueno_con_wallet', 'hash', 'usuario', 'aprobado')
+        RETURNING id
+        """
+    ).fetchone()[0]
+    conexion.execute("UPDATE wallets SET owner_id = %s WHERE id = %s", (cuenta, emisora.id))
+    try:
+        with pytest.raises(psycopg.errors.ForeignKeyViolation) as error:
+            conexion.execute("DELETE FROM users WHERE id = %s", (cuenta,))
+        assert error.value.diag.constraint_name == "fk_wallets_owner"
+    finally:
+        conexion.execute(
+            "UPDATE wallets SET owner_id = NULL WHERE id = %s", (emisora.id,)
+        )
+        conexion.execute("DELETE FROM users WHERE id = %s", (cuenta,))
+
+
+def test_req_31_un_rechazado_puede_quedarse_sin_wallet(conexion, base_limpia):
+    """REQ-31: el rechazo guarda el motivo y la cuenta no queda dueña de ninguna wallet.
+
+    La propiedad ahora va de la wallet hacia la cuenta: una rechazada no puede
+    tener wallet porque nada se la asigna, y el esquema ya no tiene una columna de
+    wallet en `users` que pudiera quedar incoherente con el estado.
     """
     try:
         fila = conexion.execute(
             """
             INSERT INTO users (username, password_hash, role, estado, motivo_rechazo)
             VALUES ('rechazado_sin_wallet', 'hash', 'usuario', 'rechazado', 'no corresponde')
-            RETURNING wallet_id
+            RETURNING id
             """
         ).fetchone()
-        assert fila[0] is None
+        duenas = conexion.execute(
+            "SELECT count(*) FROM wallets WHERE owner_id = %s", (fila[0],)
+        ).fetchone()[0]
+        assert duenas == 0
     finally:
         conexion.execute("DELETE FROM users WHERE username = 'rechazado_sin_wallet'")
 
@@ -152,43 +211,50 @@ def test_req_30_un_administrador_aprobado_puede_quedarse_sin_wallet(
 ):
     """REQ-30: el administrador sembrado se admite aprobado y sin wallet.
 
-    Es la corrección del CHECK: la bicondicional contra `aprobado` obligaba a que
-    toda cuenta aprobada tuviera wallet, y el administrador del diseño no la tiene
-    (decisión 4 y §6). La fila se escribe por fuera del repositorio porque lo que
-    se mide es el esquema, no el camino del alta.
+    Sólo una cuenta común aprobada puede ser dueña (decisión 5), así que el
+    administrador del diseño no tiene ninguna: la fila se escribe por fuera del
+    repositorio porque lo que se mide es el esquema, no el camino del alta.
     """
     try:
         fila = conexion.execute(
             """
             INSERT INTO users (username, password_hash, role, estado)
             VALUES ('admin_sin_wallet', 'hash', 'administrador', 'aprobado')
-            RETURNING wallet_id, aprobado_en
+            RETURNING id, aprobado_en
             """
         ).fetchone()
-        assert fila[0] is None
+        assert fila[1] is None
+        duenas = conexion.execute(
+            "SELECT count(*) FROM wallets WHERE owner_id = %s", (fila[0],)
+        ).fetchone()[0]
+        assert duenas == 0
     finally:
         conexion.execute("DELETE FROM users WHERE username = 'admin_sin_wallet'")
 
 
-def test_req_30_un_usuario_comun_aprobado_sin_wallet_sigue_prohibido(
+def test_req_30_un_usuario_comun_aprobado_puede_quedarse_sin_wallet(
     conexion, base_limpia
 ):
-    """REQ-30: un aprobado común sin wallet sigue violando el CHECK del esquema.
+    """REQ-30: una cuenta aprobada sin wallets es válida en el esquema.
 
-    La corrección distingue por rol; no afloja la regla que REQ-33 necesita: la
-    aprobación de una persona común crea su wallet en la misma operación.
+    La restricción vieja obligaba a que todo aprobado común tuviera wallet; con la
+    propiedad en `wallets.owner_id` el esquema ya no puede expresarla y la regla de
+    que la aprobación crea la primera wallet queda en el servicio (REQ-33). Acá se
+    comprueba que el esquema admite el cero que el diseño pide (decisión 2).
     """
-    with pytest.raises(psycopg.errors.CheckViolation) as error:
-        conexion.execute(
+    try:
+        fila = conexion.execute(
             """
             INSERT INTO users (username, password_hash, role, estado)
             VALUES ('comun_sin_wallet', 'hash', 'usuario', 'aprobado')
+            RETURNING id
             """
-        )
-    assert (
-        error.value.diag.constraint_name
-        == "chk_users_wallet_coherente_con_el_estado"
-    )
+        ).fetchone()
+        assert conexion.execute(
+            "SELECT count(*) FROM wallets WHERE owner_id = %s", (fila[0],)
+        ).fetchone()[0] == 0
+    finally:
+        conexion.execute("DELETE FROM users WHERE username = 'comun_sin_wallet'")
 
 
 def test_req_15_el_esquema_impide_el_emisor_igual_al_receptor(

@@ -107,8 +107,8 @@ def test_la_agenda_cuenta_los_movimientos_con_cada_contacto(
     cuentas.agregar_contacto(usuario_comun.id, "beto")
     for _ in range(2):
         resultado = ledger.create_transaction(
-            sender_id=usuario_comun.wallet_id,
-            receiver_id=otro_comun.wallet_id,
+            sender_id=cuentas.wallet_principal(usuario_comun.id),
+            receiver_id=cuentas.wallet_principal(otro_comun.id),
             amount=Decimal("5"),
         )
         assert resultado.accepted, resultado.reason

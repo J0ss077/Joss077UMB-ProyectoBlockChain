@@ -43,12 +43,12 @@ def _indice_del_bloque(ledger, transaction) -> int:
 
 
 def test_req_39_mi_historial_lista_solo_sus_transacciones(
-    cliente_comun, usuario_comun, ledger, emisora, receptora, transaccion
+    cliente_comun, usuario_comun, cuentas, ledger, emisora, receptora, transaccion
 ):
     """Criterio: con la cadena válida, la página dice que su historial está
     respaldado y lista sólo sus transacciones, con el estado y el índice del bloque."""
     ajena = _confirmar_ajena(ledger, emisora, receptora, transaccion)
-    wallet_propia = ledger.wallets.get(usuario_comun.wallet_id)
+    wallet_propia = ledger.wallets.get(cuentas.wallet_principal(usuario_comun.id))
     # Una pendiente propia: la página unificada la muestra con su estado, pero no
     # como una transacción respaldada por un bloque.
     pendiente = ledger.transactions.add(
@@ -56,7 +56,7 @@ def test_req_39_mi_historial_lista_solo_sus_transacciones(
     )
     confirmadas = [
         fila
-        for fila in ledger.wallet_history(usuario_comun.wallet_id)
+        for fila in ledger.wallet_history(cuentas.wallet_principal(usuario_comun.id))
         if fila.status is TransactionStatus.CONFIRMED
     ]
     # El crédito de bienvenida de la aprobación es la confirmada de la cuenta

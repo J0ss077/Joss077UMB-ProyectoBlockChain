@@ -128,14 +128,14 @@ def _sembrar_cuenta(
     username: str,
     role: str,
     contrasena: str,
-    wallet_id=None,
 ) -> Usuario:
     """Crea una cuenta aprobada directo en la base, sin pasar por el servicio.
 
     El servicio siempre registra el rol `usuario`, así que el administrador sólo
-    puede nacer por el repositorio. El camino del alta (`aprobar`) liga una wallet,
-    así que se le pasa una aunque el esquema ya no se la exija al administrador:
-    la corrección del CHECK distingue por rol, no obliga a que la tenga.
+    puede nacer por el repositorio. La propiedad de la wallet no vive en la cuenta
+    sino en `wallets.owner_id`, así que la aprobación sólo mueve el estado: la
+    cuenta sembrada acá puede quedar sin ninguna wallet, como el administrador del
+    diseño (decisión 5).
     """
     usuarios = PostgresAccountsRepository(conexion)
     pendiente = usuarios.add_pendiente(
@@ -146,12 +146,11 @@ def _sembrar_cuenta(
             role=role,
             estado=PENDIENTE,
             motivo_rechazo=None,
-            wallet_id=None,
             creado_en=datetime.now(UTC),
             aprobado_en=None,
         )
     )
-    aprobado = usuarios.aprobar(pendiente.id, wallet_id)
+    aprobado = usuarios.aprobar(pendiente.id)
     assert aprobado is not None
     return aprobado
 
@@ -181,9 +180,9 @@ def conexion():
 def base_limpia(conexion):
     """Vacía las siete tablas antes de cada prueba, en orden inverso a las claves foráneas.
 
-    `users` va antes que `wallets` porque `users.wallet_id` la referencia con
+    `wallets` va antes que `users` porque `wallets.owner_id` la referencia con
     `ON DELETE RESTRICT`: al revés, la limpieza fallaría en cuanto hubiera una
-    cuenta aprobada. Se borra con `DELETE` y no con `TRUNCATE`: `TRUNCATE` es DDL y
+    wallet con dueño. Se borra con `DELETE` y no con `TRUNCATE`: `TRUNCATE` es DDL y
     REQ-15 lo prohíbe desde las pruebas. No es `autouse` a propósito: una prueba sin
     base (REQ-15 y REQ-21) no debe arrastrar la conexión y, con ella, la exigencia
     de `DATABASE_URL`; cada prueba que toca la base lo pide.
@@ -195,8 +194,8 @@ def base_limpia(conexion):
     conexion.execute("DELETE FROM fotos_de_perfil")
     for archivo in CARPETA_DE_FOTOS_DE_PRUEBA.iterdir():
         archivo.unlink()
-    conexion.execute("DELETE FROM users")
     conexion.execute("DELETE FROM wallets")
+    conexion.execute("DELETE FROM users")
     yield
 
 
@@ -376,21 +375,19 @@ def cliente(aplicacion) -> FlaskClient:
 
 
 @pytest.fixture
-def administrador(base_limpia, conexion, wallets, master_key) -> Usuario:
-    """Un administrador aprobado, con una wallet que el camino del alta exige.
+def administrador(base_limpia, conexion) -> Usuario:
+    """Un administrador aprobado y sin wallet, como el de la semilla del arranque.
 
-    No es el administrador de la semilla del arranque —ese es `admin` y no tiene
-    wallet—: el nombre `adminprueba` evita chocar con él en las pruebas que corren
-    el arranque de verdad, y una wallet propia deja el historial del administrador
-    alcanzable en las rutas del eje.
+    La propiedad vive en `wallets.owner_id` y sólo una cuenta común aprobada puede
+    ser dueña (decisión 5), así que el administrador de las pruebas tampoco tiene
+    wallet. El nombre `adminprueba` evita chocar con el `admin` de la semilla en las
+    pruebas que corren el arranque de verdad.
     """
-    wallet = wallets.add(create_wallet(master_key=master_key))
     return _sembrar_cuenta(
         conexion,
         username="adminprueba",
         role=ADMINISTRADOR,
         contrasena=CONTRASENA_DEL_ADMINISTRADOR,
-        wallet_id=wallet.id,
     )
 
 

@@ -26,11 +26,11 @@ def _movimientos_de_la_pagina(cuerpo: str) -> list[dict]:
 
 
 def test_el_comun_ve_sus_estadisticas_y_no_las_de_otros(
-    cliente_comun, usuario_comun, ledger, emisora, receptora, transaccion
+    cliente_comun, usuario_comun, cuentas, ledger, emisora, receptora, transaccion
 ):
     propia = ledger.transactions.add(
         transaccion(
-            sender=ledger.wallets.get(usuario_comun.wallet_id),
+            sender=ledger.wallets.get(cuentas.wallet_principal(usuario_comun.id)),
             receiver=receptora,
             amount=Decimal("3.00000000"),
         )
@@ -96,14 +96,15 @@ def test_el_administrador_no_ve_a_otro_administrador_ni_a_un_desconocido(
     assert cliente_admin.get("/admin/estadisticas?usuario=nadie").status_code == 404
 
 
-def test_el_resumen_suma_solo_lo_completado(usuario_comun, ledger):
-    historial = ledger.wallet_history(usuario_comun.wallet_id)
+def test_el_resumen_suma_solo_lo_completado(usuario_comun, cuentas, ledger):
+    wallet_principal = cuentas.wallet_principal(usuario_comun.id)
+    historial = ledger.wallet_history(wallet_principal)
     completado = sum(
         (t.amount for t in historial if t.status is TransactionStatus.CONFIRMED), Decimal(0)
     )
 
-    resumen = resumen_de_estadisticas(historial, usuario_comun.wallet_id)
-    movimientos = movimientos_para_graficas(historial, usuario_comun.wallet_id, {})
+    resumen = resumen_de_estadisticas(historial, wallet_principal)
+    movimientos = movimientos_para_graficas(historial, wallet_principal, {})
 
     assert resumen.recibido == completado
     assert resumen.enviado == Decimal(0)

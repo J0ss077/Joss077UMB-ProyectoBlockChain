@@ -48,9 +48,12 @@ def test_req_33_aprobar_crea_wallet_saldo_y_un_bloque(cuentas: Cuentas, ledger: 
     aprobado = cuentas.aprobar(creado.id)
 
     assert aprobado.estado == APROBADO
-    assert aprobado.wallet_id is not None
     assert aprobado.aprobado_en is not None
-    wallet = ledger.wallets.get(aprobado.wallet_id)
+    # La aprobación registra la wallet, la acredita y se la asigna como dueña a la
+    # cuenta: `owner_id` apunta a la cuenta y la principal es su única wallet.
+    (wallet_de_ana,) = cuentas.wallets_de(aprobado.id)
+    assert cuentas.wallet_principal(aprobado.id) == wallet_de_ana
+    wallet = ledger.wallets.get(wallet_de_ana)
     assert wallet is not None
     assert ledger.available_balance(wallet.id) == SALDO_DE_BIENVENIDA
     assert ledger.available_balance(CONSTITUYENTE_ID) == (
@@ -87,7 +90,7 @@ def test_req_33_aprobar_dos_veces_no_crea_dos_wallets(cuentas: Cuentas):
     assert _estado() == antes
     fila = _usuario(creado.id)
     assert fila.estado == APROBADO
-    assert fila.wallet_id == primera.wallet_id
+    assert cuentas.wallet_principal(creado.id) == cuentas.wallet_principal(primera.id)
 
 
 def test_req_33_si_falla_el_credito_no_queda_la_wallet(
@@ -115,7 +118,7 @@ def test_req_33_si_falla_el_credito_no_queda_la_wallet(
     despues = _usuario(creado.id)
     assert despues == antes_usuario
     assert despues.estado == PENDIENTE
-    assert despues.wallet_id is None
+    assert cuentas.wallets_de(creado.id) == []
     assert despues.aprobado_en is None
 
 

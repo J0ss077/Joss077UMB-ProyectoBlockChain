@@ -13,15 +13,15 @@ from src.accounts.service import Cuentas
 
 
 def test_req_30_registrar_deja_pendiente_sin_wallet(cuentas: Cuentas):
-    """Criterio: la fila existe con estado `pendiente` y sin wallet."""
+    """Criterio: la fila existe con estado `pendiente` y la cuenta no es dueña de ninguna wallet."""
     creado = cuentas.registrar("  Ana  ", "secreta1")
 
     assert creado.username == "ana"
     assert creado.estado == PENDIENTE
-    assert creado.wallet_id is None
     assert creado.aprobado_en is None
     assert creado.motivo_rechazo is None
     assert creado.password_hash != "secreta1"
+    assert cuentas.wallets_de(creado.id) == []
     assert [usuario.id for usuario in cuentas.pendientes()] == [creado.id]
 
 
