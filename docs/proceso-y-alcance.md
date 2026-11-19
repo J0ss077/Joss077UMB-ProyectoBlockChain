@@ -44,7 +44,7 @@ Está declarado para que no se lea como olvido:
 - Cambio de contraseña sin aprobación, baja o suspensión de usuarios, y bitácora de lo que
   hace el administrador.
 - Correo electrónico, recuperación de contraseña, verificación por correo y doble factor.
-- Que la persona custodie su llave privada, o varias wallets por usuario.
+- Que la persona custodie su llave privada.
 - Protección CSRF y límite de intentos de ingreso.
 - Migraciones de esquema.
 - Nodos pares, consenso, minado o cualquier forma de red.

@@ -35,8 +35,7 @@ from src.accounts.model import (
 # Los dos nombres con los que el motor puede informar la unicidad del nombre: el
 # `UNIQUE` exacto del esquema y el índice único sobre `lower(username)`. Como la
 # aplicación normaliza antes de escribir, un duplicado puede violar cualquiera de
-# los dos; una violación de `users_wallet_id_key` no es un nombre repetido y sube
-# sin traducir.
+# los dos; cualquier otra violación de unicidad sube sin traducir.
 _UNICIDAD_DEL_NOMBRE = frozenset({"users_username_key", "users_username_minusculas"})
 
 
@@ -49,7 +48,6 @@ def _row_to_usuario(row: dict[str, Any]) -> Usuario:
         role=row["role"],
         estado=row["estado"],
         motivo_rechazo=row["motivo_rechazo"],
-        wallet_id=row["wallet_id"],
         creado_en=row["creado_en"],
         aprobado_en=row["aprobado_en"],
     )
@@ -91,8 +89,7 @@ class PostgresAccountsRepository:
         Las dos altas —la pendiente del registro y la ya aprobada de la
         semilla— comparten la traducción a `UsuarioDuplicado`: el servicio no
         tiene que conocer el driver para rechazar un nombre repetido (REQ-30).
-        Una violación de `users_wallet_id_key` no es un nombre repetido y sube
-        sin traducir.
+        Cualquier otra violación de unicidad sube sin traducir.
         """
         cursor = self._connection.cursor(row_factory=dict_row)
         try:
@@ -106,19 +103,20 @@ class PostgresAccountsRepository:
     def add_pendiente(self, usuario: Usuario) -> Usuario:
         """Registra la cuenta como pendiente y devuelve la fila escrita (REQ-30).
 
-        El estado, el motivo, la wallet y la fecha de aprobación se escriben
-        fijos: una cuenta que nace no puede estar aprobada ni tener wallet, y
-        dejar esos campos en manos del llamador permitiría una fila que el alta
-        moderada no contempla. El nombre se normaliza acá.
+        El estado, el motivo y la fecha de aprobación se escriben fijos: una
+        cuenta que nace no puede estar aprobada, y dejar esos campos en manos del
+        llamador permitiría una fila que el alta moderada no contempla. La cuenta
+        nace sin wallet: la propiedad vive en `wallets.owner_id`. El nombre se
+        normaliza acá.
         """
         username = normalizar_usuario(usuario.username)
         return self._insertar(
             """
             INSERT INTO users (
                 id, username, password_hash, role, estado,
-                motivo_rechazo, wallet_id, creado_en, aprobado_en
+                motivo_rechazo, creado_en, aprobado_en
             )
-            VALUES (%s, %s, %s, %s, %s, NULL, NULL, %s, NULL)
+            VALUES (%s, %s, %s, %s, %s, NULL, %s, NULL)
             RETURNING *
             """,
             (
@@ -133,24 +131,25 @@ class PostgresAccountsRepository:
         )
 
     def sembrar(self, usuario: Usuario) -> Usuario:
-        """Escribe una fila ya aprobada, con su wallet o sin ella (semilla).
+        """Escribe una fila ya aprobada o rechazada (semilla).
 
         El alta normal pasa por `add_pendiente` y `aprobar`; este camino existe
-        para que el arranque deje al administrador aprobado sin wallet —la única
-        cuenta a la que el esquema se lo admite— y a los usuarios de demostración
-        aprobados con la wallet que ya sembró. La fila la decide el llamador
-        porque la semilla no pasa por el alta moderada, pero el esquema sigue
-        siendo el que impide una combinación inválida. El nombre se normaliza y
-        la violación de unicidad se traduce igual que en el registro.
+        para que el arranque deje las cuentas de demostración en el estado que la
+        convención fija sin pasar por el alta moderada, que nadie va a aprobar. La
+        fila la decide el llamador porque la semilla no es un alta, pero el
+        esquema sigue siendo el que impide una combinación inválida. La wallet no
+        se escribe acá: el arranque la asigna después con `asignar_wallet`. El
+        nombre se normaliza y la violación de unicidad se traduce igual que en el
+        registro.
         """
         username = normalizar_usuario(usuario.username)
         return self._insertar(
             """
             INSERT INTO users (
                 id, username, password_hash, role, estado,
-                motivo_rechazo, wallet_id, creado_en, aprobado_en
+                motivo_rechazo, creado_en, aprobado_en
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING *
             """,
             (
@@ -160,7 +159,6 @@ class PostgresAccountsRepository:
                 usuario.role,
                 usuario.estado,
                 usuario.motivo_rechazo,
-                usuario.wallet_id,
                 usuario.creado_en,
                 usuario.aprobado_en,
             ),
@@ -199,35 +197,105 @@ class PostgresAccountsRepository:
         )
         return [_row_to_usuario(row) for row in cursor.fetchall()]
 
+    def list_aprobados(self) -> Sequence[Usuario]:
+        """Las cuentas comunes aprobadas, por nombre de usuario (REQ-46).
+
+        Es la lista del selector de dueño: sólo una cuenta común aprobada puede
+        ser dueña de una wallet (diseño de wallet con dueño, §2). El administrador
+        queda fuera por su rol.
+        """
+        cursor = self._connection.cursor(row_factory=dict_row)
+        cursor.execute(
+            """
+            SELECT * FROM users
+            WHERE role = %s AND estado = %s
+            ORDER BY username
+            """,
+            (USUARIO, APROBADO),
+        )
+        return [_row_to_usuario(row) for row in cursor.fetchall()]
+
     def nombres_por_wallet(self) -> dict[UUID, str]:
         """El nombre de usuario de cada wallet que tiene dueño.
 
-        Sólo las cuentas aprobadas tienen wallet (el CHECK del esquema lo exige),
-        así que el mapa no incluye pendientes ni rechazadas. Las wallets que no son
-        de ninguna cuenta —las que registra el administrador— no aparecen.
+        La relación vive en `wallets.owner_id`, así que el mapa sale del JOIN de
+        las dos tablas. Las wallets sin dueño —las que el administrador registra
+        sin asignar— no aparecen (REQ-46).
         """
         filas = self._connection.execute(
-            "SELECT wallet_id, username FROM users WHERE wallet_id IS NOT NULL"
+            """
+            SELECT w.id, u.username
+            FROM wallets w
+            JOIN users u ON u.id = w.owner_id
+            """
         ).fetchall()
         return {wallet_id: username for wallet_id, username in filas}
 
-    def aprobar(self, id: UUID, wallet_id: UUID) -> Usuario | None:
-        """Liga la wallet y pasa la cuenta a `aprobado` en una sola escritura (REQ-31).
+    def wallets_de(self, usuario_id: UUID) -> Sequence[UUID]:
+        """Identificadores de las wallets de la cuenta, de la más antigua a la más nueva (REQ-47).
+
+        El orden es `created_at, id`: la primera es la principal. Una cuenta común
+        aprobada puede tener ninguna, una o varias wallets.
+        """
+        filas = self._connection.execute(
+            """
+            SELECT id FROM wallets
+            WHERE owner_id = %s
+            ORDER BY created_at, id
+            """,
+            (usuario_id,),
+        ).fetchall()
+        return [wallet_id for (wallet_id,) in filas]
+
+    def wallet_principal(self, usuario_id: UUID) -> UUID | None:
+        """La wallet más antigua de la cuenta, o `None` si no tiene ninguna (REQ-34).
+
+        Es la que resuelve el envío por nombre de usuario: las demás se
+        direccionan por su identificador (diseño de wallet con dueño, decisión 6).
+        """
+        fila = self._connection.execute(
+            """
+            SELECT id FROM wallets
+            WHERE owner_id = %s
+            ORDER BY created_at, id
+            LIMIT 1
+            """,
+            (usuario_id,),
+        ).fetchone()
+        return fila[0] if fila is not None else None
+
+    def asignar_wallet(self, wallet_id: UUID, usuario_id: UUID) -> bool:
+        """Le pone dueño a una wallet sin dueño; `False` si no existe o ya lo tiene (REQ-46).
+
+        La condición `owner_id IS NULL` viaja dentro del mismo `UPDATE`: el dueño
+        queda fijo y dos asignaciones simultáneas no pueden reemplazarlo. La
+        validez del dueño la comprueba el servicio, que es el único que conoce la
+        regla de rol y estado.
+        """
+        cursor = self._connection.execute(
+            "UPDATE wallets SET owner_id = %s WHERE id = %s AND owner_id IS NULL",
+            (usuario_id, wallet_id),
+        )
+        return cursor.rowcount == 1
+
+    def aprobar(self, id: UUID) -> Usuario | None:
+        """Pasa la cuenta a `aprobado` en una sola escritura (REQ-31).
 
         La condición `estado = 'pendiente'` viaja dentro del mismo `UPDATE`: dos
-        aprobaciones simultáneas no pueden dejar dos wallets ni reemplazar la
-        primera, y una cuenta que ya no está pendiente devuelve `None` sin
-        escribir. La fecha de aprobación la pone el reloj de la base.
+        aprobaciones simultáneas no pueden aprobar dos veces, y una cuenta que ya
+        no está pendiente devuelve `None` sin escribir. La wallet de bienvenida y
+        su dueño los liga el servicio en la misma transacción (REQ-33). La fecha
+        de aprobación la pone el reloj de la base.
         """
         cursor = self._connection.cursor(row_factory=dict_row)
         cursor.execute(
             """
             UPDATE users
-            SET estado = %s, wallet_id = %s, aprobado_en = NOW()
+            SET estado = %s, aprobado_en = NOW()
             WHERE id = %s AND estado = %s
             RETURNING *
             """,
-            (APROBADO, wallet_id, id, PENDIENTE),
+            (APROBADO, id, PENDIENTE),
         )
         row = cursor.fetchone()
         return _row_to_usuario(row) if row is not None else None

@@ -63,7 +63,7 @@ def test_req_32_con_contrasena_equivocada_el_mensaje_no_distingue_si_existe(
 
 
 def test_req_32_el_aprobado_ingresa(cuentas: Cuentas):
-    """Criterio: con `aprobado` el ingreso devuelve la cuenta y su wallet."""
+    """Criterio: con `aprobado` el ingreso devuelve la cuenta y su wallet principal."""
     creado = cuentas.registrar("ana", "secreta1")
     aprobado = cuentas.aprobar(creado.id)
 
@@ -71,7 +71,8 @@ def test_req_32_el_aprobado_ingresa(cuentas: Cuentas):
 
     assert autenticado == aprobado
     assert autenticado.estado == APROBADO
-    assert autenticado.wallet_id is not None
+    (wallet_de_ana,) = cuentas.wallets_de(autenticado.id)
+    assert cuentas.wallet_principal(autenticado.id) == wallet_de_ana
 
 
 def test_req_30_el_ingreso_acepta_el_nombre_en_otra_caja(cuentas: Cuentas):
@@ -90,7 +91,7 @@ def test_req_31_rechazar_guarda_el_motivo_y_el_nombre_no_se_reusa(cuentas: Cuent
 
     assert rechazado.estado == RECHAZADO
     assert rechazado.motivo_rechazo == "documentación incompleta"
-    assert rechazado.wallet_id is None
+    assert cuentas.wallets_de(rechazado.id) == []
     with pytest.raises(UsuarioNoPendiente):
         cuentas.rechazar(creado.id, "otra vez")
     with pytest.raises(UsuarioDuplicado):

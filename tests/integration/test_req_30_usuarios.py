@@ -25,6 +25,7 @@ from src.accounts.model import (
     UsuarioDuplicado,
 )
 from src.accounts.postgres import PostgresAccountsRepository
+from src.domain.wallet import create_wallet
 from src.persistence.factory import database_url
 from src.persistence.unit_of_work import PostgresUnitOfWork
 
@@ -44,7 +45,11 @@ INSERT_DIRECTO = (
 
 
 def usuario_nuevo(username: str, *, creado_en: datetime = CREADO_EN) -> Usuario:
-    """Una cuenta pendiente, sin wallet, lista para que el repositorio la escriba."""
+    """Una cuenta pendiente, lista para que el repositorio la escriba.
+
+    La cuenta no lleva wallet: la propiedad vive en `wallets.owner_id` y una
+    aprobación le asigna la suya recién en el servicio (REQ-33).
+    """
     return Usuario(
         id=uuid4(),
         username=username,
@@ -52,7 +57,6 @@ def usuario_nuevo(username: str, *, creado_en: datetime = CREADO_EN) -> Usuario:
         role=USUARIO,
         estado=PENDIENTE,
         motivo_rechazo=None,
-        wallet_id=None,
         creado_en=creado_en,
         aprobado_en=None,
     )
@@ -65,13 +69,14 @@ def usuarios(conexion) -> PostgresAccountsRepository:
 
 
 def test_req_30_el_registro_deja_la_fila_pendiente_sin_wallet(usuarios, base_limpia):
-    """REQ-30: la fila existe con `estado = 'pendiente'` y sin wallet."""
+    """REQ-30: la fila existe pendiente y la cuenta no es dueña de ninguna wallet."""
     creado = usuarios.add_pendiente(usuario_nuevo("ana"))
 
     fila = usuarios.get_by_username("ana")
     assert fila is not None
     assert fila.estado == PENDIENTE
-    assert fila.wallet_id is None
+    assert usuarios.wallets_de(creado.id) == []
+    assert usuarios.wallet_principal(creado.id) is None
     assert fila.aprobado_en is None
     assert fila.motivo_rechazo is None
     assert fila.id == creado.id
@@ -111,47 +116,107 @@ def test_req_30_el_esquema_rechaza_dos_nombres_que_solo_difieren_en_la_caja(
     assert error.value.diag.constraint_name == "users_username_minusculas"
 
 
-def test_req_31_aprobar_liga_la_wallet_y_cambia_el_estado(
-    usuarios, base_limpia, emisora
-):
-    """REQ-31: al aprobar, el estado pasa a `aprobado` y queda ligada la wallet."""
+def test_req_31_aprobar_cambia_el_estado_y_no_liga_wallet(usuarios, base_limpia):
+    """REQ-31: al aprobar, el estado pasa a `aprobado`; la wallet la liga el servicio.
+
+    El repositorio ya no recibe una wallet: la propiedad vive en `wallets.owner_id`
+    y la aprobación de REQ-33 la asigna en la misma transacción del servicio.
+    """
     creado = usuarios.add_pendiente(usuario_nuevo("ana"))
 
-    aprobado = usuarios.aprobar(creado.id, emisora.id)
+    aprobado = usuarios.aprobar(creado.id)
 
     assert aprobado is not None
     assert aprobado.estado == APROBADO
-    assert aprobado.wallet_id == emisora.id
     assert aprobado.aprobado_en is not None
     assert usuarios.get(creado.id) == aprobado
     assert usuarios.list_pendientes() == []
+    assert usuarios.wallets_de(creado.id) == []
 
 
-def test_req_31_aprobar_con_una_wallet_inexistente_no_cambia_el_estado(
-    usuarios, base_limpia
+def test_req_46_el_repositorio_asigna_solo_wallets_sin_dueno(
+    usuarios, base_limpia, emisora, receptora
 ):
-    """REQ-31: estado y wallet se mueven juntos; si la wallet no existe, no queda nada."""
+    """REQ-46: `asignar_wallet` liga una wallet libre y no reemplaza a un dueño.
+
+    Devuelve `False` si la wallet ya tiene dueño o no existe, y deja la primera
+    asignación intacta: la propiedad no se puede pisar por accidente.
+    """
+    ana = usuarios.add_pendiente(usuario_nuevo("ana"))
+    beto = usuarios.add_pendiente(usuario_nuevo("beto"))
+    usuarios.aprobar(ana.id)
+    usuarios.aprobar(beto.id)
+
+    assert usuarios.asignar_wallet(emisora.id, ana.id) is True
+    assert usuarios.wallets_de(ana.id) == [emisora.id]
+    assert usuarios.wallet_principal(ana.id) == emisora.id
+    assert usuarios.asignar_wallet(emisora.id, beto.id) is False
+    assert usuarios.asignar_wallet(uuid4(), beto.id) is False
+    assert usuarios.wallets_de(beto.id) == []
+
+
+def test_req_46_list_aprobados_trae_solo_las_cuentas_comunes_aprobadas_por_nombre(
+    usuarios, conexion, base_limpia
+):
+    """REQ-46: el selector de dueño lista las cuentas comunes aprobadas por nombre.
+
+    Quedan fuera el administrador —no puede ser dueño—, las pendientes y las
+    rechazadas, y el orden es el del nombre para que el selector sea estable.
+    """
+    usuarios.add_pendiente(usuario_nuevo("beto"))
+    carla = usuarios.add_pendiente(usuario_nuevo("carla"))
+    usuarios.aprobar(carla.id)
+    ana = usuarios.add_pendiente(usuario_nuevo("ana"))
+    usuarios.aprobar(ana.id)
+    dora = usuarios.add_pendiente(usuario_nuevo("dora"))
+    usuarios.rechazar(dora.id, "no corresponde")
+    conexion.execute(
+        """
+        INSERT INTO users (username, password_hash, role, estado)
+        VALUES ('adminx', 'hash', 'administrador', 'aprobado')
+        """
+    )
+
+    assert [usuario.username for usuario in usuarios.list_aprobados()] == [
+        "ana",
+        "carla",
+    ]
+
+
+def test_req_47_las_wallets_de_la_cuenta_van_de_la_mas_antigua_a_la_mas_nueva(
+    usuarios, wallets, base_limpia, master_key
+):
+    """REQ-47: `wallets_de` ordena por antigüedad y `wallet_principal` da la primera.
+
+    El orden no es el de inserción: se asignan en orden inverso para que la prueba
+    mida el `ORDER BY created_at, id` del repositorio y no el azar del alta.
+    """
     creado = usuarios.add_pendiente(usuario_nuevo("ana"))
+    usuarios.aprobar(creado.id)
+    antigua = wallets.add(
+        create_wallet(master_key=master_key, created_at=CREADO_EN)
+    )
+    nueva = wallets.add(
+        create_wallet(
+            master_key=master_key, created_at=CREADO_EN + timedelta(minutes=1)
+        )
+    )
+    assert usuarios.asignar_wallet(nueva.id, creado.id) is True
+    assert usuarios.asignar_wallet(antigua.id, creado.id) is True
 
-    with pytest.raises(psycopg.errors.ForeignKeyViolation):
-        usuarios.aprobar(creado.id, uuid4())
-
-    fila = usuarios.get(creado.id)
-    assert fila.estado == PENDIENTE
-    assert fila.wallet_id is None
-    assert fila.aprobado_en is None
+    assert usuarios.wallets_de(creado.id) == [antigua.id, nueva.id]
+    assert usuarios.wallet_principal(creado.id) == antigua.id
 
 
 def test_req_31_una_segunda_aprobacion_no_vuelve_a_escribir(
-    usuarios, base_limpia, emisora, receptora
+    usuarios, base_limpia
 ):
-    """REQ-31: aprobar dos veces no reemplaza la wallet ni repite la escritura."""
+    """REQ-31: aprobar dos veces no repite la escritura."""
     creado = usuarios.add_pendiente(usuario_nuevo("ana"))
-    primera = usuarios.aprobar(creado.id, emisora.id)
+    primera = usuarios.aprobar(creado.id)
 
-    assert usuarios.aprobar(creado.id, receptora.id) is None
+    assert usuarios.aprobar(creado.id) is None
     assert usuarios.get(creado.id) == primera
-    assert usuarios.get(creado.id).wallet_id == emisora.id
 
 
 def test_req_31_rechazar_guarda_el_motivo_y_el_esquema_no_lo_admite_vacio(
@@ -170,7 +235,7 @@ def test_req_31_rechazar_guarda_el_motivo_y_el_esquema_no_lo_admite_vacio(
     assert rechazado is not None
     assert rechazado.estado == RECHAZADO
     assert rechazado.motivo_rechazo == "documentación incompleta"
-    assert rechazado.wallet_id is None
+    assert usuarios.wallets_de(creado.id) == []
     assert rechazado.aprobado_en is None
     with pytest.raises(psycopg.errors.CheckViolation):
         conexion.execute(
@@ -180,7 +245,7 @@ def test_req_31_rechazar_guarda_el_motivo_y_el_esquema_no_lo_admite_vacio(
 
 
 def test_req_31_list_pendientes_trae_solo_los_pendientes_y_en_orden(
-    usuarios, base_limpia, emisora
+    usuarios, base_limpia
 ):
     """REQ-31: la lista de pendientes excluye aprobados y rechazados y va por fecha de alta."""
     segunda = usuarios.add_pendiente(
@@ -193,7 +258,7 @@ def test_req_31_list_pendientes_trae_solo_los_pendientes_y_en_orden(
     rechazada = usuarios.add_pendiente(
         usuario_nuevo("dora", creado_en=CREADO_EN + timedelta(minutes=3))
     )
-    usuarios.aprobar(aprobada.id, emisora.id)
+    usuarios.aprobar(aprobada.id)
     usuarios.rechazar(rechazada.id, "no corresponde")
 
     pendientes = usuarios.list_pendientes()

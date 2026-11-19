@@ -38,11 +38,15 @@ def test_el_perfil_exige_sesion(cliente):
     assert "/ingresar" in respuesta.headers["Location"]
 
 
-def test_el_perfil_muestra_los_datos_de_la_cuenta(cliente_comun, usuario_comun):
+def test_el_perfil_muestra_los_datos_de_la_cuenta(
+    cliente_comun, usuario_comun, cuentas
+):
     cuerpo = cliente_comun.get("/perfil").get_data(as_text=True)
 
     assert usuario_comun.username in cuerpo
-    assert str(usuario_comun.wallet_id) in cuerpo
+    # El perfil lista las wallets de la cuenta: el identificador completo viaja en
+    # el `title` y en `data-copiar` del botón de copiar.
+    assert str(cuentas.wallet_principal(usuario_comun.id)) in cuerpo
     assert 'action="/perfil/contrasena"' in cuerpo
     assert 'href="/perfil" aria-current="page"' in cuerpo
 

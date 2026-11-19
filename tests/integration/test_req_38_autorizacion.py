@@ -89,13 +89,21 @@ def test_req_38_el_usuario_comun_no_entra_a_ninguna_ruta_de_trabajo(cliente_comu
         assert "Estado del ledger" not in respuesta.get_data(as_text=True), (metodo, ruta)
 
 
-def test_req_38_el_administrador_conserva_las_rutas_de_hoy(cliente_admin, administrador):
-    """Criterio: el administrador sigue entrando a las rutas que ya existían."""
+def test_req_38_el_administrador_conserva_las_rutas_de_hoy(
+    cliente_admin, administrador, emisora, conexion
+):
+    """Criterio: el administrador sigue entrando a las rutas que ya existían.
+
+    El administrador no tiene wallet propia (decisión 5): ve el historial de
+    cualquier wallet, y acá se comprueba con una que no le pertenece.
+    """
     for ruta in RUTAS_DEL_ADMINISTRADOR:
         assert cliente_admin.get(ruta).status_code == 200, ruta
     assert cliente_admin.get("/").status_code == 200
-    assert administrador.wallet_id is not None
-    assert cliente_admin.get(f"/historial/{administrador.wallet_id}").status_code == 200
+    assert conexion.execute(
+        "SELECT count(*) FROM wallets WHERE owner_id = %s", (administrador.id,)
+    ).fetchone()[0] == 0
+    assert cliente_admin.get(f"/historial/{emisora.id}").status_code == 200
 
 
 def test_req_38_la_portada_del_administrador_muestra_los_saldos(

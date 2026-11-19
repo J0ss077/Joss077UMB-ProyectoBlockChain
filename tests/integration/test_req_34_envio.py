@@ -1,10 +1,12 @@
 """REQ-34: el envío del usuario común sale de su sesión y no del formulario.
 
-El emisor lo decide la sesión: `g.user.wallet_id` es la única wallet desde la que
-se puede proponer un envío desde el tablero. El formulario no tiene campo de
-emisor y, si alguien inyecta uno, la ruta lo ignora. El destinatario se resuelve
-primero por nombre de usuario y, si no existe, por el identificador de la wallet
-(decisión 4 del diseño), y los rechazos del dominio se muestran con su motivo.
+El emisor lo decide la sesión: la wallet elegida por la cuenta (o su principal, si
+no eligió ninguna) es la única desde la que se puede proponer un envío en el
+tablero (REQ-47). El formulario no tiene campo de emisor y, si alguien inyecta
+uno, la ruta lo ignora. El destinatario se resuelve primero por nombre de usuario
+—su wallet principal— y, si no existe, por el identificador de la wallet (decisión
+6 del diseño de wallet con dueño), y los rechazos del dominio se muestran con su
+motivo.
 
 El cliente pide la aplicación real contra la base real, igual que el resto de las
 pruebas de rutas: lo que se mide es el recorrido completo y no la fachada.
@@ -39,10 +41,12 @@ def _envios_desde(conexion, wallet_id) -> list[tuple]:
 
 
 def test_req_34_el_emisor_sale_de_la_sesion_y_no_del_formulario(
-    cliente_comun, usuario_comun, otra_persona, conexion
+    cliente_comun, usuario_comun, otra_persona, cuentas, conexion
 ):
     """Criterio: un envío con un emisor ajeno en el formulario se registra con la
     wallet de la sesión, o se rechaza; nunca con la ajena."""
+    wallet_propia = cuentas.wallet_principal(usuario_comun.id)
+    wallet_ajena = cuentas.wallet_principal(otra_persona.id)
     respuesta = cliente_comun.post(
         "/mi-envio",
         data={
@@ -50,22 +54,20 @@ def test_req_34_el_emisor_sale_de_la_sesion_y_no_del_formulario(
             "amount": "10.00000000",
             # El formulario del tablero no tiene emisor: se inyecta para medir que
             # la ruta no confía en lo que llega.
-            "sender_id": str(otra_persona.wallet_id),
+            "sender_id": str(wallet_ajena),
         },
     )
 
     assert respuesta.status_code == 200
-    enviadas = _envios_desde(conexion, usuario_comun.wallet_id)
-    assert enviadas == [
-        (otra_persona.wallet_id, Decimal("10.00000000"), "pending")
-    ]
+    enviadas = _envios_desde(conexion, wallet_propia)
+    assert enviadas == [(wallet_ajena, Decimal("10.00000000"), "pending")]
     # La wallet que llegó en el formulario no ganó ninguna fila como emisora: lo
     # único que tiene es el crédito de bienvenida, donde es la receptora.
-    assert _envios_desde(conexion, otra_persona.wallet_id) == []
+    assert _envios_desde(conexion, wallet_ajena) == []
 
 
 def test_req_34_el_destinatario_puede_ser_usuario_o_identificador_de_wallet(
-    cliente_comun, usuario_comun, otra_persona, receptora, conexion
+    cliente_comun, usuario_comun, otra_persona, receptora, cuentas, conexion
 ):
     """Criterio: el destinatario se resuelve por nombre de usuario y, si no existe,
     por el identificador de la wallet."""
@@ -80,13 +82,14 @@ def test_req_34_el_destinatario_puede_ser_usuario_o_identificador_de_wallet(
 
     assert por_nombre.status_code == 200
     assert por_wallet.status_code == 200
-    destinos = _envios_desde(conexion, usuario_comun.wallet_id)
-    assert (otra_persona.wallet_id, Decimal("10.00000000"), "pending") in destinos
+    destinos = _envios_desde(conexion, cuentas.wallet_principal(usuario_comun.id))
+    wallet_de_bruno = cuentas.wallet_principal(otra_persona.id)
+    assert (wallet_de_bruno, Decimal("10.00000000"), "pending") in destinos
     assert (receptora.id, Decimal("5.00000000"), "pending") in destinos
 
 
 def test_req_34_el_destinatario_inexistente_se_rechaza_con_motivo(
-    cliente_comun, usuario_comun, conexion
+    cliente_comun, usuario_comun, cuentas, conexion
 ):
     """Criterio: un destinatario que no es ni cuenta ni wallet se informa y no escribe."""
     respuesta = cliente_comun.post(
@@ -95,11 +98,11 @@ def test_req_34_el_destinatario_inexistente_se_rechaza_con_motivo(
 
     assert respuesta.status_code == 200
     assert MENSAJE_DESTINATARIO_INEXISTENTE in respuesta.get_data(as_text=True)
-    assert _envios_desde(conexion, usuario_comun.wallet_id) == []
+    assert _envios_desde(conexion, cuentas.wallet_principal(usuario_comun.id)) == []
 
 
 def test_req_34_un_envio_sin_saldo_se_rechaza_con_el_motivo_del_dominio(
-    cliente_comun, usuario_comun, otra_persona, conexion
+    cliente_comun, usuario_comun, otra_persona, cuentas, conexion
 ):
     """Criterio: los rechazos del dominio se muestran con su motivo.
 
@@ -118,13 +121,13 @@ def test_req_34_un_envio_sin_saldo_se_rechaza_con_el_motivo_del_dominio(
     assert "pool" not in cuerpo
     filas = conexion.execute(
         "SELECT status, amount FROM transactions WHERE sender_id = %s",
-        (usuario_comun.wallet_id,),
+        (cuentas.wallet_principal(usuario_comun.id),),
     ).fetchall()
     assert filas == [("rejected", Decimal("999999.00000000"))]
 
 
 def test_req_34_el_tablero_muestra_su_nombre_su_wallet_y_su_saldo(
-    cliente_comun, usuario_comun
+    cliente_comun, usuario_comun, cuentas
 ):
     """Criterio: el tablero es la pantalla del usuario común con sus propios datos."""
     respuesta = cliente_comun.get("/mi-tablero")
@@ -134,8 +137,9 @@ def test_req_34_el_tablero_muestra_su_nombre_su_wallet_y_su_saldo(
     assert usuario_comun.username in cuerpo
     # El identificador completo viaja en `data-copiar`, y la forma corta es la que
     # se ve: el botón de copiar ya existe en `_macros.html`.
-    assert str(usuario_comun.wallet_id) in cuerpo
-    assert str(usuario_comun.wallet_id)[:8] in cuerpo
+    wallet_principal = cuentas.wallet_principal(usuario_comun.id)
+    assert str(wallet_principal) in cuerpo
+    assert str(wallet_principal)[:8] in cuerpo
     assert "1000.00000000" in cuerpo
     # El crédito de bienvenida de la aprobación es la confirmada que toda cuenta
     # tiene (REQ-33); el inicio la cuenta en lo recibido del mes. La lista de

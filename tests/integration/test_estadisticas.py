@@ -10,6 +10,7 @@ import re
 from decimal import Decimal
 
 from src.domain.transaction import TransactionStatus
+from src.emision import CONSTITUYENTE_ID
 from src.web.estadisticas import (
     NOMBRE_DE_LA_BIENVENIDA,
     movimientos_para_graficas,
@@ -26,11 +27,11 @@ def _movimientos_de_la_pagina(cuerpo: str) -> list[dict]:
 
 
 def test_el_comun_ve_sus_estadisticas_y_no_las_de_otros(
-    cliente_comun, usuario_comun, ledger, emisora, receptora, transaccion
+    cliente_comun, usuario_comun, cuentas, ledger, emisora, receptora, transaccion
 ):
     propia = ledger.transactions.add(
         transaccion(
-            sender=ledger.wallets.get(usuario_comun.wallet_id),
+            sender=ledger.wallets.get(cuentas.wallet_principal(usuario_comun.id)),
             receiver=receptora,
             amount=Decimal("3.00000000"),
         )
@@ -96,15 +97,55 @@ def test_el_administrador_no_ve_a_otro_administrador_ni_a_un_desconocido(
     assert cliente_admin.get("/admin/estadisticas?usuario=nadie").status_code == 404
 
 
-def test_el_resumen_suma_solo_lo_completado(usuario_comun, ledger):
-    historial = ledger.wallet_history(usuario_comun.wallet_id)
+def test_el_resumen_suma_solo_lo_completado(usuario_comun, cuentas, ledger):
+    wallet_principal = cuentas.wallet_principal(usuario_comun.id)
+    historial = ledger.wallet_history(wallet_principal)
     completado = sum(
         (t.amount for t in historial if t.status is TransactionStatus.CONFIRMED), Decimal(0)
     )
 
-    resumen = resumen_de_estadisticas(historial, usuario_comun.wallet_id)
-    movimientos = movimientos_para_graficas(historial, usuario_comun.wallet_id, {})
+    resumen = resumen_de_estadisticas(historial, wallet_principal)
+    movimientos = movimientos_para_graficas(historial, wallet_principal, {})
 
     assert resumen.recibido == completado
     assert resumen.enviado == Decimal(0)
     assert resumen.movimientos == len(historial) == len(movimientos)
+
+
+def test_el_administrador_ve_la_principal_de_una_cuenta_con_varias_wallets(
+    cliente_admin, usuario_comun, cuentas, ledger
+):
+    """Criterio: la página del administrador usa la principal del usuario elegido.
+
+    La cuenta tiene una segunda wallet con 250 acreditados para que el saldo y el
+    historial tengan que ser los de la principal (la de bienvenida): si la ruta
+    mirara otra wallet, el resumen y los movimientos mostrarían esos 250.
+    """
+    segunda = cuentas.registrar_wallet(usuario_comun.id)
+    ledger.acreditar(
+        emisor_id=CONSTITUYENTE_ID,
+        destino_id=segunda.id,
+        monto=Decimal("250.00000000"),
+    )
+
+    respuesta = cliente_admin.get("/admin/estadisticas?usuario=ana")
+
+    assert respuesta.status_code == 200
+    cuerpo = respuesta.get_data(as_text=True)
+    movimientos = _movimientos_de_la_pagina(cuerpo)
+    assert [m["monto"] for m in movimientos] == ["1000.00000000"]
+    assert movimientos[0]["tipo"] == "entra"
+    assert movimientos[0]["persona"] == NOMBRE_DE_LA_BIENVENIDA
+    # El resumen de la página también sale de la principal: recibió 1000, no 250.
+    recibido = re.search(
+        r'data-cifra="recibido">.*?title="([0-9.]+)"', cuerpo, re.S
+    )
+    assert recibido is not None
+    assert recibido.group(1) == "1000.00000000"
+    datos = re.search(
+        r'<script type="application/json" id="datos-estadisticas">(.*?)</script>',
+        cuerpo,
+        re.S,
+    )
+    assert datos is not None
+    assert "250.00000000" not in datos.group(1)

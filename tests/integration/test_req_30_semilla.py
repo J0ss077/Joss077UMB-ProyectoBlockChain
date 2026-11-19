@@ -1,10 +1,11 @@
 """REQ-30 y REQ-33: la semilla, sus cuentas y el recorrido de demostración.
 
 Además de las cinco wallets de la convención, el arranque deja el administrador
-—aprobado y sin wallet, que es la única cuenta a la que el CHECK se lo permite— y
-un usuario de demostración por cada wallet sembrada, todos aprobados y con la
-contraseña documentada. La semilla se puede correr dos veces: no duplica cuentas
-ni wallets.
+—aprobado y sin wallet, porque sólo una cuenta común aprobada puede ser dueña
+(decisión 5)— y un usuario de demostración por cada wallet sembrada, todos
+aprobados y con la contraseña documentada. Cada wallet sembrada queda con su
+cuenta como dueña en `wallets.owner_id`, y la semilla se puede correr dos veces:
+no duplica cuentas ni wallets.
 
 El tercer caso es el recorrido del diseño (§13) de punta a punta con el cliente de
 pruebas: el administrador aprueba a una persona, esa persona ingresa, ve su saldo
@@ -49,7 +50,7 @@ def test_req_30_la_semilla_crea_el_administrador_y_cinco_usuarios(
         assert administrador is not None
         assert administrador.role == ADMINISTRADOR
         assert administrador.estado == APROBADO
-        assert administrador.wallet_id is None
+        assert actual.usuarios.wallets_de(administrador.id) == []
         assert administrador.aprobado_en is not None
         assert verificar_contrasena(admin_password(), administrador.password_hash)
 
@@ -57,6 +58,10 @@ def test_req_30_la_semilla_crea_el_administrador_y_cinco_usuarios(
             actual.usuarios.get_by_username(nombre)
             for nombre in NOMBRES_DE_DEMOSTRACION
         ]
+        wallets_de_cada_cuenta = {
+            usuario.username: actual.usuarios.wallets_de(usuario.id)
+            for usuario in demostracion
+        }
 
     assert all(usuario is not None for usuario in demostracion)
     assert {usuario.role for usuario in demostracion} == {USUARIO}
@@ -65,10 +70,10 @@ def test_req_30_la_semilla_crea_el_administrador_y_cinco_usuarios(
         verificar_contrasena(CONTRASENA_DE_DEMOSTRACION, usuario.password_hash)
         for usuario in demostracion
     )
-    # Uno por cada wallet sembrada y ninguno repetida: el conjunto de wallets de
-    # las cinco cuentas es el conjunto de wallets de la semilla.
-    assert len({usuario.wallet_id for usuario in demostracion}) == 5
-    assert {usuario.wallet_id for usuario in demostracion} == {
+    # Una wallet por cuenta, y las cinco de la semilla: cada wallet sembrada quedó
+    # con su cuenta como dueña (decisión 4).
+    assert all(len(wallets) == 1 for wallets in wallets_de_cada_cuenta.values())
+    assert {wallets[0] for wallets in wallets_de_cada_cuenta.values()} == {
         wallet.id for wallet in chain.wallets.list()
     }
 
@@ -86,7 +91,8 @@ def test_req_30_la_semilla_es_idempotente(base_vacia_ejecutando_bootstrap):
     with transaction() as actual:
         assert actual.usuarios.count() == cuentas_antes
         administrador = actual.usuarios.get_by_username(USERNAME_DEL_ADMINISTRADOR)
-        assert administrador is not None and administrador.wallet_id is None
+        assert administrador is not None
+        assert actual.usuarios.wallets_de(administrador.id) == []
     assert chain.ledger_state() == ledger_antes
 
 
@@ -163,6 +169,35 @@ def test_req_30_un_volumen_sin_las_tablas_nuevas_tambien_falla(
     assert "Traceback" not in proceso.stderr
 
 
+def test_req_30_un_volumen_sin_el_dueno_de_la_wallet_falla_con_el_mensaje(
+    base_vacia_ejecutando_bootstrap, conexion
+):
+    """Criterio: una base con las tablas y las columnas de antes se reconoce antes de escribir.
+
+    Un volumen anterior a la propiedad de la wallet tiene todas las tablas, pero le
+    falta `wallets.owner_id` y le sobra `users.wallet_id`: sin la comprobación de
+    columnas el arranque fallaría más adelante con un `UndefinedColumn` crudo, en vez
+    de explicar que la única salida es recrear el volumen. Se simula el esquema viejo
+    y se restaura en el `finally`.
+    """
+    conexion.execute("ALTER TABLE wallets RENAME COLUMN owner_id TO owner_anterior")
+    conexion.execute("ALTER TABLE users ADD COLUMN wallet_id UUID NULL")
+    try:
+        proceso = subprocess.run(
+            [sys.executable, "-m", "src.bootstrap"], capture_output=True, text=True
+        )
+    finally:
+        conexion.execute("ALTER TABLE users DROP COLUMN wallet_id")
+        conexion.execute("ALTER TABLE wallets RENAME COLUMN owner_anterior TO owner_id")
+
+    assert proceso.returncode == 1, proceso.stdout
+    assert MENSAJE_DE_VOLUMEN_VIEJO in proceso.stderr
+    assert "falta wallets.owner_id" in proceso.stderr
+    assert "sobra users.wallet_id" in proceso.stderr
+    assert "UndefinedColumn" not in proceso.stderr
+    assert "Traceback" not in proceso.stderr
+
+
 def test_req_33_el_recorrido_de_demostracion_completo(
     base_vacia_ejecutando_bootstrap, cliente
 ):
@@ -193,8 +228,10 @@ def test_req_33_el_recorrido_de_demostracion_completo(
         persona = actual.usuarios.get_by_username(USUARIO_DE_LA_DEMO)
         assert persona is not None
         assert persona.estado == APROBADO
-        assert persona.wallet_id is not None
-        wallet_de_la_persona = persona.wallet_id
+        # La aprobación le creó su primera wallet y se la asignó como dueña (REQ-33).
+        wallets_de_la_persona = actual.usuarios.wallets_de(persona.id)
+        assert len(wallets_de_la_persona) == 1
+        wallet_de_la_persona = wallets_de_la_persona[0]
 
     # 3. La persona ingresa y ve su saldo de bienvenida (REQ-33).
     cliente.post("/salir")

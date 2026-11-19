@@ -92,8 +92,9 @@ def test_req_31_aprobar_desde_la_cola_crea_la_wallet_y_saca_al_usuario_de_la_lis
     aprobada = cuentas.por_id(ana.id)
     assert aprobada is not None
     assert aprobada.estado == APROBADO
-    assert aprobada.wallet_id is not None
-    assert ledger.available_balance(aprobada.wallet_id) == SALDO_DE_BIENVENIDA
+    # La aprobación le creó su wallet y se la asignó como dueña (REQ-33).
+    (wallet_de_ana,) = cuentas.wallets_de(aprobada.id)
+    assert ledger.available_balance(wallet_de_ana) == SALDO_DE_BIENVENIDA
     assert ledger.ledger_state() == {
         "wallets": antes["wallets"] + 1,
         "blocks": antes["blocks"] + 1,
@@ -159,7 +160,7 @@ def test_req_31_rechazar_desde_la_cola_pide_motivo_y_lo_guarda(cliente_admin, cu
     assert fila is not None
     assert fila.estado == RECHAZADO
     assert fila.motivo_rechazo == "El documento no coincide."
-    assert fila.wallet_id is None
+    assert cuentas.wallets_de(fila.id) == []
 
     cola = cliente_admin.get(RUTA_DE_LA_COLA).get_data(as_text=True)
     assert f"/admin/pendientes/{ana.id}/rechazar" not in cola

@@ -50,8 +50,10 @@ from src.domain.blockchain import Blockchain
 from src.domain.transaction import TransactionStatus
 from src.emision import CONSTITUYENTE_ID
 from src.web.auth import requiere_sesion
+from src.web.forms import ruta_interna
 from src.web.ia import ConectorDeIA
 from src.web.idioma import idioma_actual
+from src.web.user import _wallet_de_la_sesion
 
 registro = logging.getLogger(__name__)
 
@@ -941,11 +943,10 @@ def crear_blueprint_del_asistente(
         """El ayudante en su propia pestaña de la barra superior.
 
         `?desde=/mi-tablero` dice de qué pantalla vino la persona, para que «lo que
-        pasa ahora» explique esa y no la del ayudante. Sólo se acepta una ruta local.
+        pasa ahora» explique esa y no la del ayudante. Sólo se acepta una ruta local,
+        con la misma regla que los formularios que vuelven a la página de origen.
         """
-        desde = request.args.get("desde", "")
-        if not desde.startswith("/") or desde.startswith("//"):
-            desde = ""
+        desde = ruta_interna(request.args.get("desde"), "")
         return render_template("asistente.html", desde=desde, ia=conector is not None)
 
     def situacion_actual(idioma: str) -> Situacion:
@@ -953,12 +954,17 @@ def crear_blueprint_del_asistente(
         if _rol(usuario) == "admin":
             with abrir_cuentas() as cuentas, abrir_cadena() as chain:
                 return _situacion_del_admin(chain, cuentas, idioma)
-        if usuario.wallet_id is None:
-            return Situacion()
+        # La cuenta común puede tener varias wallets: el ayudante habla de la
+        # elegida en el tablero, que es la misma con la que opera el resto de la
+        # pantalla (REQ-47). Sin wallets no hay situación que explicar.
         with abrir_cuentas() as cuentas:
+            wallets = cuentas.wallets_de(usuario.id)
+            if not wallets:
+                return Situacion()
+            wallet_id = _wallet_de_la_sesion(cuentas, wallets)
             nombres = dict(cuentas.nombres_por_wallet())
         with abrir_cadena() as chain:
-            return _situacion_del_comun(chain, nombres, usuario.wallet_id, idioma)
+            return _situacion_del_comun(chain, nombres, wallet_id, idioma)
 
     @asistente.get("/ahora")
     def ahora() -> Response:

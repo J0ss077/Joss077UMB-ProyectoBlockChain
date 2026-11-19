@@ -33,13 +33,13 @@ def test_req_35_el_usuario_comun_no_ve_el_historial_de_otro(
 
 
 def test_req_35_mi_historial_solo_lista_sus_transacciones(
-    cliente_comun, usuario_comun, ledger, receptora, emisora, transaccion
+    cliente_comun, usuario_comun, cuentas, ledger, receptora, emisora, transaccion
 ):
     """Criterio: el historial propio son sólo las transacciones de la wallet de la
     sesión, y la pantalla no lista las wallets de otros."""
     propia = ledger.transactions.add(
         transaccion(
-            sender=ledger.wallets.get(usuario_comun.wallet_id),
+            sender=ledger.wallets.get(cuentas.wallet_principal(usuario_comun.id)),
             receiver=receptora,
             amount=Decimal("3.00000000"),
         )
@@ -102,12 +102,12 @@ def test_req_35_las_rutas_del_tablero_exigen_sesion(cliente):
 
 
 def test_req_35_el_tablero_no_lista_las_wallets_de_otros(
-    cliente_comun, usuario_comun, receptora
+    cliente_comun, usuario_comun, cuentas, receptora
 ):
     """Criterio: el tablero muestra la wallet de la sesión y ninguna otra."""
     cuerpo = cliente_comun.get("/mi-tablero").get_data(as_text=True)
 
-    assert str(usuario_comun.wallet_id) in cuerpo
+    assert str(cuentas.wallet_principal(usuario_comun.id)) in cuerpo
     assert receptora.public_key not in cuerpo
     assert str(receptora.id) not in cuerpo
     assert "/historial/" not in cuerpo

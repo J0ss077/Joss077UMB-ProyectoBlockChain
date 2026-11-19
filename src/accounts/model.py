@@ -76,9 +76,11 @@ class FotoDePerfil:
 class Usuario:
     """Una cuenta del sistema, tal como vive en `users` (REQ-30, REQ-31).
 
-    Invariante: mientras `estado` sea `pendiente` o `rechazado`, `wallet_id` y
-    `aprobado_en` son nulos; sólo el `aprobado` tiene wallet, y el rechazado
-    lleva siempre su `motivo_rechazo` (esquema §6 y REQ-31).
+    Invariante: mientras `estado` sea `pendiente` o `rechazado`, `aprobado_en` es
+    nulo; el rechazado lleva siempre su `motivo_rechazo` (esquema §6 y REQ-31).
+    La cuenta ya no guarda la wallet: la propiedad vive en `wallets.owner_id`, así
+    que una cuenta común aprobada puede ser dueña de ninguna, una o varias
+    wallets (diseño de wallet con dueño, §2).
     """
 
     id: UUID
@@ -87,6 +89,5 @@ class Usuario:
     role: str
     estado: str
     motivo_rechazo: str | None
-    wallet_id: UUID | None
     creado_en: datetime
     aprobado_en: datetime | None

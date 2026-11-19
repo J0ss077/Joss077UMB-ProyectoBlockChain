@@ -52,6 +52,9 @@ WHERE block_index > 0
   AND previous_hash IS DISTINCT FROM hash_esperado;
 
 \echo '=== 5. Transacciones con el nombre de cada lado, la más nueva primero ==='
+-- El nombre sale de la cuenta dueña de cada wallet: la propiedad vive en
+-- `wallets.owner_id`, así que se une la wallet de cada lado y después su cuenta.
+-- Una wallet sin dueño deja el nombre de ese lado en nulo, igual que antes.
 SELECT t.created_at,
        emisor.username   AS envia,
        receptor.username AS recibe,
@@ -59,8 +62,10 @@ SELECT t.created_at,
        t.status,
        t.block_id
 FROM transactions t
-LEFT JOIN users emisor   ON emisor.wallet_id = t.sender_id
-LEFT JOIN users receptor ON receptor.wallet_id = t.receiver_id
+LEFT JOIN wallets wallet_emisor   ON wallet_emisor.id = t.sender_id
+LEFT JOIN users emisor            ON emisor.id = wallet_emisor.owner_id
+LEFT JOIN wallets wallet_receptor ON wallet_receptor.id = t.receiver_id
+LEFT JOIN users receptor          ON receptor.id = wallet_receptor.owner_id
 ORDER BY t.created_at DESC
 LIMIT 20;
 
@@ -71,8 +76,10 @@ WHERE t.status = 'pending'
 ORDER BY t.created_at;
 
 \echo '=== 7. Las cuentas y su estado de alta moderada ==='
+-- `tiene_wallet` pregunta por las wallets cuyo dueño es la cuenta, que es donde
+-- vive la propiedad; una cuenta puede tener ninguna, una o varias.
 SELECT username, role, estado,
-       wallet_id IS NOT NULL AS tiene_wallet,
+       EXISTS (SELECT 1 FROM wallets w WHERE w.owner_id = users.id) AS tiene_wallet,
        creado_en, aprobado_en, motivo_rechazo
 FROM users
 ORDER BY creado_en;

@@ -121,7 +121,10 @@ Ninguna contradice al eje; todas se pueden discutir.
   administrador aprueba o rechaza con motivo.
 - **Los envíos se identifican por nombre de usuario**, único, y opcionalmente por el
   identificador de la wallet.
-- **Una wallet por usuario**, creada al aprobar. Varias wallets por persona es otro producto.
+- **Una cuenta común aprobada puede tener varias wallets**: la aprobación crea la primera y le
+  acredita el saldo de bienvenida, y el administrador puede registrar wallets adicionales desde
+  «Wallets», eligiendo su dueño o dejándolas sin dueño. La propiedad vive en `wallets.owner_id`,
+  donde `NULL` es una wallet sin dueño.
 - **Saldo de bienvenida de 1000** acreditado desde el constituyente en la misma operación
   atómica que crea la wallet y cambia el estado. Como el saldo sólo cuenta transacciones
   confirmadas, el crédito se emite en un **bloque nuevo con esa única transacción**: cada

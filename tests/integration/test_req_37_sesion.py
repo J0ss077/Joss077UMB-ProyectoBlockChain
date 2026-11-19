@@ -194,7 +194,7 @@ def test_req_37_una_cuenta_que_deja_de_estar_aprobada_pierde_la_sesion(
     conexion.execute(
         """
         UPDATE users
-        SET estado = 'pendiente', wallet_id = NULL, aprobado_en = NULL
+        SET estado = 'pendiente', aprobado_en = NULL
         WHERE id = %s
         """,
         (usuario_comun.id,),
@@ -209,16 +209,23 @@ def test_req_37_una_cuenta_que_deja_de_estar_aprobada_pierde_la_sesion(
 
 
 def test_req_37_una_cuenta_borrada_descarta_la_sesion(
-    cliente_comun, usuario_comun, conexion
+    cliente_admin, administrador, conexion
 ):
-    """Criterio: si la cuenta ya no existe, la sesión se descarta."""
-    conexion.execute("DELETE FROM users WHERE id = %s", (usuario_comun.id,))
+    """Criterio: si la cuenta de la sesión ya no existe, la sesión se descarta.
 
-    respuesta = cliente_comun.get("/bloques")
+    Se borra de verdad la fila del administrador, que es la única cuenta sin
+    wallets (decisión 5): las cuentas comunes dueñas no se pueden borrar porque
+    `fk_wallets_owner` es `ON DELETE RESTRICT`. Es el caso real de una fila que
+    desaparece entre dos peticiones, y el mismo camino de recarga de la sesión
+    (`Cuentas.por_id`).
+    """
+    conexion.execute("DELETE FROM users WHERE id = %s", (administrador.id,))
+
+    respuesta = cliente_admin.get("/")
 
     assert respuesta.status_code == 302
     assert respuesta.headers["Location"].endswith("/ingresar")
-    with cliente_comun.session_transaction() as sesion:
+    with cliente_admin.session_transaction() as sesion:
         assert CLAVE_DEL_USUARIO not in sesion
 
 
@@ -317,9 +324,18 @@ def test_req_32_el_registro_muestra_la_pantalla_de_pendiente(cliente, conexion):
     assert "Tu cuenta está esperando aprobación" in cuerpo
     assert "nueva" in cuerpo
     fila = conexion.execute(
-        "SELECT estado, wallet_id FROM users WHERE username = %s", ("nueva",)
+        "SELECT estado FROM users WHERE username = %s", ("nueva",)
     ).fetchone()
-    assert fila == ("pendiente", None)
+    assert fila == ("pendiente",)
+    # La cuenta nace sin wallets: la aprobación es la que crea y asigna la primera
+    # (REQ-33), y el registro no adelanta ninguna.
+    assert conexion.execute(
+        """
+        SELECT count(*) FROM wallets
+        WHERE owner_id = (SELECT id FROM users WHERE username = %s)
+        """,
+        ("nueva",),
+    ).fetchone()[0] == 0
 
 
 def test_req_32_el_registro_normaliza_el_usuario_y_lo_muestra(cliente, conexion):

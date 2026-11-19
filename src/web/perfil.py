@@ -63,12 +63,18 @@ def crear_blueprint_del_perfil(abrir_cuentas: FabricaDeCuentas) -> Blueprint:
     @perfil.get("/perfil")
     @requiere_sesion
     def ver() -> str:
-        """Los datos de la cuenta de la sesión y el estado de su último cambio de contraseña."""
+        """Los datos de la cuenta, sus wallets y el estado de su último cambio de contraseña.
+
+        Las wallets son las de la cuenta común, en el orden de `Cuentas.wallets_de`
+        (la principal primero). El administrador no tiene ninguna y no ve la lista.
+        """
         solicitud = None
+        wallets = ()
         if g.user.role != ADMINISTRADOR:
             with abrir_cuentas() as cuentas:
                 solicitud = cuentas.ultima_solicitud(g.user.id)
-        return render_template("perfil.html", solicitud=solicitud)
+                wallets = cuentas.wallets_de(g.user.id)
+        return render_template("perfil.html", solicitud=solicitud, wallets=wallets)
 
     @perfil.post("/perfil/contrasena")
     @requiere_sesion

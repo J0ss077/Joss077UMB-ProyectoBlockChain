@@ -40,6 +40,7 @@ from src.accounts.model import (
 )
 from src.accounts.ports import AlmacenDeFotos, RepositorioDeUsuarios
 from src.domain.blockchain import Blockchain
+from src.domain.wallet import Wallet
 from src.emision import CONSTITUYENTE_ID, SALDO_DE_BIENVENIDA
 
 # Los motivos con los que la agenda se niega a agregar a alguien. Una cuenta
@@ -49,6 +50,11 @@ from src.emision import CONSTITUYENTE_ID, SALDO_DE_BIENVENIDA
 MENSAJE_CONTACTO_INEXISTENTE = "No hay un usuario con ese nombre."
 MENSAJE_CONTACTO_PROPIO = "No puedes agregarte a ti mismo."
 MENSAJE_CONTACTO_REPETIDO = "Ya está en tus contactos."
+
+# El motivo con el que se rechaza un dueño que no puede serlo: el registro de
+# wallets es del administrador (REQ-46) y sólo una cuenta común aprobada puede
+# ser dueña de una wallet (diseño de wallet con dueño, §2).
+MENSAJE_DE_DUENO_INVALIDO = "Esa cuenta no puede ser dueña de una wallet."
 
 # Cuántos nombres trae la vista previa de un campo de destinatario: los suficientes
 # para elegir y no tantos que la lista sirva para recorrer todas las cuentas.
@@ -119,6 +125,15 @@ class ContactoInvalido(Exception):
     """La cuenta no se puede agendar: no existe, no es un usuario común aprobado o es la propia."""
 
 
+class DuenoInvalido(Exception):
+    """La cuenta elegida no puede ser dueña de una wallet (REQ-46).
+
+    Sólo una cuenta común aprobada puede serlo; el administrador, las pendientes y
+    las rechazadas no. El texto es el mismo para los tres casos: el registro no
+    tiene por qué contar en qué estado está la cuenta elegida.
+    """
+
+
 class CambioDeContrasenaInvalido(Exception):
     """El cambio de contraseña no se puede pedir; el texto dice por qué."""
 
@@ -151,6 +166,15 @@ def _estado_actual(usuarios: RepositorioDeUsuarios, id: UUID) -> str | None:
     """Estado de la fila para informar una segunda aprobación que perdió la carrera."""
     usuario = usuarios.get(id)
     return None if usuario is None else usuario.estado
+
+
+def _puede_ser_dueno(usuario: Usuario | None) -> bool:
+    """Sólo una cuenta común aprobada puede ser dueña de una wallet (REQ-46)."""
+    return (
+        usuario is not None
+        and usuario.role == USUARIO
+        and usuario.estado == APROBADO
+    )
 
 
 class Cuentas:
@@ -197,7 +221,6 @@ class Cuentas:
             role=USUARIO,
             estado=PENDIENTE,
             motivo_rechazo=None,
-            wallet_id=None,
             creado_en=datetime.now(UTC),
             aprobado_en=None,
         )
@@ -232,6 +255,16 @@ class Cuentas:
         with self._transaction() as actual:
             return actual.usuarios.list_pendientes()
 
+    def usuarios_aprobados(self) -> Sequence[Usuario]:
+        """Las cuentas comunes aprobadas, por nombre, para el selector de dueño (REQ-46).
+
+        Es una lectura de presentación: no escribe y la transacción se cierra sin
+        confirmar, igual que `por_id`. El administrador queda fuera porque no puede
+        ser dueño de una wallet.
+        """
+        with self._transaction() as actual:
+            return actual.usuarios.list_aprobados()
+
     def por_id(self, id: UUID) -> Usuario | None:
         """La cuenta con ese identificador, o `None` si ya no existe (REQ-37).
 
@@ -263,6 +296,25 @@ class Cuentas:
         """
         with self._transaction() as actual:
             return actual.usuarios.nombres_por_wallet()
+
+    def wallets_de(self, usuario_id: UUID) -> Sequence[UUID]:
+        """Las wallets de la cuenta, de la más antigua a la más nueva (REQ-47).
+
+        La primera es la principal. Es la lectura con la que el tablero arma el
+        selector de wallets y el perfil lista las de la sesión. No escribe.
+        """
+        with self._transaction() as actual:
+            return actual.usuarios.wallets_de(usuario_id)
+
+    def wallet_principal(self, usuario_id: UUID) -> UUID | None:
+        """La wallet más antigua de la cuenta, o `None` si no tiene ninguna (REQ-34).
+
+        Es a la que apunta el envío por nombre de usuario: las demás wallets se
+        direccionan por su identificador (diseño de wallet con dueño, decisión 6).
+        No escribe.
+        """
+        with self._transaction() as actual:
+            return actual.usuarios.wallet_principal(usuario_id)
 
     def contactos(self, usuario_id: UUID) -> Sequence[Usuario]:
         """La agenda de esa cuenta, ordenada por nombre de usuario. No escribe."""
@@ -449,15 +501,43 @@ class Cuentas:
             if almacen.ruta(foto.archivo) is not None
         }
 
+    def registrar_wallet(self, dueno_id: UUID | None) -> Wallet:
+        """Registra una wallet y le pone dueño, si viene (REQ-46).
+
+        La wallet y su dueño se confirman juntos, en una sola transacción. Con
+        `dueno_id` nulo la wallet queda sin dueño; con un identificador, la cuenta
+        tiene que existir, estar aprobada y ser de rol `usuario`, porque sólo una
+        cuenta común aprobada puede ser dueña de una wallet (diseño de wallet con
+        dueño, §2). Un dueño que no sirve levanta `DuenoInvalido` antes de
+        escribir: no se crea la wallet.
+        """
+        with self._transaction() as actual:
+            if dueno_id is not None and not _puede_ser_dueno(
+                actual.usuarios.get(dueno_id)
+            ):
+                raise DuenoInvalido(MENSAJE_DE_DUENO_INVALIDO)
+            wallet = actual.ledger.register_wallet()
+            if dueno_id is not None and not actual.usuarios.asignar_wallet(
+                wallet.id, dueno_id
+            ):
+                # La wallet acaba de nacer sin dueño: si la asignación fallara, no
+                # se puede confirmar una wallet que dice tener dueño y no lo tiene.
+                raise DuenoInvalido(MENSAJE_DE_DUENO_INVALIDO)
+            actual.commit()
+            return wallet
+
     def aprobar(self, id: UUID) -> Usuario:
         """Abre la cuenta: wallet, saldo de bienvenida y estado en una sola transacción.
 
         El `commit` va al final y es único: si `acreditar` falla, el ROLLBACK del
         contexto deshace también la wallet recién insertada y la cuenta sigue
-        pendiente (REQ-33). Se lee la cuenta antes de escribir para que una que no
-        está pendiente falle sin crear wallet, y si la fila cambió de estado entre
-        la lectura y el `UPDATE`, el `None` del repositorio también es error y no
-        éxito silencioso: así una segunda aprobación no crea otra wallet (REQ-31).
+        pendiente (REQ-33). La wallet de bienvenida queda con la cuenta como dueña
+        en esa misma transacción (`asignar_wallet`), así que la propiedad, el saldo
+        y el estado se confirman juntos o no se confirma ninguno. Se lee la cuenta
+        antes de escribir para que una que no está pendiente falle sin crear
+        wallet, y si la fila cambió de estado entre la lectura y el `UPDATE`, el
+        `None` del repositorio también es error y no éxito silencioso: así una
+        segunda aprobación no crea otra wallet (REQ-31).
         """
         with self._transaction() as actual:
             usuario = actual.usuarios.get(id)
@@ -474,9 +554,16 @@ class Cuentas:
                 destino_id=wallet.id,
                 monto=SALDO_DE_BIENVENIDA,
             )
-            aprobado = actual.usuarios.aprobar(id, wallet.id)
+            aprobado = actual.usuarios.aprobar(id)
             if aprobado is None:
                 raise UsuarioNoPendiente(_estado_actual(actual.usuarios, id))
+            if not actual.usuarios.asignar_wallet(wallet.id, id):
+                # La wallet acaba de nacer sin dueño: que la asignación falle sería
+                # una inconsistencia que no se puede confirmar. El rollback deshace
+                # la wallet, el saldo y el estado.
+                raise RuntimeError(
+                    "No se pudo asignar la wallet de bienvenida a la cuenta."
+                )
             actual.commit()
             return aprobado
 
@@ -513,6 +600,7 @@ class Cuentas:
 __all__ = [
     "CambioDeContrasenaInvalido",
     "ContactoInvalido",
+    "DuenoInvalido",
     "FotoInvalida",
     "CredencialesInvalidas",
     "Cuentas",

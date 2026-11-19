@@ -140,7 +140,6 @@ def test_el_503_se_pinta_con_sesion_aunque_el_avatar_no_pueda_leer():
         role=ADMINISTRADOR,
         estado=APROBADO,
         motivo_rechazo=None,
-        wallet_id=uuid4(),
         creado_en=datetime(2026, 11, 1, tzinfo=UTC),
         aprobado_en=datetime(2026, 11, 1, tzinfo=UTC),
     )
