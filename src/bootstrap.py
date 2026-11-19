@@ -8,10 +8,11 @@ asociados y les gira retiros—, con montos elegidos para que ningún saldo qued
 negativo (REQ-05), que es el defecto que arrastraban los datos del repositorio
 anterior (decisión 9).
 
-Después siembra las cuentas (decisión 8): el administrador aprobado y sin wallet,
-y un usuario de demostración por cada wallet de la convención, todos aprobados. La
-semilla de las cuentas también es idempotente: correr el arranque dos veces no
-duplica ninguna.
+Después siembra las cuentas (decisión 8): el administrador aprobado y sin wallet, y
+un usuario de demostración por cada wallet de la convención, todos aprobados y con
+la wallet de la demostración como propia. La semilla de las cuentas también es
+idempotente: correr el arranque dos veces no duplica ninguna ni reasigna la wallet
+que ya tiene dueño.
 
 Uso: `python -m src.bootstrap`.
 """
@@ -252,14 +253,13 @@ def entrega_de_capital(
     return transaction
 
 
-def _cuenta_aprobada(
-    username: str, contrasena: str, role: str, wallet_id: UUID | None
-) -> Usuario:
+def _cuenta_aprobada(username: str, contrasena: str, role: str) -> Usuario:
     """Arma una fila ya aprobada: la semilla no pasa por el alta moderada.
 
     La fecha de alta y la de aprobación son el mismo instante porque la cuenta
     nace sembrada; el repositorio escribe la fila tal cual, sin inventar una
-    pendiente que nadie va a aprobar.
+    pendiente que nadie va a aprobar. La wallet no va en la cuenta: la propiedad
+    vive en `wallets.owner_id` y la asigna `sembrar_usuarios`.
     """
     ahora = datetime.now(UTC)
     return Usuario(
@@ -269,7 +269,6 @@ def _cuenta_aprobada(
         role=role,
         estado=APROBADO,
         motivo_rechazo=None,
-        wallet_id=wallet_id,
         creado_en=ahora,
         aprobado_en=ahora,
     )
@@ -300,9 +299,10 @@ def sembrar_usuarios() -> int:
     Idempotente por nombre: se puede correr en cada arranque sin duplicar cuentas.
     El administrador y los de demostración se escriben ya aprobados por el
     repositorio, que es el único camino para un administrador —el servicio siempre
-    registra rol `usuario`— y para el aprobado sin wallet que el CHECK admite solo
-    para ese rol. El commit es único para las cuentas: o quedan todas las que
-    faltaban o no queda ninguna.
+    registra rol `usuario`. Cada cuenta de demostración queda con la wallet de la
+    convención como propia; si la wallet ya tiene dueño, no se reasigna, así una
+    segunda corrida no reescribe nada. El commit es único para las cuentas y las
+    asignaciones: o quedan todas o no queda ninguna.
 
     Las cuentas se leen por la conexión de la transacción y no por la del ledger
     porque el repositorio de usuarios necesita una conexión propia; las wallets
@@ -314,10 +314,7 @@ def sembrar_usuarios() -> int:
         if administrador is None:
             actual.usuarios.sembrar(
                 _cuenta_aprobada(
-                    USERNAME_DEL_ADMINISTRADOR,
-                    admin_password(),
-                    ADMINISTRADOR,
-                    None,
+                    USERNAME_DEL_ADMINISTRADOR, admin_password(), ADMINISTRADOR
                 )
             )
             creadas += 1
@@ -333,14 +330,19 @@ def sembrar_usuarios() -> int:
         # alteración, el arranque no puede fallar por una cuenta de demostración
         # que ya existe; la prueba de la semilla es la que exige las cinco.
         for nombre, wallet_id in zip(NOMBRES_DE_DEMOSTRACION, wallets, strict=False):
-            if actual.usuarios.get_by_username(nombre) is not None:
-                continue
-            actual.usuarios.sembrar(
-                _cuenta_aprobada(
-                    nombre, CONTRASENA_DE_DEMOSTRACION, USUARIO, wallet_id
+            cuenta = actual.usuarios.get_by_username(nombre)
+            if cuenta is None:
+                cuenta = actual.usuarios.sembrar(
+                    _cuenta_aprobada(nombre, CONTRASENA_DE_DEMOSTRACION, USUARIO)
                 )
-            )
-            creadas += 1
+                creadas += 1
+            # La wallet de demostración nace sin dueño —el ledger la sembró antes
+            # de que existieran las cuentas— y se le asigna acá. Sólo se asigna a
+            # una cuenta común aprobada, que es la única que puede ser dueña; si la
+            # wallet ya tiene dueño, `asignar_wallet` no escribe y la corrida sigue
+            # siendo idempotente.
+            if cuenta.role == USUARIO and cuenta.estado == APROBADO:
+                actual.usuarios.asignar_wallet(wallet_id, cuenta.id)
         actual.commit()
     return creadas
 

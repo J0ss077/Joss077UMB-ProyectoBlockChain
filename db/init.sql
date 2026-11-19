@@ -10,11 +10,17 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- ---------------------------------------------------------------------------
--- wallets: par de llaves ECDSA. La pública identifica y la privada solo vive
--- cifrada (REQ-01), así que la columna es BYTEA y el CHECK exige que no vaya vacía.
+-- wallets: par de llaves ECDSA y, opcionalmente, su cuenta dueña (REQ-01,
+-- REQ-40). La pública identifica y la privada solo vive cifrada (REQ-01), así
+-- que la columna es BYTEA y el CHECK exige que no vaya vacía. La propiedad vive
+-- acá y no en `users`: `owner_id` nulo es una wallet sin dueño y una cuenta
+-- puede tener varias wallets (diseño de wallet con dueño, §2). La llave foránea
+-- se agrega más abajo, después de crear `users`, porque la relación apunta desde
+-- la wallet hacia la cuenta.
 -- ---------------------------------------------------------------------------
 CREATE TABLE wallets (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    owner_id UUID NULL,
     public_key TEXT NOT NULL,
     private_key_encrypted BYTEA NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -25,6 +31,8 @@ CREATE TABLE wallets (
         CHECK (octet_length(private_key_encrypted) > 0)
 );
 
+COMMENT ON COLUMN wallets.owner_id IS
+    'Cuenta dueña de la wallet; `NULL` es una wallet sin dueño.';
 COMMENT ON COLUMN wallets.private_key_encrypted IS
     'Material cifrado de la llave privada ECDSA; el texto plano de la privada nunca se guarda (REQ-01).';
 
@@ -103,11 +111,12 @@ CREATE UNIQUE INDEX uq_transactions_signature ON transactions (signature);
 
 -- ---------------------------------------------------------------------------
 -- users: cuentas del sistema, con su rol y el estado de la alta moderada
--- (REQ-30, REQ-31). La relación va de `users` hacia `wallets` y no al revés: la
--- wallet nace recién con la aprobación, así que `wallet_id` es nulo mientras la
--- cuenta esté pendiente o haya sido rechazada (diseño §6). El `UNIQUE` de
--- `wallet_id` admite varios nulos, que es justo lo que hace falta, y el
--- `ON DELETE RESTRICT` impide borrar una wallet con dueño.
+-- (REQ-30, REQ-31). Ya no guardan la wallet: la propiedad vive en
+-- `wallets.owner_id` y apunta desde la wallet hacia la cuenta (diseño de wallet
+-- con dueño, §2). Una cuenta común aprobada puede ser dueña de ninguna, una o
+-- varias wallets; el administrador no tiene ninguna, y pendientes y rechazadas
+-- tampoco. Esa regla la valida el servicio, porque el esquema ya no puede
+-- expresarla como CHECK entre dos tablas.
 -- ---------------------------------------------------------------------------
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -116,29 +125,14 @@ CREATE TABLE users (
     role TEXT NOT NULL,
     estado TEXT NOT NULL,
     motivo_rechazo TEXT NULL,
-    wallet_id UUID NULL,
     creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     aprobado_en TIMESTAMPTZ NULL,
 
     CONSTRAINT users_username_key UNIQUE (username),
-    CONSTRAINT users_wallet_id_key UNIQUE (wallet_id),
     CONSTRAINT users_role_check CHECK (role IN ('administrador', 'usuario')),
     CONSTRAINT users_estado_check CHECK (estado IN ('pendiente', 'aprobado', 'rechazado')),
-    CONSTRAINT fk_users_wallet
-        FOREIGN KEY (wallet_id) REFERENCES wallets (id)
-        ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT chk_users_motivo_rechazo_requerido
-        CHECK (estado <> 'rechazado' OR motivo_rechazo IS NOT NULL),
-    -- El aprobado común tiene wallet y el administrador puede no tenerla: es la
-    -- única cuenta que el diseño admite sin wallet (decisión 4 y §6). Pendiente y
-    -- rechazado siguen sin wallet, porque la wallet nace recién con la aprobación.
-    -- La regla se expresa por rol y no como bicondicional contra `aprobado`: esa
-    -- forma obligaba a que el administrador sembrado tuviera una wallet que no usa.
-    CONSTRAINT chk_users_wallet_coherente_con_el_estado
-        CHECK (
-            (estado = 'aprobado' AND (role = 'administrador' OR wallet_id IS NOT NULL))
-            OR (estado <> 'aprobado' AND wallet_id IS NULL)
-        )
+        CHECK (estado <> 'rechazado' OR motivo_rechazo IS NOT NULL)
 );
 
 -- El `UNIQUE` de `username` distingue mayúsculas. La aplicación normaliza a
@@ -158,10 +152,20 @@ COMMENT ON COLUMN users.estado IS
     'Estado del alta moderada: `pendiente`, `aprobado` o `rechazado` (REQ-30, REQ-31).';
 COMMENT ON COLUMN users.motivo_rechazo IS
     'Motivo que deja el administrador al rechazar; obligatorio en estado `rechazado` (REQ-31).';
-COMMENT ON COLUMN users.wallet_id IS
-    'Wallet del usuario, ligada al aprobar; nula mientras el alta no esté aprobada (REQ-33).';
 COMMENT ON COLUMN users.aprobado_en IS
     'Momento de la aprobación; nulo mientras el alta no esté aprobada (REQ-33).';
+
+-- La llave foránea del dueño no puede nacer con `wallets`: la tabla se crea antes
+-- que `users` y la relación apunta desde la wallet hacia la cuenta. El `ON DELETE
+-- RESTRICT` impide borrar una cuenta que todavía es dueña de alguna wallet, igual
+-- que antes lo hacía la llave de `users.wallet_id`. El índice resuelve las
+-- consultas por dueño: las wallets de una cuenta y su wallet principal (REQ-41).
+ALTER TABLE wallets
+    ADD CONSTRAINT fk_wallets_owner
+    FOREIGN KEY (owner_id) REFERENCES users (id)
+    ON DELETE RESTRICT ON UPDATE CASCADE;
+
+CREATE INDEX idx_wallets_owner ON wallets (owner_id);
 
 -- ---------------------------------------------------------------------------
 -- contactos: la agenda de cada usuario común. Es de un solo sentido —agregar a

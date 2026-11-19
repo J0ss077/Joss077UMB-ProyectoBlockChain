@@ -452,8 +452,13 @@ def sembrar(
     wallets: dict[str, UUID] = {"fondo": fondo.id, "constituyente": CONSTITUYENTE_ID}
     for nombre in ASOCIADOS_DE_LA_HISTORIA:
         usuario = usuarios.get_by_username(nombre)
-        if usuario is not None and usuario.wallet_id is not None:
-            wallets[nombre] = usuario.wallet_id
+        if usuario is None:
+            continue
+        # La propiedad vive en `wallets.owner_id`: la wallet de la cuenta es su
+        # principal (la más antigua). Sin principal, la cuenta no entra al mapa.
+        principal = usuarios.wallet_principal(usuario.id)
+        if principal is not None:
+            wallets[nombre] = principal
     if len(wallets) == 2:
         return 0, 0
 
