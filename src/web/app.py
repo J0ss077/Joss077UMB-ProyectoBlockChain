@@ -45,7 +45,12 @@ from src.accounts.credentials import (
 )
 from src.accounts.fotos import MOTIVO_DE_FOTO_GRANDE
 from src.accounts.model import ADMINISTRADOR, UsuarioDuplicado
-from src.accounts.service import CredencialesInvalidas, Cuentas, NoAprobado
+from src.accounts.service import (
+    CredencialesInvalidas,
+    Cuentas,
+    DuenoInvalido,
+    NoAprobado,
+)
 from src.domain.blockchain import Blockchain, ensure_genesis
 from src.errores import MENSAJE_SIN_CONEXION, NoHayConexion
 from src.web.admin import crear_blueprint_de_la_cola
@@ -84,6 +89,11 @@ VARIABLE_DEL_SECRETO_DE_SESION = "SESSION_SECRET"
 SECRETO_DE_SESION_DE_LA_PLANTILLA = "0" * 64
 
 TAMANO_MAXIMO_DE_LA_PETICION = 3 * 1024 * 1024
+
+# El dueño que se elige al registrar llegó mal escrito o no puede serlo. El texto
+# es el mismo que da `DuenoInvalido` para una cuenta que no sirve: el formulario no
+# tiene por qué contar en qué estado está la cuenta elegida.
+MENSAJE_DUENO_INVALIDO = "Esa cuenta no puede ser dueña de una wallet."
 
 FabricaDeCadenas = Callable[[], AbstractContextManager[Blockchain]]
 FabricaDeCuentas = Callable[[], AbstractContextManager[Cuentas]]
@@ -375,25 +385,57 @@ def create_app(
                 **datos_del_panel(chain),
             )
 
+    def _formulario_de_wallet(error: str | None = None, dueno: str = ""):
+        """Pinta el registro de wallet con las cuentas que pueden ser dueñas.
+
+        `dueno` es el identificador que se había elegido: se devuelve a la plantilla
+        para que el selector conserve la opción después de un error. `usuarios` es la
+        lista del selector; sin aprobadas queda sólo la opción de dejarla sin dueño.
+        """
+        with abrir_cuentas() as cuentas, abrir_cadena() as chain:
+            return render_template(
+                "wallet.html",
+                wallet=None,
+                error=error,
+                dueno=dueno,
+                usuarios=list(cuentas.usuarios_aprobados()),
+                **datos_del_panel(chain),
+            )
+
     @app.route("/wallets", methods=["GET", "POST"])
     @requiere_administrador
     def wallets():
-        """CU-01: registra una wallet y muestra su clave pública (REQ-24).
+        """CU-01 y REQ-40: registra una wallet y le pone dueño, o la deja sin dueño.
 
-        La rama `GET` abre la cadena solo para el panel lateral, que es la lista de
+        La rama `GET` abre la cadena sólo para el panel lateral, que es la lista de
         wallets: con ella el CU-05 queda alcanzable desde cualquier página sin teclear
-        una llave de 66 caracteres, dentro de una ruta que ya existe. El `POST` la pasa
-        además con la wallet recién registrada a la vista.
+        una llave de 66 caracteres, dentro de una ruta que ya existe; y abre las cuentas
+        para el selector de dueño, que lista las cuentas comunes aprobadas. El `POST`
+        lee `dueno` —identificador de cuenta o vacío— y lo valida en el servicio: una
+        cuenta que no puede ser dueña deja la wallet sin crear y repinta el formulario
+        con el mismo motivo que da `DuenoInvalido`.
         """
         if request.method == "GET":
-            with abrir_cadena() as chain:
-                return render_template(
-                    "wallet.html", wallet=None, **datos_del_panel(chain)
-                )
+            return _formulario_de_wallet()
+        texto = request.form.get("dueno", "").strip()
+        dueno_id = a_uuid(texto)
+        if texto and dueno_id is None:
+            return _formulario_de_wallet(MENSAJE_DUENO_INVALIDO, texto)
+        with abrir_cuentas() as cuentas:
+            try:
+                wallet = cuentas.registrar_wallet(dueno_id)
+            except DuenoInvalido as error:
+                # El servicio decide el motivo y el formulario lo muestra tal cual,
+                # como el del registro de cuentas.
+                return _formulario_de_wallet(str(error) or MENSAJE_DUENO_INVALIDO, texto)
         with abrir_cadena() as chain:
-            wallet = chain.register_wallet()
             return render_template(
-                "wallet.html", wallet=wallet, **datos_del_panel(chain)
+                "wallet.html",
+                wallet=wallet,
+                error=None,
+                dueno="",
+                usuarios=[],
+                **datos_del_panel(chain),
             )
 
     @app.route("/transacciones", methods=["GET", "POST"])

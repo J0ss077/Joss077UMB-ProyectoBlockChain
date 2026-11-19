@@ -52,6 +52,7 @@ from src.emision import CONSTITUYENTE_ID
 from src.web.auth import requiere_sesion
 from src.web.ia import ConectorDeIA
 from src.web.idioma import idioma_actual
+from src.web.user import _wallet_de_la_sesion
 
 registro = logging.getLogger(__name__)
 
@@ -953,12 +954,17 @@ def crear_blueprint_del_asistente(
         if _rol(usuario) == "admin":
             with abrir_cuentas() as cuentas, abrir_cadena() as chain:
                 return _situacion_del_admin(chain, cuentas, idioma)
-        if usuario.wallet_id is None:
-            return Situacion()
+        # La cuenta común puede tener varias wallets: el ayudante habla de la
+        # elegida en el tablero, que es la misma con la que opera el resto de la
+        # pantalla (REQ-41). Sin wallets no hay situación que explicar.
         with abrir_cuentas() as cuentas:
+            wallets = cuentas.wallets_de(usuario.id)
+            if not wallets:
+                return Situacion()
+            wallet_id = _wallet_de_la_sesion(cuentas, wallets)
             nombres = dict(cuentas.nombres_por_wallet())
         with abrir_cadena() as chain:
-            return _situacion_del_comun(chain, nombres, usuario.wallet_id, idioma)
+            return _situacion_del_comun(chain, nombres, wallet_id, idioma)
 
     @asistente.get("/ahora")
     def ahora() -> Response:

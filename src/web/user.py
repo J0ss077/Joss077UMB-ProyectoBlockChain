@@ -6,6 +6,13 @@ filtran por la wallet de la sesión, y el administrador que entra acá vuelve a 
 portada. El destinatario se resuelve primero como nombre de usuario y después como
 identificador de wallet, que es el orden que fija el diseño (decisión 4).
 
+Una cuenta común puede tener varias wallets (REQ-41): la que usa la sesión es la
+elegida en el tablero, guardada con `wallet_elegida` en la cookie; si no hay
+elección, o la guardada ya no pertenece a la cuenta, se usa la principal, que es
+la más antigua. `POST /mi-wallet` valida y guarda la elección. El envío por nombre
+de usuario apunta a la wallet principal del destinatario —las demás sólo por su
+identificador— y la agenda compara cada contacto contra su principal.
+
 La verificación y el historial comparten una sola página, `/mi-historial`: arriba
 va el dictamen de la cadena y debajo todas las transacciones de la sesión con su
 estado, y las confirmadas con el índice del bloque que las agrupa. `/mi-verificacion`
@@ -49,6 +56,7 @@ from flask import (
     redirect,
     render_template,
     request,
+    session,
     url_for,
 )
 
@@ -90,6 +98,12 @@ def en_palabras(motivo: object) -> str:
 MENSAJE_CONTACTO_AGREGADO = "Agregaste a {nombre} a tus contactos."
 MENSAJE_CONTACTO_QUITADO = "Lo sacaste de tus contactos."
 MENSAJE_CONTACTO_YA_NO_ESTABA = "Ese contacto ya no estaba en tu agenda."
+MENSAJE_WALLET_ELEGIDA = "Wallet elegida."
+
+# La clave de la cookie que recuerda cuál de las wallets de la cuenta se está
+# usando (REQ-41). Guarda el identificador como texto, igual que la de la sesión:
+# nunca se confía en lo que trae sin contrastarlo con `Cuentas.wallets_de`.
+CLAVE_DE_LA_WALLET_ELEGIDA = "wallet_elegida"
 
 FabricaDeCadenas = Callable[[], AbstractContextManager[Blockchain]]
 FabricaDeCuentas = Callable[[], AbstractContextManager[Cuentas]]
@@ -115,36 +129,66 @@ def crear_blueprint_del_usuario(
     @requiere_usuario_comun
     def mi_tablero() -> str:
         """REQ-34: la pantalla de trabajo del usuario común, con su envío."""
+        with abrir_cuentas() as cuentas:
+            wallets = _wallets_de_la_sesion(cuentas)
+            wallet_id = _wallet_de_la_sesion(cuentas, wallets)
         with abrir_cadena() as chain:
-            return _pintar_tablero(chain)
+            return _pintar_tablero(chain, wallets, wallet_id)
 
     @tablero.post("/mi-envio")
     @requiere_usuario_comun
     def mi_envio() -> str:
-        """REQ-34: propone un envío desde la wallet de la sesión y nunca desde otra.
+        """REQ-34: propone un envío desde la wallet elegida y nunca desde otra.
 
-        El emisor es `g.user.wallet_id`: si el formulario trae un `sender_id`, no
-        se lee. El destinatario se resuelve primero por nombre de usuario —que es
-        único— y después por el identificador de la wallet. Un destinatario que no
-        existe se informa antes de llegar al dominio porque no hay wallet con la
-        que firmar; el resto de los rechazos los decide `create_transaction` y su
-        motivo se muestra sin traducir.
+        El emisor es la wallet de la sesión —la elegida en el tablero o, si no hay
+        elección, la principal—: si el formulario trae un `sender_id`, no se lee.
+        El destinatario se resuelve primero por nombre de usuario —que es único y
+        apunta a su wallet principal— y después por el identificador de la wallet.
+        Un destinatario que no existe se informa antes de llegar al dominio porque
+        no hay wallet con la que firmar; el resto de los rechazos los decide
+        `create_transaction` y su motivo se muestra sin traducir.
         """
-        wallet_propia = _wallet_de_la_sesion()
         destinatario = request.form.get("destinatario", "")
         with abrir_cuentas() as cuentas:
+            wallets = _wallets_de_la_sesion(cuentas)
+            wallet_propia = _wallet_de_la_sesion(cuentas, wallets)
             wallet_destino = _wallet_del_destinatario(cuentas, destinatario)
         with abrir_cadena() as chain:
             if wallet_destino is None:
                 return _pintar_tablero(
-                    chain, error_formulario=MENSAJE_DESTINATARIO_INEXISTENTE
+                    chain,
+                    wallets,
+                    wallet_propia,
+                    error_formulario=MENSAJE_DESTINATARIO_INEXISTENTE,
                 )
             resultado = chain.create_transaction(
                 sender_id=wallet_propia,
                 receiver_id=wallet_destino,
                 amount=a_monto(request.form.get("amount")),
             )
-            return _pintar_tablero(chain, resultado=resultado)
+            return _pintar_tablero(chain, wallets, wallet_propia, resultado=resultado)
+
+    @tablero.post("/mi-wallet")
+    @requiere_usuario_comun
+    def elegir_wallet() -> Response:
+        """REQ-41: cambia la wallet con la que opera la sesión.
+
+        La wallet tiene que ser una de las de la cuenta; una de otra, un
+        identificador mal escrito o uno inexistente se descartan sin guardar y sin
+        contar nada de su existencia. Igual que `/idioma`, sólo se vuelve a una ruta
+        propia: un `volver` que no empiece por una sola barra se descarta para que el
+        formulario no sirva de redirección abierta.
+        """
+        elegida = a_uuid(request.form.get("wallet"))
+        with abrir_cuentas() as cuentas:
+            wallets = _wallets_de_la_sesion(cuentas)
+        if elegida is not None and elegida in wallets:
+            session[CLAVE_DE_LA_WALLET_ELEGIDA] = str(elegida)
+            flash(MENSAJE_WALLET_ELEGIDA, "exito")
+        volver = request.form.get("volver", "")
+        if not volver.startswith("/") or volver.startswith("//"):
+            volver = url_for("usuario.mi_tablero")
+        return redirect(volver)
 
     @tablero.get("/mi-historial")
     @requiere_usuario_comun
@@ -157,7 +201,8 @@ def crear_blueprint_del_usuario(
         bloque que las agrupa, que es lo que las vuelve verificables; con la cadena
         alterada la página lo dice aunque las filas sigan listadas.
         """
-        wallet_id = _wallet_de_la_sesion()
+        with abrir_cuentas() as cuentas:
+            wallet_id = _wallet_de_la_sesion(cuentas)
         with abrir_cadena() as chain:
             return render_template(
                 "mi_historial.html",
@@ -181,15 +226,13 @@ def crear_blueprint_del_usuario(
     @requiere_usuario_comun
     def mis_contactos() -> str:
         """La agenda de la sesión, con los movimientos que tiene con cada contacto."""
-        wallet_id = _wallet_de_la_sesion()
         with abrir_cuentas() as cuentas:
             agenda = cuentas.contactos(g.user.id)
-        with abrir_cadena() as chain:
-            historial = chain.wallet_history(wallet_id)
-        return render_template(
-            "mis_contactos.html",
-            contactos=_contactos_con_movimientos(agenda, historial, wallet_id),
-        )
+            wallet_id = _wallet_de_la_sesion(cuentas)
+            with abrir_cadena() as chain:
+                historial = chain.wallet_history(wallet_id)
+            contactos = _contactos_con_movimientos(agenda, historial, wallet_id, cuentas)
+        return render_template("mis_contactos.html", contactos=contactos)
 
     @tablero.get("/mis-contactos/sugerencias")
     @requiere_usuario_comun
@@ -257,13 +300,26 @@ class ContactoConMovimientos:
     ultimo: datetime | None
 
 
+@dataclass(frozen=True, slots=True)
+class WalletDeLaSesion:
+    """Una wallet de la cuenta con su saldo, para el selector de «Tus wallets»."""
+
+    id: UUID
+    saldo: Decimal
+
+
 def _contactos_con_movimientos(
-    agenda: Sequence[Usuario], historial: Sequence[Transaction], propia: UUID
+    agenda: Sequence[Usuario],
+    historial: Sequence[Transaction],
+    propia: UUID,
+    cuentas: Cuentas,
 ) -> list[ContactoConMovimientos]:
     """Cuenta, para cada contacto, las transacciones propias en que es la contraparte.
 
     El historial ya viene filtrado por la wallet de la sesión y de la más nueva a
     la más vieja, así que la primera que aparece de cada contraparte es la última.
+    El envío por nombre apunta a la wallet principal del contacto, así que es esa
+    la que se compara: con una segunda wallet del contacto no se movió nada.
     """
     por_contraparte: dict[UUID, list[Transaction]] = {}
     for transaction in historial:
@@ -271,7 +327,8 @@ def _contactos_con_movimientos(
         por_contraparte.setdefault(otra, []).append(transaction)
     resultado = []
     for usuario in agenda:
-        comunes = por_contraparte.get(usuario.wallet_id, [])
+        principal = cuentas.wallet_principal(usuario.id)
+        comunes = por_contraparte.get(principal, []) if principal is not None else []
         resultado.append(
             ContactoConMovimientos(
                 usuario=usuario,
@@ -282,17 +339,35 @@ def _contactos_con_movimientos(
     return resultado
 
 
-def _wallet_de_la_sesion() -> UUID:
-    """La wallet de la cuenta que tiene la sesión abierta (REQ-34).
+def _wallets_de_la_sesion(cuentas: Cuentas) -> Sequence[UUID]:
+    """Las wallets de la cuenta de la sesión, de la principal a la más nueva (REQ-41)."""
+    return cuentas.wallets_de(g.user.id)
 
-    El esquema exige wallet en toda cuenta aprobada, así que la falta es un estado
-    imposible del que igual conviene no depender: sin wallet no hay tablero y la
-    respuesta es 403, no una consulta con `None`.
+
+def _wallet_de_la_sesion(
+    cuentas: Cuentas, wallets: Sequence[UUID] | None = None
+) -> UUID:
+    """La wallet con la que opera la sesión (REQ-34, REQ-41).
+
+    Es la elegida en el tablero si sigue perteneciendo a la cuenta y, si no —sin
+    elección, con una cookie manipulada o con una wallet que otro ya no le
+    reconoce—, la principal: la más antigua. `wallets` se puede pasar ya leído para
+    no repetir la consulta. Sin wallets la falta es un estado imposible de una
+    cuenta aprobada, así que la respuesta es 403 y no una consulta con `None`.
     """
-    wallet_id = g.user.wallet_id
-    if wallet_id is None:
+    if wallets is None:
+        wallets = _wallets_de_la_sesion(cuentas)
+    if not wallets:
         abort(403)
-    return wallet_id
+    elegida = session.get(CLAVE_DE_LA_WALLET_ELEGIDA)
+    if isinstance(elegida, str):
+        try:
+            guardada = UUID(elegida)
+        except ValueError:
+            guardada = None
+        if guardada in wallets:
+            return guardada
+    return wallets[0]
 
 
 def _indices_de_bloque(chain: Blockchain) -> dict[UUID, int]:
@@ -309,42 +384,53 @@ def _wallet_del_destinatario(cuentas: Cuentas, destinatario: str) -> UUID | None
     """La wallet del destinatario: primero por nombre de usuario, luego por id.
 
     El orden es el del diseño (decisión 4): el nombre de usuario es el camino
-    normal y el identificador es el atajo de quien lo tiene a mano. Un nombre que
-    no existe todavía puede ser un identificador escrito a mano, así que se
-    intenta interpretar como UUID; si tampoco lo es, la ruta informa el rechazo
-    sin consultar el ledger. Una cuenta sin wallet (pendiente o rechazada) no
-    puede recibir y cae por el mismo camino que un nombre inexistente.
+    normal y el identificador es el atajo de quien lo tiene a mano. Un nombre
+    apunta a la wallet principal del destinatario (decisión 6); sus demás wallets
+    sólo se alcanzan por su identificador. Un nombre que no existe todavía puede
+    ser un identificador escrito a mano, así que se intenta interpretar como UUID;
+    si tampoco lo es, la ruta informa el rechazo sin consultar el ledger. Una
+    cuenta sin wallet (pendiente o rechazada) no puede recibir y cae por el mismo
+    camino que un nombre inexistente.
     """
     texto = destinatario.strip()
     if not texto:
         return None
     usuario = cuentas.por_username(texto)
-    if usuario is not None and usuario.wallet_id is not None:
-        return usuario.wallet_id
+    if usuario is not None:
+        principal = cuentas.wallet_principal(usuario.id)
+        if principal is not None:
+            return principal
     return a_uuid(texto)
 
 
 def _pintar_tablero(
     chain: Blockchain,
+    wallets: Sequence[UUID],
+    wallet_id: UUID,
     *,
     resultado: TransactionResult | None = None,
     error_formulario: str | None = None,
 ) -> str:
-    """Pinta el tablero con la wallet de la sesión y lo que el ledger tiene de ella.
+    """Pinta el tablero con la wallet elegida y lo que el ledger tiene de ella.
 
     El saldo es el disponible real de la fachada —el mismo que usa el envío para
-    decidir—, y el historial se filtra por la wallet de la sesión. La lista de
+    decidir—, y el historial se filtra por la wallet elegida. La lista de
     movimientos vive en Mi historial; acá el historial sólo alimenta lo que no se
     ve en otra pestaña: el resumen del mes y con quién se mueve más la persona.
+    El selector de «Tus wallets» sólo se pinta cuando la cuenta tiene más de una,
+    y lleva el saldo de cada una para poder elegir con la información a la vista.
     No se pasa el panel lateral de `base.html`: esa lista es de la portada del
     administrador y mostraría las wallets de otros, que es justo lo que REQ-35
     prohíbe.
     """
-    wallet_id = _wallet_de_la_sesion()
     historial = chain.wallet_history(wallet_id)
     return render_template(
         "tablero.html",
         wallet_id=wallet_id,
+        wallets=[
+            WalletDeLaSesion(id=wallet, saldo=chain.available_balance(wallet))
+            for wallet in wallets
+        ],
         saldo=chain.available_balance(wallet_id),
         transacciones=historial,
         resumen=_resumen_del_mes(historial, wallet_id, datetime.now(UTC)),

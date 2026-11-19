@@ -2,12 +2,12 @@
 
 Dos rutas sobre la misma página:
 
-- `GET /mis-estadisticas` es la del usuario común y sólo lee la wallet de la
+- `GET /mis-estadisticas` es la del usuario común y sólo lee la wallet elegida de la
   sesión (REQ-35): el identificador nunca llega de la petición.
 - `GET /admin/estadisticas?usuario=<nombre>` es la del administrador, que elige
-  en un selector a cuál usuario común mirar. Sin `usuario` la página sólo
-  muestra el selector; un nombre que no es de un usuario común aprobado responde
-  404.
+  en un selector a cuál usuario común mirar; mira la wallet principal de ese
+  usuario (REQ-41). Sin `usuario` la página sólo muestra el selector; un nombre que
+  no es de un usuario común aprobado responde 404.
 
 El servidor arma los movimientos de la wallet —fecha, si entró o salió, estado,
 monto y con quién— y los deja en la página como JSON; los filtros (período, tipo,
@@ -32,7 +32,7 @@ from datetime import UTC
 from decimal import Decimal
 from uuid import UUID
 
-from flask import Blueprint, abort, g, render_template, request
+from flask import Blueprint, abort, render_template, request
 
 from src.accounts.model import ADMINISTRADOR
 from src.accounts.service import Cuentas
@@ -82,9 +82,9 @@ def crear_blueprint_de_estadisticas(
     @estadisticas.get("/mis-estadisticas")
     @requiere_usuario_comun
     def mis_estadisticas() -> str:
-        """Las estadísticas de la wallet de la sesión y de ninguna otra (REQ-35)."""
-        wallet_id = _wallet_de_la_sesion()
+        """Las estadísticas de la wallet elegida de la sesión y de ninguna otra (REQ-35)."""
         with abrir_cuentas() as cuentas:
+            wallet_id = _wallet_de_la_sesion(cuentas)
             nombres = cuentas.nombres_por_wallet()
         with abrir_cadena() as chain:
             historial = chain.wallet_history(wallet_id, limit=MOVIMIENTOS_DE_LAS_ESTADISTICAS)
@@ -97,35 +97,42 @@ def crear_blueprint_de_estadisticas(
     @estadisticas.get("/admin/estadisticas")
     @requiere_administrador
     def estadisticas_de_un_usuario() -> str:
-        """El administrador elige un usuario común y ve sus estadísticas.
+        """El administrador elige un usuario común y ve las estadísticas de su principal.
 
-        El selector lista a quien tiene wallet —las cuentas aprobadas— menos la
-        sesión: el administrador de la semilla no tiene wallet, pero uno sembrado
-        con ella sí. Igual se revisa el rol del elegido, para que la ruta no
-        muestre a un administrador aunque alguien escriba su nombre.
+        El selector lista las cuentas comunes aprobadas, que son las que pueden
+        tener wallet. El rol y el estado se revisan igual antes de leer, para que la
+        ruta no muestre a un administrador ni a una cuenta sin wallet aunque alguien
+        escriba su nombre. La wallet que se mira es la principal del elegido: es la
+        que recibe el envío por nombre de usuario (REQ-41).
         """
         nombre = request.args.get("usuario", "").strip()
         with abrir_cuentas() as cuentas:
             nombres = cuentas.nombres_por_wallet()
+            usuarios = sorted(
+                (usuario.username for usuario in cuentas.usuarios_aprobados()),
+                key=str.lower,
+            )
             elegido = cuentas.por_username(nombre) if nombre else None
-        usuarios = sorted(
-            (n for n in nombres.values() if n != g.user.username), key=str.lower
-        )
+            principal = (
+                cuentas.wallet_principal(elegido.id)
+                if elegido is not None and elegido.role != ADMINISTRADOR
+                else None
+            )
         if not nombre:
             return render_template(
                 "estadisticas.html", usuarios=usuarios, elegido=None, movimientos=[]
             )
-        if elegido is None or elegido.wallet_id is None or elegido.role == ADMINISTRADOR:
+        if elegido is None or principal is None:
             abort(404, description=MENSAJE_USUARIO_SIN_ESTADISTICAS)
         with abrir_cadena() as chain:
             historial = chain.wallet_history(
-                elegido.wallet_id, limit=MOVIMIENTOS_DE_LAS_ESTADISTICAS
+                principal, limit=MOVIMIENTOS_DE_LAS_ESTADISTICAS
             )
-            saldo = chain.available_balance(elegido.wallet_id)
-        proyeccion = proyectar(historial, saldo, elegido.wallet_id)
+            saldo = chain.available_balance(principal)
+        proyeccion = proyectar(historial, saldo, principal)
         return _pintar(
             historial,
-            elegido.wallet_id,
+            principal,
             nombres,
             proyeccion=proyeccion,
             usuarios=usuarios,

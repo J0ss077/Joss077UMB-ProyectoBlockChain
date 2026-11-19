@@ -1620,6 +1620,19 @@ html:lang(en) .tabla-movimientos tr[data-estado="rejected"] td:nth-child(5) > co
     background: var(--color-sobre-acento);
     color: var(--color-acento);
 }
+/* Selector de «Tus wallets» (REQ-41): sólo aparece con más de una. Va sobre la
+   tarjeta del saldo, con el select y el botón en la misma línea; el campo usa el
+   estilo de `.campo` y los alias de la tarjeta, así funciona en los dos temas. */
+.cambio-de-wallet {
+    display: flex;
+    align-items: flex-end;
+    gap: var(--espacio-2);
+    margin-bottom: var(--espacio-3);
+}
+.cambio-de-wallet .campo {
+    flex: 1;
+    min-width: 0;
+}
 .envio {
     display: flex;
     flex-direction: column;

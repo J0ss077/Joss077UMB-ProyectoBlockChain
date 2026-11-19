@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import dato, copiar, cantidad, avatar, burbuja %}
+{% from "_macros.html" import dato, copiar, cantidad, corto, avatar, burbuja %}
 {% from "_estado.html" import estado as pildora %}
 {% block titulo %}{{ t("Mi tablero") }}{% endblock %}
 {# El resultado del envío es una notificación de la bandeja de `base.html`, no un bloque dentro de «Enviar dinero»: así esa tarjeta no crece y no estira a la del saldo, que está en la misma fila. #}
@@ -30,6 +30,21 @@
             {% if reservado %}<p class="saldo-nota">−{{ cantidad(reservado) }} {{ t("apartado por envíos en espera") }}</p>{% endif %}
         </div>
         {% if por_confirmar %}<span class="chip-lima">+{{ cantidad(por_confirmar) }} {{ t("por recibir") }}</span>{% endif %}
+        {% if wallets|length > 1 %}
+        {# REQ-41: con más de una wallet, la sesión opera sobre la elegida. El selector muestra el código corto y el saldo de cada una para poder decidir con la información a la vista. #}
+        <form class="cambio-de-wallet" method="post" action="/mi-wallet">
+            <div class="campo">
+                <label for="wallet">{{ t("Tus wallets") }}</label>
+                <select id="wallet" name="wallet">
+                    {% for wallet in wallets %}
+                    <option value="{{ wallet.id }}"{% if wallet.id == wallet_id %} selected{% endif %}>{{ corto(wallet.id) }} · {{ "{:.8f}".format(wallet.saldo) }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <input type="hidden" name="volver" value="/mi-tablero" />
+            <button class="boton" type="submit">{{ t("Elegir") }}</button>
+        </form>
+        {% endif %}
         <div class="mi-wallet">
             <span class="saldo-etiqueta">{{ t("Mi código para recibir") }}</span>
             <span class="codigo">{{ dato(wallet_id) }}{{ copiar(wallet_id, "mi código para recibir") }}</span>

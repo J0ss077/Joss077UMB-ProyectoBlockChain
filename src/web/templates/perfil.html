@@ -69,9 +69,18 @@
             <dd>{{ t("Administrador") if es_admin else t("Usuario") }}</dd>
             <dt>{{ t("Miembro desde") }}</dt>
             <dd>{{ g.user.creado_en.strftime("%d/%m/%Y") }}</dd>
-            {% if g.user.wallet_id and not es_admin %}
-            <dt>{{ t("Mi código para recibir") }}</dt>
-            <dd><span class="codigo">{{ dato(g.user.wallet_id) }}{{ copiar(g.user.wallet_id, "mi código para recibir") }}</span></dd>
+            {% if wallets and not es_admin %}
+            <dt>{{ t("Tus wallets") }}</dt>
+            <dd>
+                {# REQ-41: la cuenta puede tener varias wallets; el perfil las lista todas, la principal primero. #}
+                <ul class="lista-wallets">
+                    {% for wallet_id in wallets %}
+                    <li class="dato-wallet">
+                        <span class="codigo">{{ dato(wallet_id) }}{{ copiar(wallet_id, "mi código para recibir") }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </dd>
             {% endif %}
         </dl>
 

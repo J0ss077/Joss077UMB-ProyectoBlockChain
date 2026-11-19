@@ -1,24 +1,39 @@
-{% extends "base.html" %} {% from "_macros.html" import identidad, dato, copiar, cantidad %} {% block titulo %}{{ t("Registrar wallet") }}{% endblock %} {% block cuerpo %}
+{% extends "base.html" %} {% from "_macros.html" import dato, copiar, cantidad %} {% block titulo %}{{ t("Registrar wallet") }}{% endblock %} {% block cuerpo %}
 <div class="rejilla">
     <main id="contenido" tabindex="-1" class="mosaico columna-principal">
-        <div class="encabezado-con-accion">
-            <div>
-                <p class="antetitulo">{{ t("Wallets") }}</p>
-                <h1 class="titulo-pagina">{{ t("Registrar wallet") }}</h1>
-                <p class="entradilla">{{ t("Genera un par de llaves: la pública identifica la wallet y la privada se guarda cifrada con la clave maestra.") }}</p>
-            </div>
-            <form method="post" action="/wallets">
-                <button class="boton boton-grande boton-primario" type="submit">
-                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 3v12M3 9h12" /></svg>{{ t("Registrar wallet") }}
-                </button>
-            </form>
+        <div>
+            <p class="antetitulo">{{ t("Wallets") }}</p>
+            <h1 class="titulo-pagina">{{ t("Registrar wallet") }}</h1>
+            <p class="entradilla">{{ t("Genera un par de llaves: la pública identifica la wallet y la privada se guarda cifrada con la clave maestra.") }}</p>
         </div>
-        {% if wallet %} {# La clave pública completa no se muestra como texto: va en el `title` y en el botón de copiar, igual que en el panel. #}
+        {% if not wallet %}
+        {% if error %}
+        <div class="motivo" id="error-de-wallet" role="alert">
+            <p>{{ t(error) }}</p>
+        </div>
+        {% endif %}
+        {# REQ-40: el dueño se elige acá y queda fijo. La opción vacía la deja sin dueño, y el servicio rechaza a quien no puede serlo sin crear la wallet. #}
+        <form class="formulario" method="post" action="/wallets">
+            <div class="campo">
+                <label for="dueno">{{ t("¿A quién se la asignas?") }}</label>
+                <select id="dueno" name="dueno" aria-describedby="ayuda-dueno">
+                    <option value="">{{ t("Déjala sin dueño") }}</option>
+                    {% for usuario in usuarios %}
+                    <option value="{{ usuario.id }}"{% if dueno == usuario.id|string %} selected{% endif %}>{{ usuario.username }}</option>
+                    {% endfor %}
+                </select>
+                <p class="ayuda" id="ayuda-dueno">{% if usuarios %}{{ t("Elige la cuenta que va a usar esta wallet.") }}{% else %}{{ t("No hay cuentas aprobadas todavía.") }}{% endif %}</p>
+            </div>
+            <button class="boton boton-grande boton-primario" type="submit">{{ t("Registrar wallet") }}</button>
+        </form>
+        {% else %}
+        {# La ficha de resultado es la de siempre; lo único nuevo es que el saludo dice a quién quedó asignada, o que quedó sin dueño. #}
+        {% set nombre = nombre_de_wallet(wallet.id) %}
         <section class="exito resultado" role="status" aria-label="{{ t('Wallet registrada') }}">
-            <p>{{ t("Wallet registrada.") }}</p>
+            <p>{% if nombre %}{{ t("Wallet registrada a nombre de {nombre}.", nombre=nombre) }}{% else %}{{ t("Wallet registrada sin dueño.") }}{% endif %}</p>
             <dl class="ficha">
                 <dt>{{ t("Dueño") }}</dt>
-                <dd>{% if nombre_de_wallet(wallet.id) %}<span class="nombre">{{ nombre_de_wallet(wallet.id) }}</span>{% else %}<span class="nombre sin-dueno">{{ t("Sin dueño") }}</span>{% endif %}</dd>
+                <dd>{% if nombre %}<span class="nombre">{{ nombre }}</span>{% else %}<span class="nombre sin-dueno">{{ t("Sin dueño") }}</span>{% endif %}</dd>
                 <dt>{{ t("Identificador") }}</dt>
                 <dd><span class="codigo">{{ dato(wallet.id) }}{{ copiar(wallet.id, "el identificador de la wallet") }}</span></dd>
                 <dt>{{ t("Clave pública") }}</dt>
