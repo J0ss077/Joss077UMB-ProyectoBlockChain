@@ -256,9 +256,41 @@ def test_req_47_elegir_wallet_solo_vuelve_a_una_ruta_propia(
     )
     assert propia.headers["Location"] == "/mi-historial"
 
-    for externa in ("https://ejemplo.example", "//ejemplo.example"):
+    # El navegador normaliza la barra invertida a barra, así que `/\evil.example`
+    # equivale a `//evil.example` y también saldría del sitio.
+    for externa in ("https://ejemplo.example", "//ejemplo.example", "/\\evil.example"):
         respuesta = cliente_comun.post(
             "/mi-wallet",
             data={"wallet": str(tres_wallets.principal), "volver": externa},
         )
         assert respuesta.headers["Location"] == "/mi-tablero", externa
+
+
+def test_req_47_el_perfil_lista_las_tres_wallets_de_la_cuenta(
+    cliente_comun, tres_wallets: TresWallets
+):
+    """Criterio: el perfil de la cuenta con varias wallets las lista todas, la principal primero."""
+    cuerpo = cliente_comun.get("/perfil").get_data(as_text=True)
+
+    assert "Tus wallets" in cuerpo
+    # Cada wallet ocupa una fila con su identificador completo en el marcado y la
+    # forma corta a la vista; el orden es el de `Cuentas.wallets_de`, principal primero.
+    filas = cuerpo.split('class="dato-wallet"')[1:]
+    assert len(filas) == 3
+    ordenadas = [
+        next(
+            wallet
+            for wallet in (
+                tres_wallets.principal,
+                tres_wallets.segunda,
+                tres_wallets.tercera,
+            )
+            if str(wallet) in fila
+        )
+        for fila in filas
+    ]
+    assert ordenadas == [
+        tres_wallets.principal,
+        tres_wallets.segunda,
+        tres_wallets.tercera,
+    ]

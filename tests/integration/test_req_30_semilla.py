@@ -169,6 +169,35 @@ def test_req_30_un_volumen_sin_las_tablas_nuevas_tambien_falla(
     assert "Traceback" not in proceso.stderr
 
 
+def test_req_30_un_volumen_sin_el_dueno_de_la_wallet_falla_con_el_mensaje(
+    base_vacia_ejecutando_bootstrap, conexion
+):
+    """Criterio: una base con las tablas y las columnas de antes se reconoce antes de escribir.
+
+    Un volumen anterior a la propiedad de la wallet tiene todas las tablas, pero le
+    falta `wallets.owner_id` y le sobra `users.wallet_id`: sin la comprobación de
+    columnas el arranque fallaría más adelante con un `UndefinedColumn` crudo, en vez
+    de explicar que la única salida es recrear el volumen. Se simula el esquema viejo
+    y se restaura en el `finally`.
+    """
+    conexion.execute("ALTER TABLE wallets RENAME COLUMN owner_id TO owner_anterior")
+    conexion.execute("ALTER TABLE users ADD COLUMN wallet_id UUID NULL")
+    try:
+        proceso = subprocess.run(
+            [sys.executable, "-m", "src.bootstrap"], capture_output=True, text=True
+        )
+    finally:
+        conexion.execute("ALTER TABLE users DROP COLUMN wallet_id")
+        conexion.execute("ALTER TABLE wallets RENAME COLUMN owner_anterior TO owner_id")
+
+    assert proceso.returncode == 1, proceso.stdout
+    assert MENSAJE_DE_VOLUMEN_VIEJO in proceso.stderr
+    assert "falta wallets.owner_id" in proceso.stderr
+    assert "sobra users.wallet_id" in proceso.stderr
+    assert "UndefinedColumn" not in proceso.stderr
+    assert "Traceback" not in proceso.stderr
+
+
 def test_req_33_el_recorrido_de_demostracion_completo(
     base_vacia_ejecutando_bootstrap, cliente
 ):

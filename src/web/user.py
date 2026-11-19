@@ -60,13 +60,13 @@ from flask import (
     url_for,
 )
 
-from src.accounts.model import Usuario
+from src.accounts.model import APROBADO, Usuario
 from src.accounts.service import ContactoInvalido, Cuentas
 from src.domain.blockchain import Blockchain, TransactionResult
 from src.domain.transaction import RejectionReason, Transaction, TransactionStatus
 from src.emision import CONSTITUYENTE_ID
 from src.web.auth import requiere_usuario_comun
-from src.web.forms import a_monto, a_uuid
+from src.web.forms import a_monto, a_uuid, ruta_interna
 
 # El único rechazo que decide la presentación: el destinatario no es ni una cuenta
 # ni una wallet. Los demás motivos los pone el dominio y se muestran sin traducir,
@@ -176,8 +176,9 @@ def crear_blueprint_del_usuario(
         La wallet tiene que ser una de las de la cuenta; una de otra, un
         identificador mal escrito o uno inexistente se descartan sin guardar y sin
         contar nada de su existencia. Igual que `/idioma`, sólo se vuelve a una ruta
-        propia: un `volver` que no empiece por una sola barra se descarta para que el
-        formulario no sirva de redirección abierta.
+        propia: un `volver` que no empiece por una sola barra —o que empiece por dos,
+        o por barra y barra invertida, que el navegador lee como dos— se descarta
+        para que el formulario no sirva de redirección abierta.
         """
         elegida = a_uuid(request.form.get("wallet"))
         with abrir_cuentas() as cuentas:
@@ -185,9 +186,7 @@ def crear_blueprint_del_usuario(
         if elegida is not None and elegida in wallets:
             session[CLAVE_DE_LA_WALLET_ELEGIDA] = str(elegida)
             flash(MENSAJE_WALLET_ELEGIDA, "exito")
-        volver = request.form.get("volver", "")
-        if not volver.startswith("/") or volver.startswith("//"):
-            volver = url_for("usuario.mi_tablero")
+        volver = ruta_interna(request.form.get("volver"), url_for("usuario.mi_tablero"))
         return redirect(volver)
 
     @tablero.get("/mi-historial")
@@ -388,15 +387,15 @@ def _wallet_del_destinatario(cuentas: Cuentas, destinatario: str) -> UUID | None
     apunta a la wallet principal del destinatario (decisión 6); sus demás wallets
     sólo se alcanzan por su identificador. Un nombre que no existe todavía puede
     ser un identificador escrito a mano, así que se intenta interpretar como UUID;
-    si tampoco lo es, la ruta informa el rechazo sin consultar el ledger. Una
-    cuenta sin wallet (pendiente o rechazada) no puede recibir y cae por el mismo
-    camino que un nombre inexistente.
+    si tampoco lo es, la ruta informa el rechazo sin consultar el ledger. Sólo una
+    cuenta aprobada resuelve por nombre: una pendiente o rechazada que conservara
+    wallets no puede recibir y cae por el mismo camino que un nombre inexistente.
     """
     texto = destinatario.strip()
     if not texto:
         return None
     usuario = cuentas.por_username(texto)
-    if usuario is not None:
+    if usuario is not None and usuario.estado == APROBADO:
         principal = cuentas.wallet_principal(usuario.id)
         if principal is not None:
             return principal

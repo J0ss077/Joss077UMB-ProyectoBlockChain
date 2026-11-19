@@ -11,7 +11,6 @@ mensaje único de las credenciales equivocadas y el campo de usuario restringido
 desde la propia interfaz. El cliente pide la aplicación real contra la base real.
 """
 import re
-from uuid import uuid4
 
 from itsdangerous import URLSafeTimedSerializer
 
@@ -209,22 +208,24 @@ def test_req_37_una_cuenta_que_deja_de_estar_aprobada_pierde_la_sesion(
         assert CLAVE_DEL_USUARIO not in sesion
 
 
-def test_req_37_una_cuenta_borrada_descarta_la_sesion(cliente_comun):
+def test_req_37_una_cuenta_borrada_descarta_la_sesion(
+    cliente_admin, administrador, conexion
+):
     """Criterio: si la cuenta de la sesión ya no existe, la sesión se descarta.
 
-    La cuenta dueña de wallets no se puede borrar: `fk_wallets_owner` es
-    `ON DELETE RESTRICT` y las wallets con movimientos tampoco se borran. La fila
-    desaparecida se simula con un identificador que no está en la base, que es el
-    mismo camino de recarga de la sesión (`Cuentas.por_id`).
+    Se borra de verdad la fila del administrador, que es la única cuenta sin
+    wallets (decisión 5): las cuentas comunes dueñas no se pueden borrar porque
+    `fk_wallets_owner` es `ON DELETE RESTRICT`. Es el caso real de una fila que
+    desaparece entre dos peticiones, y el mismo camino de recarga de la sesión
+    (`Cuentas.por_id`).
     """
-    with cliente_comun.session_transaction() as sesion:
-        sesion[CLAVE_DEL_USUARIO] = str(uuid4())
+    conexion.execute("DELETE FROM users WHERE id = %s", (administrador.id,))
 
-    respuesta = cliente_comun.get("/bloques")
+    respuesta = cliente_admin.get("/")
 
     assert respuesta.status_code == 302
     assert respuesta.headers["Location"].endswith("/ingresar")
-    with cliente_comun.session_transaction() as sesion:
+    with cliente_admin.session_transaction() as sesion:
         assert CLAVE_DEL_USUARIO not in sesion
 
 

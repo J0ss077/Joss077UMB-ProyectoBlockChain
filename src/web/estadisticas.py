@@ -34,7 +34,7 @@ from uuid import UUID
 
 from flask import Blueprint, abort, render_template, request
 
-from src.accounts.model import ADMINISTRADOR
+from src.accounts.model import ADMINISTRADOR, APROBADO
 from src.accounts.service import Cuentas
 from src.domain.blockchain import Blockchain
 from src.domain.transaction import Transaction, TransactionStatus
@@ -115,14 +115,16 @@ def crear_blueprint_de_estadisticas(
             elegido = cuentas.por_username(nombre) if nombre else None
             principal = (
                 cuentas.wallet_principal(elegido.id)
-                if elegido is not None and elegido.role != ADMINISTRADOR
+                if elegido is not None
+                and elegido.estado == APROBADO
+                and elegido.role != ADMINISTRADOR
                 else None
             )
         if not nombre:
             return render_template(
                 "estadisticas.html", usuarios=usuarios, elegido=None, movimientos=[]
             )
-        if elegido is None or principal is None:
+        if elegido is None or elegido.estado != APROBADO or principal is None:
             abort(404, description=MENSAJE_USUARIO_SIN_ESTADISTICAS)
         with abrir_cadena() as chain:
             historial = chain.wallet_history(

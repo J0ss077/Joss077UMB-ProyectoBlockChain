@@ -10,6 +10,7 @@ import re
 from decimal import Decimal
 
 from src.domain.transaction import TransactionStatus
+from src.emision import CONSTITUYENTE_ID
 from src.web.estadisticas import (
     NOMBRE_DE_LA_BIENVENIDA,
     movimientos_para_graficas,
@@ -109,3 +110,42 @@ def test_el_resumen_suma_solo_lo_completado(usuario_comun, cuentas, ledger):
     assert resumen.recibido == completado
     assert resumen.enviado == Decimal(0)
     assert resumen.movimientos == len(historial) == len(movimientos)
+
+
+def test_el_administrador_ve_la_principal_de_una_cuenta_con_varias_wallets(
+    cliente_admin, usuario_comun, cuentas, ledger
+):
+    """Criterio: la página del administrador usa la principal del usuario elegido.
+
+    La cuenta tiene una segunda wallet con 250 acreditados para que el saldo y el
+    historial tengan que ser los de la principal (la de bienvenida): si la ruta
+    mirara otra wallet, el resumen y los movimientos mostrarían esos 250.
+    """
+    segunda = cuentas.registrar_wallet(usuario_comun.id)
+    ledger.acreditar(
+        emisor_id=CONSTITUYENTE_ID,
+        destino_id=segunda.id,
+        monto=Decimal("250.00000000"),
+    )
+
+    respuesta = cliente_admin.get("/admin/estadisticas?usuario=ana")
+
+    assert respuesta.status_code == 200
+    cuerpo = respuesta.get_data(as_text=True)
+    movimientos = _movimientos_de_la_pagina(cuerpo)
+    assert [m["monto"] for m in movimientos] == ["1000.00000000"]
+    assert movimientos[0]["tipo"] == "entra"
+    assert movimientos[0]["persona"] == NOMBRE_DE_LA_BIENVENIDA
+    # El resumen de la página también sale de la principal: recibió 1000, no 250.
+    recibido = re.search(
+        r'data-cifra="recibido">.*?title="([0-9.]+)"', cuerpo, re.S
+    )
+    assert recibido is not None
+    assert recibido.group(1) == "1000.00000000"
+    datos = re.search(
+        r'<script type="application/json" id="datos-estadisticas">(.*?)</script>',
+        cuerpo,
+        re.S,
+    )
+    assert datos is not None
+    assert "250.00000000" not in datos.group(1)

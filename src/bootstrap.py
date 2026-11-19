@@ -94,6 +94,15 @@ TABLAS_DEL_ESQUEMA = (
     "fotos_de_perfil",
 )
 
+# Las columnas que el esquema actual exige y las que eliminó. Se miran además de las
+# tablas porque el esquema también cambió por dentro: un volumen anterior a la
+# propiedad de la wallet tiene todas las tablas, pero le falta `wallets.owner_id` y le
+# sobra `users.wallet_id`. Sin esta comprobación `tablas_faltantes()` no lo reconoce y
+# el arranque falla más adelante con un `UndefinedColumn` crudo, en vez de explicar
+# que la única salida es recrear el volumen (diseño de wallet con dueño, §8).
+COLUMNAS_DEL_ESQUEMA = (("wallets", "owner_id"),)
+COLUMNAS_RETIRADAS = (("users", "wallet_id"),)
+
 # Mensaje del arranque sobre un volumen anterior al esquema actual. El proyecto no
 # tiene migraciones (§6): las tablas llegan con `db/init.sql` al crear el volumen,
 # así que la única salida es recrearlo. El texto nombra los comandos exactos porque
@@ -123,6 +132,38 @@ def tablas_faltantes() -> tuple[str, ...]:
         ).fetchall()
     presentes = {fila[0] for fila in filas}
     return tuple(tabla for tabla in TABLAS_DEL_ESQUEMA if tabla not in presentes)
+
+
+def columnas_fuera_de_lugar() -> tuple[str, ...]:
+    """Las columnas en las que la base se aparta del esquema, como texto para informar.
+
+    Devuelve primero las columnas que faltan —en el orden de `COLUMNAS_DEL_ESQUEMA`—
+    y después las que el esquema retiró y la base todavía conserva («falta
+    wallets.owner_id», «sobra users.wallet_id»). Se consulta el catálogo por la misma
+    razón que en `tablas_faltantes()`: un volumen anterior conecta bien y sólo falla
+    cuando una consulta toca la columna que no está. Así el arranque reconoce el
+    esquema viejo antes de sembrar nada. Abre su propia conexión y no escribe.
+    """
+    with abrir(database_url()) as conexion:
+        filas = conexion.execute(
+            """
+            SELECT table_name, column_name
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+            """
+        ).fetchall()
+    presentes = {(tabla, columna) for tabla, columna in filas}
+    faltan = [
+        f"falta {tabla}.{columna}"
+        for tabla, columna in COLUMNAS_DEL_ESQUEMA
+        if (tabla, columna) not in presentes
+    ]
+    sobran = [
+        f"sobra {tabla}.{columna}"
+        for tabla, columna in COLUMNAS_RETIRADAS
+        if (tabla, columna) in presentes
+    ]
+    return (*faltan, *sobran)
 
 
 def _llave(semilla: bytes) -> ec.EllipticCurvePrivateKey:
@@ -377,6 +418,9 @@ def main() -> None:
         # después en la primera página con sesión.
         if faltantes := tablas_faltantes():
             print(f"faltan tablas: {', '.join(faltantes)}", file=sys.stderr)
+            raise SystemExit(MENSAJE_DE_VOLUMEN_VIEJO)
+        if columnas := columnas_fuera_de_lugar():
+            print(f"columnas fuera de lugar: {', '.join(columnas)}", file=sys.stderr)
             raise SystemExit(MENSAJE_DE_VOLUMEN_VIEJO)
         _sembrar_todo()
     except NoHayConexion as error:

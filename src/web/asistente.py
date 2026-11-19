@@ -50,6 +50,7 @@ from src.domain.blockchain import Blockchain
 from src.domain.transaction import TransactionStatus
 from src.emision import CONSTITUYENTE_ID
 from src.web.auth import requiere_sesion
+from src.web.forms import ruta_interna
 from src.web.ia import ConectorDeIA
 from src.web.idioma import idioma_actual
 from src.web.user import _wallet_de_la_sesion
@@ -942,11 +943,10 @@ def crear_blueprint_del_asistente(
         """El ayudante en su propia pestaña de la barra superior.
 
         `?desde=/mi-tablero` dice de qué pantalla vino la persona, para que «lo que
-        pasa ahora» explique esa y no la del ayudante. Sólo se acepta una ruta local.
+        pasa ahora» explique esa y no la del ayudante. Sólo se acepta una ruta local,
+        con la misma regla que los formularios que vuelven a la página de origen.
         """
-        desde = request.args.get("desde", "")
-        if not desde.startswith("/") or desde.startswith("//"):
-            desde = ""
+        desde = ruta_interna(request.args.get("desde"), "")
         return render_template("asistente.html", desde=desde, ia=conector is not None)
 
     def situacion_actual(idioma: str) -> Situacion:

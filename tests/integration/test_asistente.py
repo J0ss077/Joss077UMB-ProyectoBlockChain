@@ -10,10 +10,12 @@ en la guía. La configuración usa una URL de loopback que no responde, así que
 estas pruebas no salen a la red.
 """
 from contextlib import contextmanager
+from decimal import Decimal
 
 import pytest
 
 from src.domain.blockchain import ensure_genesis
+from src.emision import CONSTITUYENTE_ID
 from src.persistence.factory import open_ledger
 from src.web.ia import ConectorDeIA
 from tests.integration.conftest import (
@@ -95,6 +97,30 @@ def test_req_44_ahora_dice_el_saldo_en_palabras(cliente_comun):
     assert any(
         "Puedes usar" in punto and "1000" in punto for punto in datos["puntos"]
     )
+
+
+def test_req_47_el_ayudante_explica_la_wallet_elegida(
+    cliente_comun, usuario_comun, cuentas, ledger
+):
+    """Criterio: con la elegida distinta de la principal, el ayudante habla de la elegida.
+
+    La segunda wallet se acredita con 250 y el saldo de bienvenida (1000) queda en la
+    principal: si el ayudante explicara la principal, el punto del saldo diría 1000.
+    """
+    segunda = cuentas.registrar_wallet(usuario_comun.id)
+    ledger.acreditar(
+        emisor_id=CONSTITUYENTE_ID,
+        destino_id=segunda.id,
+        monto=Decimal("250.00000000"),
+    )
+    cambio = cliente_comun.post("/mi-wallet", data={"wallet": str(segunda.id)})
+    assert cambio.status_code == 302
+
+    datos = cliente_comun.get("/asistente/ahora?pagina=/mi-tablero").get_json()
+
+    puntos = " ".join(datos["puntos"])
+    assert "Puedes usar 250 ahora mismo." in puntos
+    assert "1000" not in puntos
 
 
 def test_req_44_ahora_sin_pagina_sugiere_temas_del_rol(

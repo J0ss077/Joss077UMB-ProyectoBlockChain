@@ -64,7 +64,7 @@ from src.web.auth import (
     usuario_de_la_sesion,
 )
 from src.web.estadisticas import crear_blueprint_de_estadisticas
-from src.web.forms import a_monto, a_uuid
+from src.web.forms import a_monto, a_uuid, ruta_interna
 from src.web.ia import crear_conector
 from src.web.idioma import (
     COOKIE_DEL_IDIOMA,
@@ -186,13 +186,13 @@ def create_app(
     def elegir_idioma() -> Response:
         """Guarda el idioma elegido en una cookie y vuelve a la página de origen.
 
-        Sólo se vuelve a una ruta propia: un `volver` que no empieza con una sola
-        barra se descarta, para que el formulario no sirva de redirección abierta.
+        Sólo se vuelve a una ruta propia: un `volver` que no empiece con una sola
+        barra —o que empiece por dos, o por barra y barra invertida, que el navegador
+        lee como dos— se descarta, para que el formulario no sirva de redirección
+        abierta.
         """
         elegido = request.form.get("idioma", "")
-        volver = request.form.get("volver", "/")
-        if not volver.startswith("/") or volver.startswith("//"):
-            volver = "/"
+        volver = ruta_interna(request.form.get("volver"), "/")
         respuesta = redirect(volver)
         if elegido in IDIOMAS:
             respuesta.set_cookie(
