@@ -6,7 +6,7 @@ filtran por la wallet de la sesión, y el administrador que entra acá vuelve a 
 portada. El destinatario se resuelve primero como nombre de usuario y después como
 identificador de wallet, que es el orden que fija el diseño (decisión 4).
 
-Una cuenta común puede tener varias wallets (REQ-41): la que usa la sesión es la
+Una cuenta común puede tener varias wallets (REQ-47): la que usa la sesión es la
 elegida en el tablero, guardada con `wallet_elegida` en la cookie; si no hay
 elección, o la guardada ya no pertenece a la cuenta, se usa la principal, que es
 la más antigua. `POST /mi-wallet` valida y guarda la elección. El envío por nombre
@@ -101,7 +101,7 @@ MENSAJE_CONTACTO_YA_NO_ESTABA = "Ese contacto ya no estaba en tu agenda."
 MENSAJE_WALLET_ELEGIDA = "Wallet elegida."
 
 # La clave de la cookie que recuerda cuál de las wallets de la cuenta se está
-# usando (REQ-41). Guarda el identificador como texto, igual que la de la sesión:
+# usando (REQ-47). Guarda el identificador como texto, igual que la de la sesión:
 # nunca se confía en lo que trae sin contrastarlo con `Cuentas.wallets_de`.
 CLAVE_DE_LA_WALLET_ELEGIDA = "wallet_elegida"
 
@@ -171,7 +171,7 @@ def crear_blueprint_del_usuario(
     @tablero.post("/mi-wallet")
     @requiere_usuario_comun
     def elegir_wallet() -> Response:
-        """REQ-41: cambia la wallet con la que opera la sesión.
+        """REQ-47: cambia la wallet con la que opera la sesión.
 
         La wallet tiene que ser una de las de la cuenta; una de otra, un
         identificador mal escrito o uno inexistente se descartan sin guardar y sin
@@ -340,14 +340,14 @@ def _contactos_con_movimientos(
 
 
 def _wallets_de_la_sesion(cuentas: Cuentas) -> Sequence[UUID]:
-    """Las wallets de la cuenta de la sesión, de la principal a la más nueva (REQ-41)."""
+    """Las wallets de la cuenta de la sesión, de la principal a la más nueva (REQ-47)."""
     return cuentas.wallets_de(g.user.id)
 
 
 def _wallet_de_la_sesion(
     cuentas: Cuentas, wallets: Sequence[UUID] | None = None
 ) -> UUID:
-    """La wallet con la que opera la sesión (REQ-34, REQ-41).
+    """La wallet con la que opera la sesión (REQ-34, REQ-47).
 
     Es la elegida en el tablero si sigue perteneciendo a la cuenta y, si no —sin
     elección, con una cookie manipulada o con una wallet que otro ya no le

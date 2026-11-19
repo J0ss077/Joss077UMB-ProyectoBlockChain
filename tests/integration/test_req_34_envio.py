@@ -2,7 +2,7 @@
 
 El emisor lo decide la sesión: la wallet elegida por la cuenta (o su principal, si
 no eligió ninguna) es la única desde la que se puede proponer un envío en el
-tablero (REQ-41). El formulario no tiene campo de emisor y, si alguien inyecta
+tablero (REQ-47). El formulario no tiene campo de emisor y, si alguien inyecta
 uno, la ruta lo ignora. El destinatario se resuelve primero por nombre de usuario
 —su wallet principal— y, si no existe, por el identificador de la wallet (decisión
 6 del diseño de wallet con dueño), y los rechazos del dominio se muestran con su

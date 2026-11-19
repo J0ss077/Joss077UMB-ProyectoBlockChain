@@ -15,8 +15,8 @@
    con wallet elegida (`POST /mi-wallet`), selector «Tus wallets» en el tablero, perfil con la
    lista, estadísticas y ayudante sobre la principal cuando corresponda. Textos en tuteo con su
    entrada en inglés.
-3. **Pruebas.** Actualizar las que usan `users.wallet_id`; agregar REQ-40 (registro con dueño) y
-   REQ-41 (varias wallets); `range(1, 42)` en `test_explicacion`.
+3. **Pruebas.** Actualizar las que usan `users.wallet_id`; agregar REQ-46 (registro con dueño) y
+   REQ-47 (varias wallets); `(*range(1, 40), 46, 47)` en `test_explicacion`.
 
 ## Verificación
 

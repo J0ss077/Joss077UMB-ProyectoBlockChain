@@ -12,7 +12,7 @@
             <p>{{ t(error) }}</p>
         </div>
         {% endif %}
-        {# REQ-40: el dueño se elige acá y queda fijo. La opción vacía la deja sin dueño, y el servicio rechaza a quien no puede serlo sin crear la wallet. #}
+        {# REQ-46: el dueño se elige acá y queda fijo. La opción vacía la deja sin dueño, y el servicio rechaza a quien no puede serlo sin crear la wallet. #}
         <form class="formulario" method="post" action="/wallets">
             <div class="campo">
                 <label for="dueno">{{ t("¿A quién se la asignas?") }}</label>

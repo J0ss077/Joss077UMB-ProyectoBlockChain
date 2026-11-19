@@ -52,7 +52,7 @@ MENSAJE_CONTACTO_PROPIO = "No puedes agregarte a ti mismo."
 MENSAJE_CONTACTO_REPETIDO = "Ya está en tus contactos."
 
 # El motivo con el que se rechaza un dueño que no puede serlo: el registro de
-# wallets es del administrador (REQ-40) y sólo una cuenta común aprobada puede
+# wallets es del administrador (REQ-46) y sólo una cuenta común aprobada puede
 # ser dueña de una wallet (diseño de wallet con dueño, §2).
 MENSAJE_DE_DUENO_INVALIDO = "Esa cuenta no puede ser dueña de una wallet."
 
@@ -126,7 +126,7 @@ class ContactoInvalido(Exception):
 
 
 class DuenoInvalido(Exception):
-    """La cuenta elegida no puede ser dueña de una wallet (REQ-40).
+    """La cuenta elegida no puede ser dueña de una wallet (REQ-46).
 
     Sólo una cuenta común aprobada puede serlo; el administrador, las pendientes y
     las rechazadas no. El texto es el mismo para los tres casos: el registro no
@@ -169,7 +169,7 @@ def _estado_actual(usuarios: RepositorioDeUsuarios, id: UUID) -> str | None:
 
 
 def _puede_ser_dueno(usuario: Usuario | None) -> bool:
-    """Sólo una cuenta común aprobada puede ser dueña de una wallet (REQ-40)."""
+    """Sólo una cuenta común aprobada puede ser dueña de una wallet (REQ-46)."""
     return (
         usuario is not None
         and usuario.role == USUARIO
@@ -256,7 +256,7 @@ class Cuentas:
             return actual.usuarios.list_pendientes()
 
     def usuarios_aprobados(self) -> Sequence[Usuario]:
-        """Las cuentas comunes aprobadas, por nombre, para el selector de dueño (REQ-40).
+        """Las cuentas comunes aprobadas, por nombre, para el selector de dueño (REQ-46).
 
         Es una lectura de presentación: no escribe y la transacción se cierra sin
         confirmar, igual que `por_id`. El administrador queda fuera porque no puede
@@ -298,7 +298,7 @@ class Cuentas:
             return actual.usuarios.nombres_por_wallet()
 
     def wallets_de(self, usuario_id: UUID) -> Sequence[UUID]:
-        """Las wallets de la cuenta, de la más antigua a la más nueva (REQ-41).
+        """Las wallets de la cuenta, de la más antigua a la más nueva (REQ-47).
 
         La primera es la principal. Es la lectura con la que el tablero arma el
         selector de wallets y el perfil lista las de la sesión. No escribe.
@@ -502,7 +502,7 @@ class Cuentas:
         }
 
     def registrar_wallet(self, dueno_id: UUID | None) -> Wallet:
-        """Registra una wallet y le pone dueño, si viene (REQ-40).
+        """Registra una wallet y le pone dueño, si viene (REQ-46).
 
         La wallet y su dueño se confirman juntos, en una sola transacción. Con
         `dueno_id` nulo la wallet queda sin dueño; con un identificador, la cuenta

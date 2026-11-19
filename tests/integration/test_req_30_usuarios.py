@@ -134,10 +134,10 @@ def test_req_31_aprobar_cambia_el_estado_y_no_liga_wallet(usuarios, base_limpia)
     assert usuarios.wallets_de(creado.id) == []
 
 
-def test_req_40_el_repositorio_asigna_solo_wallets_sin_dueno(
+def test_req_46_el_repositorio_asigna_solo_wallets_sin_dueno(
     usuarios, base_limpia, emisora, receptora
 ):
-    """REQ-40: `asignar_wallet` liga una wallet libre y no reemplaza a un dueño.
+    """REQ-46: `asignar_wallet` liga una wallet libre y no reemplaza a un dueño.
 
     Devuelve `False` si la wallet ya tiene dueño o no existe, y deja la primera
     asignación intacta: la propiedad no se puede pisar por accidente.
@@ -155,10 +155,10 @@ def test_req_40_el_repositorio_asigna_solo_wallets_sin_dueno(
     assert usuarios.wallets_de(beto.id) == []
 
 
-def test_req_40_list_aprobados_trae_solo_las_cuentas_comunes_aprobadas_por_nombre(
+def test_req_46_list_aprobados_trae_solo_las_cuentas_comunes_aprobadas_por_nombre(
     usuarios, conexion, base_limpia
 ):
-    """REQ-40: el selector de dueño lista las cuentas comunes aprobadas por nombre.
+    """REQ-46: el selector de dueño lista las cuentas comunes aprobadas por nombre.
 
     Quedan fuera el administrador —no puede ser dueño—, las pendientes y las
     rechazadas, y el orden es el del nombre para que el selector sea estable.
@@ -183,10 +183,10 @@ def test_req_40_list_aprobados_trae_solo_las_cuentas_comunes_aprobadas_por_nombr
     ]
 
 
-def test_req_41_las_wallets_de_la_cuenta_van_de_la_mas_antigua_a_la_mas_nueva(
+def test_req_47_las_wallets_de_la_cuenta_van_de_la_mas_antigua_a_la_mas_nueva(
     usuarios, wallets, base_limpia, master_key
 ):
-    """REQ-41: `wallets_de` ordena por antigüedad y `wallet_principal` da la primera.
+    """REQ-47: `wallets_de` ordena por antigüedad y `wallet_principal` da la primera.
 
     El orden no es el de inserción: se asignan en orden inverso para que la prueba
     mida el `ORDER BY created_at, id` del repositorio y no el azar del alta.

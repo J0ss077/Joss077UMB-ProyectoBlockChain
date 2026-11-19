@@ -198,7 +198,7 @@ class PostgresAccountsRepository:
         return [_row_to_usuario(row) for row in cursor.fetchall()]
 
     def list_aprobados(self) -> Sequence[Usuario]:
-        """Las cuentas comunes aprobadas, por nombre de usuario (REQ-40).
+        """Las cuentas comunes aprobadas, por nombre de usuario (REQ-46).
 
         Es la lista del selector de dueño: sólo una cuenta común aprobada puede
         ser dueña de una wallet (diseño de wallet con dueño, §2). El administrador
@@ -220,7 +220,7 @@ class PostgresAccountsRepository:
 
         La relación vive en `wallets.owner_id`, así que el mapa sale del JOIN de
         las dos tablas. Las wallets sin dueño —las que el administrador registra
-        sin asignar— no aparecen (REQ-40).
+        sin asignar— no aparecen (REQ-46).
         """
         filas = self._connection.execute(
             """
@@ -232,7 +232,7 @@ class PostgresAccountsRepository:
         return {wallet_id: username for wallet_id, username in filas}
 
     def wallets_de(self, usuario_id: UUID) -> Sequence[UUID]:
-        """Identificadores de las wallets de la cuenta, de la más antigua a la más nueva (REQ-41).
+        """Identificadores de las wallets de la cuenta, de la más antigua a la más nueva (REQ-47).
 
         El orden es `created_at, id`: la primera es la principal. Una cuenta común
         aprobada puede tener ninguna, una o varias wallets.
@@ -265,7 +265,7 @@ class PostgresAccountsRepository:
         return fila[0] if fila is not None else None
 
     def asignar_wallet(self, wallet_id: UUID, usuario_id: UUID) -> bool:
-        """Le pone dueño a una wallet sin dueño; `False` si no existe o ya lo tiene (REQ-40).
+        """Le pone dueño a una wallet sin dueño; `False` si no existe o ya lo tiene (REQ-46).
 
         La condición `owner_id IS NULL` viaja dentro del mismo `UPDATE`: el dueño
         queda fijo y dos asignaciones simultáneas no pueden reemplazarlo. La

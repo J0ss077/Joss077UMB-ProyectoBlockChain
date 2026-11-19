@@ -1,4 +1,4 @@
-"""REQ-41: una cuenta común aprobada puede tener varias wallets y elegir con cuál opera.
+"""REQ-47: una cuenta común aprobada puede tener varias wallets y elegir con cuál opera.
 
 La propiedad vive en `wallets.owner_id` (diseño §2), así que una cuenta puede
 acumular wallets: la que crea la aprobación con el saldo de bienvenida y las que el
@@ -90,7 +90,7 @@ def tres_wallets(cuentas: Cuentas, usuario_comun, ledger: Blockchain) -> TresWal
     return TresWallets(principal, segunda, tercera, bienvenida, credito)
 
 
-def test_req_41_la_cuenta_con_tres_wallets_tiene_su_selector(
+def test_req_47_la_cuenta_con_tres_wallets_tiene_su_selector(
     cliente_comun, usuario_comun, tres_wallets: TresWallets, cuentas: Cuentas
 ):
     """Criterio: las tres wallets de la cuenta aparecen en el selector del tablero."""
@@ -115,7 +115,7 @@ def test_req_41_la_cuenta_con_tres_wallets_tiene_su_selector(
     assert "0.00000000" in cuerpo
 
 
-def test_req_41_con_una_sola_wallet_no_hay_selector(cliente_comun):
+def test_req_47_con_una_sola_wallet_no_hay_selector(cliente_comun):
     """Una cuenta con una sola wallet no ve el selector: no hay nada que elegir."""
     cuerpo = cliente_comun.get("/mi-tablero").get_data(as_text=True)
 
@@ -123,7 +123,7 @@ def test_req_41_con_una_sola_wallet_no_hay_selector(cliente_comun):
     assert 'action="/mi-wallet"' not in cuerpo
 
 
-def test_req_41_elegir_otra_wallet_cambia_el_saldo_y_el_historial(
+def test_req_47_elegir_otra_wallet_cambia_el_saldo_y_el_historial(
     cliente_comun, tres_wallets: TresWallets
 ):
     """Criterio: cambiar la elegida cambia el saldo y el historial de la sesión."""
@@ -152,7 +152,7 @@ def test_req_41_elegir_otra_wallet_cambia_el_saldo_y_el_historial(
     assert str(tres_wallets.bienvenida.id) not in historial
 
 
-def test_req_41_el_envio_sale_de_la_wallet_elegida(
+def test_req_47_el_envio_sale_de_la_wallet_elegida(
     cliente_comun, tres_wallets: TresWallets, bruno, cuentas: Cuentas, conexion
 ):
     """Criterio: el emisor del envío es la wallet elegida y no otra de la cuenta."""
@@ -179,7 +179,7 @@ def test_req_41_el_envio_sale_de_la_wallet_elegida(
     }
 
 
-def test_req_41_el_envio_por_nombre_va_a_la_wallet_principal_del_destinatario(
+def test_req_47_el_envio_por_nombre_va_a_la_wallet_principal_del_destinatario(
     cliente_comun, tres_wallets: TresWallets, bruno, cuentas: Cuentas, conexion
 ):
     """Criterio: el nombre de usuario apunta a la principal del destinatario.
@@ -202,7 +202,7 @@ def test_req_41_el_envio_por_nombre_va_a_la_wallet_principal_del_destinatario(
     assert fila == (principal_de_bruno,)
 
 
-def test_req_41_una_wallet_ajena_no_se_puede_elegir(
+def test_req_47_una_wallet_ajena_no_se_puede_elegir(
     cliente_comun, tres_wallets: TresWallets, bruno, cuentas: Cuentas
 ):
     """Criterio: la sesión sólo elige wallets de su cuenta; una ajena se descarta."""
@@ -232,7 +232,7 @@ def test_req_41_una_wallet_ajena_no_se_puede_elegir(
     ) == "250.00000000"
 
 
-def test_req_41_una_eleccion_guardada_que_no_es_de_la_cuenta_cae_a_la_principal(
+def test_req_47_una_eleccion_guardada_que_no_es_de_la_cuenta_cae_a_la_principal(
     cliente_comun, tres_wallets: TresWallets, bruno, cuentas: Cuentas
 ):
     """Una cookie manipulada no saca a la sesión de las wallets de su cuenta."""
@@ -246,7 +246,7 @@ def test_req_41_una_eleccion_guardada_que_no_es_de_la_cuenta_cae_a_la_principal(
     assert str(tres_wallets.bienvenida.id) in historial
 
 
-def test_req_41_elegir_wallet_solo_vuelve_a_una_ruta_propia(
+def test_req_47_elegir_wallet_solo_vuelve_a_una_ruta_propia(
     cliente_comun, tres_wallets: TresWallets
 ):
     """El `volver` del formulario no sirve de redirección abierta."""

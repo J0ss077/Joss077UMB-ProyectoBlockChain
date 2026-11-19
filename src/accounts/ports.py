@@ -27,7 +27,7 @@ class RepositorioDeUsuarios(Protocol):
     def list_pendientes(self) -> Sequence[Usuario]: ...
 
     def list_aprobados(self) -> Sequence[Usuario]:
-        """Las cuentas comunes aprobadas, por nombre; es la lista del selector (REQ-40)."""
+        """Las cuentas comunes aprobadas, por nombre; es la lista del selector (REQ-46)."""
         ...
 
     def nombres_por_wallet(self) -> Mapping[UUID, str]:
@@ -35,7 +35,7 @@ class RepositorioDeUsuarios(Protocol):
         ...
 
     def wallets_de(self, usuario_id: UUID) -> Sequence[UUID]:
-        """Identificadores de las wallets de la cuenta, por `created_at` (REQ-41)."""
+        """Identificadores de las wallets de la cuenta, por `created_at` (REQ-47)."""
         ...
 
     def wallet_principal(self, usuario_id: UUID) -> UUID | None:
@@ -43,7 +43,7 @@ class RepositorioDeUsuarios(Protocol):
         ...
 
     def asignar_wallet(self, wallet_id: UUID, usuario_id: UUID) -> bool:
-        """Le pone dueño a una wallet sin dueño; `False` si no existe o ya tiene (REQ-40)."""
+        """Le pone dueño a una wallet sin dueño; `False` si no existe o ya tiene (REQ-46)."""
         ...
 
     def aprobar(self, id: UUID) -> Usuario | None:

@@ -137,7 +137,7 @@ def test_req_15_la_wallet_guarda_su_dueno_con_llave_foranea_e_indice(conexion):
     """REQ-15: `wallets.owner_id` existe, apunta a `users` y se indexa por dueño.
 
     La llave foránea llega con un `ALTER TABLE` posterior a `users` (el diseño lo
-    exige así) y el índice resuelve las consultas de REQ-41 —las wallets de una
+    exige así) y el índice resuelve las consultas de REQ-47 —las wallets de una
     cuenta y su principal— sin recorrer la tabla.
     """
     assert "owner_id" in columnas_de(conexion, "wallets")

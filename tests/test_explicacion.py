@@ -1,9 +1,9 @@
 """La explicación no puede quedar huérfana.
 
-Cada caso de uso en el recorrido y cada uno de los 41 requerimientos con su
-prueba. Si el recorrido se separa del código, o si un criterio de aceptación se
-queda sin prueba, esta suite lo dice: la trazabilidad del eje es mecánica y no se
-interpreta.
+Cada caso de uso del recorrido, los 39 requerimientos del eje y los REQ-46 y
+REQ-47 de la wallet con dueño, cada uno con su prueba. Si el recorrido se separa
+del código, o si un criterio de aceptación se queda sin prueba, esta suite lo
+dice: la trazabilidad del eje es mecánica y no se interpreta.
 """
 import pathlib
 import re
@@ -12,7 +12,7 @@ import tomllib
 
 RECORRIDO = pathlib.Path("docs/recorrido-de-casos-de-uso.md")
 CASOS_DE_USO = ("CU-01", "CU-02", "CU-03", "CU-04", "CU-05")
-REQUERIMIENTOS = range(1, 42)
+REQUERIMIENTOS = (*range(1, 40), 46, 47)
 
 
 def test_cada_caso_de_uso_aparece_en_el_recorrido():
@@ -23,7 +23,7 @@ def test_cada_caso_de_uso_aparece_en_el_recorrido():
 
 
 def test_cada_requerimiento_tiene_su_prueba():
-    """Los 41 requerimientos tienen una prueba `test_req_NN_` en el contenido de `tests/`."""
+    """Cada requerimiento de la lista tiene una prueba `test_req_NN_` en `tests/`."""
     contenido = "\n".join(
         fuente.read_text(encoding="utf-8") for fuente in pathlib.Path("tests").rglob("test_*.py")
     )

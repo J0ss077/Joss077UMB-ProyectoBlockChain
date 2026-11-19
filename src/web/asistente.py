@@ -956,7 +956,7 @@ def crear_blueprint_del_asistente(
                 return _situacion_del_admin(chain, cuentas, idioma)
         # La cuenta común puede tener varias wallets: el ayudante habla de la
         # elegida en el tablero, que es la misma con la que opera el resto de la
-        # pantalla (REQ-41). Sin wallets no hay situación que explicar.
+        # pantalla (REQ-47). Sin wallets no hay situación que explicar.
         with abrir_cuentas() as cuentas:
             wallets = cuentas.wallets_de(usuario.id)
             if not wallets:

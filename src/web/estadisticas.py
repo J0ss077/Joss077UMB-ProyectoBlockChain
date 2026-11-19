@@ -6,7 +6,7 @@ Dos rutas sobre la misma página:
   sesión (REQ-35): el identificador nunca llega de la petición.
 - `GET /admin/estadisticas?usuario=<nombre>` es la del administrador, que elige
   en un selector a cuál usuario común mirar; mira la wallet principal de ese
-  usuario (REQ-41). Sin `usuario` la página sólo muestra el selector; un nombre que
+  usuario (REQ-47). Sin `usuario` la página sólo muestra el selector; un nombre que
   no es de un usuario común aprobado responde 404.
 
 El servidor arma los movimientos de la wallet —fecha, si entró o salió, estado,
@@ -103,7 +103,7 @@ def crear_blueprint_de_estadisticas(
         tener wallet. El rol y el estado se revisan igual antes de leer, para que la
         ruta no muestre a un administrador ni a una cuenta sin wallet aunque alguien
         escriba su nombre. La wallet que se mira es la principal del elegido: es la
-        que recibe el envío por nombre de usuario (REQ-41).
+        que recibe el envío por nombre de usuario (REQ-47).
         """
         nombre = request.args.get("usuario", "").strip()
         with abrir_cuentas() as cuentas:

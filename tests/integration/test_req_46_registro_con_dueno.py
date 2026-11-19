@@ -1,4 +1,4 @@
-"""REQ-40: el registro de una wallet elige a su dueño.
+"""REQ-46: el registro de una wallet elige a su dueño.
 
 El administrador registra la wallet y decide a quién se la asigna. La propiedad
 vive en `wallets.owner_id` (diseño §2): una cuenta común aprobada puede quedar
@@ -38,7 +38,7 @@ def _owner_de(conexion, wallet_id):
     ).fetchone()[0]
 
 
-def test_req_40_un_dueno_aprobado_queda_como_owner_id(
+def test_req_46_un_dueno_aprobado_queda_como_owner_id(
     cuentas: Cuentas, usuario_comun, ledger, conexion
 ):
     """Criterio: con una cuenta aprobada elegida, la wallet queda con su `owner_id`."""
@@ -53,7 +53,7 @@ def test_req_40_un_dueno_aprobado_queda_como_owner_id(
     assert ledger.available_balance(wallet.id) == 0
 
 
-def test_req_40_la_opcion_vacia_deja_la_wallet_sin_dueno(
+def test_req_46_la_opcion_vacia_deja_la_wallet_sin_dueno(
     cuentas: Cuentas, ledger, conexion
 ):
     """Criterio: sin dueño elegido, la wallet existe con `owner_id` nulo."""
@@ -66,7 +66,7 @@ def test_req_40_la_opcion_vacia_deja_la_wallet_sin_dueno(
     assert wallet.id not in cuentas.nombres_por_wallet()
 
 
-def test_req_40_un_dueno_que_no_sirve_no_crea_la_wallet(
+def test_req_46_un_dueno_que_no_sirve_no_crea_la_wallet(
     cuentas: Cuentas, administrador, conexion
 ):
     """Criterio: pendiente, rechazada, administrador o id inexistente no crean wallet.
@@ -92,7 +92,7 @@ def test_req_40_un_dueno_que_no_sirve_no_crea_la_wallet(
         assert cuentas.wallets_de(cuenta.id) == []
 
 
-def test_req_40_el_formulario_ofrece_solo_las_cuentas_aprobadas(
+def test_req_46_el_formulario_ofrece_solo_las_cuentas_aprobadas(
     cliente_admin, administrador, usuario_comun, cuentas: Cuentas
 ):
     """Criterio: el selector trae las cuentas aprobadas y la opción de dejarla sin dueño.
@@ -116,7 +116,7 @@ def test_req_40_el_formulario_ofrece_solo_las_cuentas_aprobadas(
     assert f'value="{administrador.id}"' not in cuerpo
 
 
-def test_req_40_sin_cuentas_aprobadas_el_formulario_lo_dice(cliente_admin):
+def test_req_46_sin_cuentas_aprobadas_el_formulario_lo_dice(cliente_admin):
     """Criterio: sin cuentas aprobadas queda la opción vacía y el aviso de que no hay."""
     cuerpo = cliente_admin.get("/wallets").get_data(as_text=True)
 
@@ -125,7 +125,7 @@ def test_req_40_sin_cuentas_aprobadas_el_formulario_lo_dice(cliente_admin):
     assert 'name="dueno"' in cuerpo
 
 
-def test_req_40_la_ruta_registra_la_wallet_a_nombre_del_dueno(
+def test_req_46_la_ruta_registra_la_wallet_a_nombre_del_dueno(
     cliente_admin, usuario_comun, cuentas: Cuentas, conexion
 ):
     """Criterio: el POST con una cuenta aprobada crea la wallet con ese `owner_id`."""
@@ -142,7 +142,7 @@ def test_req_40_la_ruta_registra_la_wallet_a_nombre_del_dueno(
     assert nueva in cuentas.wallets_de(usuario_comun.id)
 
 
-def test_req_40_la_ruta_puede_dejar_la_wallet_sin_dueno(cliente_admin, conexion):
+def test_req_46_la_ruta_puede_dejar_la_wallet_sin_dueno(cliente_admin, conexion):
     """Criterio: el POST con la opción vacía crea la wallet con `owner_id` nulo."""
     antes = _wallets_registradas(conexion)
 
@@ -154,7 +154,7 @@ def test_req_40_la_ruta_puede_dejar_la_wallet_sin_dueno(cliente_admin, conexion)
     assert _owner_de(conexion, nueva) is None
 
 
-def test_req_40_la_ruta_rechaza_un_dueno_invalido_sin_crear_la_wallet(
+def test_req_46_la_ruta_rechaza_un_dueno_invalido_sin_crear_la_wallet(
     cliente_admin, administrador, cuentas: Cuentas, conexion
 ):
     """Criterio: la ruta repinta el formulario con el motivo y no escribe la wallet."""

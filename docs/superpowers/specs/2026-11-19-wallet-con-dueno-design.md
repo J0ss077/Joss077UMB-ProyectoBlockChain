@@ -128,11 +128,11 @@ Todas necesitan su entrada en inglés en `src/web/traducciones.py` (test_idioma)
 
 ## 6. Requerimientos
 
-- **REQ-40 — Registro con dueño.** Al registrar una wallet el administrador elige la cuenta
+- **REQ-46 — Registro con dueño.** Al registrar una wallet el administrador elige la cuenta
   dueña o la deja sin dueño. _Criterio_: se elige una cuenta aprobada y la wallet queda con
   `owner_id`; con la opción vacía queda `owner_id NULL`; elegir una cuenta no aprobada, al
   administrador o un identificador inexistente se rechaza sin crear la wallet.
-- **REQ-41 — Varias wallets por cuenta.** Una cuenta común aprobada puede tener varias wallets
+- **REQ-47 — Varias wallets por cuenta.** Una cuenta común aprobada puede tener varias wallets
   y operar con la que elija. _Criterio_: tres wallets asignadas a la misma cuenta aparecen en
   su selector; cambiar la elegida cambia saldo e historial; el envío sale de la elegida; una
   wallet de otra cuenta no se puede elegir.
@@ -149,8 +149,9 @@ la sesión (la elegida en lugar de `users.wallet_id`).
 - `test_nombres_por_wallet`: una wallet sin dueño no aparece; con dueño sí.
 - `test_req_34_envio`, `test_req_35_alcance`, `test_req_39_verificacion`: la wallet de la sesión
   es la elegida.
-- Nuevos: `test_req_40_registro_con_dueno.py`, `test_req_41_varias_wallets.py`.
-- `tests/test_explicacion.py`: `REQUERIMIENTOS = range(1, 42)`.
+- Nuevos: `test_req_46_registro_con_dueno.py`, `test_req_47_varias_wallets.py`.
+- `tests/test_explicacion.py`: `REQUERIMIENTOS = (*range(1, 40), 46, 47)`; los REQ-40 a
+  REQ-45 del diseño de perfil, contactos y ayudante se verifican en sus archivos por caso.
 
 ## 8. Operación
 

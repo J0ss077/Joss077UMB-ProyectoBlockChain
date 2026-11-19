@@ -405,7 +405,7 @@ def create_app(
     @app.route("/wallets", methods=["GET", "POST"])
     @requiere_administrador
     def wallets():
-        """CU-01 y REQ-40: registra una wallet y le pone dueño, o la deja sin dueño.
+        """CU-01 y REQ-46: registra una wallet y le pone dueño, o la deja sin dueño.
 
         La rama `GET` abre la cadena sólo para el panel lateral, que es la lista de
         wallets: con ella el CU-05 queda alcanzable desde cualquier página sin teclear

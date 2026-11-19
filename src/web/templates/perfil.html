@@ -72,7 +72,7 @@
             {% if wallets and not es_admin %}
             <dt>{{ t("Tus wallets") }}</dt>
             <dd>
-                {# REQ-41: la cuenta puede tener varias wallets; el perfil las lista todas, la principal primero. #}
+                {# REQ-47: la cuenta puede tener varias wallets; el perfil las lista todas, la principal primero. #}
                 <ul class="lista-wallets">
                     {% for wallet_id in wallets %}
                     <li class="dato-wallet">

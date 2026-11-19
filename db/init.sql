@@ -11,7 +11,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- ---------------------------------------------------------------------------
 -- wallets: par de llaves ECDSA y, opcionalmente, su cuenta dueña (REQ-01,
--- REQ-40). La pública identifica y la privada solo vive cifrada (REQ-01), así
+-- REQ-46). La pública identifica y la privada solo vive cifrada (REQ-01), así
 -- que la columna es BYTEA y el CHECK exige que no vaya vacía. La propiedad vive
 -- acá y no en `users`: `owner_id` nulo es una wallet sin dueño y una cuenta
 -- puede tener varias wallets (diseño de wallet con dueño, §2). La llave foránea
@@ -159,7 +159,7 @@ COMMENT ON COLUMN users.aprobado_en IS
 -- que `users` y la relación apunta desde la wallet hacia la cuenta. El `ON DELETE
 -- RESTRICT` impide borrar una cuenta que todavía es dueña de alguna wallet, igual
 -- que antes lo hacía la llave de `users.wallet_id`. El índice resuelve las
--- consultas por dueño: las wallets de una cuenta y su wallet principal (REQ-41).
+-- consultas por dueño: las wallets de una cuenta y su wallet principal (REQ-47).
 ALTER TABLE wallets
     ADD CONSTRAINT fk_wallets_owner
     FOREIGN KEY (owner_id) REFERENCES users (id)
