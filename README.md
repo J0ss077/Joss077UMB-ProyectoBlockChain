@@ -832,6 +832,60 @@ el volumen de nuevo—, la tercera siembra los datos de demostración y la cuart
 la aplicación. Al final, con la sesión de administrador abierta,
 `http://127.0.0.1:5000/verificar` tiene que decir "La cadena es válida".
 
+## El pentesting y su andamiaje
+
+El [informe de pentesting](docs/pentesting/informe.md) no se redactó a mano: lo produjo
+la herramienta que vive en `pentest/`, y esa herramienta se conserva para poder repetir
+la campaña cuando se pida. El informe está congelado sobre el commit `899d252` y el
+código de la aplicación no ha cambiado desde entonces, así que sus cuatro hallazgos
+siguen siendo reproducibles; los commits posteriores solo tocan `pentest/`, la
+documentación y las capturas.
+
+**Aislamiento.** La campaña no usa la base de la demostración ni el puerto de todos los
+días: levanta un PostgreSQL desechable en el 55433, la instancia bajo prueba en
+`http://127.0.0.1:5055` y un doble del asistente en el 5056. El `.env` sintético se
+escribe en la raíz del árbol donde se ejecuta la campaña y lleva una `MASTER_KEY` nueva;
+por eso la campaña se corre en un worktree aparte y **nunca** con `--forzar` en la raíz
+de la demostración, donde ese archivo guarda la clave con la que están cifradas las
+wallets sembradas.
+
+```text
+git worktree add ../pentest-899d252 899d252
+cd ../pentest-899d252
+python -m venv .venv-pentest
+.venv-pentest/bin/python -m pip install -r requirements.txt -r requirements-pentest.txt
+```
+
+En Windows el intérprete queda en `.venv-pentest\Scripts\python.exe`.
+
+**La campaña, en orden.** Todas las órdenes se ejecutan desde el worktree con el
+intérprete de `.venv-pentest`, y cada una deja su evidencia en
+`docs/pentesting/evidencias/`:
+
+1. `python -m pentest.entorno generar`: escribe el `.env` sintético del worktree; no
+   pisa uno existente salvo con `--forzar`.
+2. `python -m pentest.entorno levantar`: levanta PostgreSQL en el 55433 y aplica el
+   esquema a las bases `pentest` y `pentest_pruebas`.
+3. `python -m src.bootstrap`: siembra los datos de demostración en esa base.
+4. `python -m pentest.instancia`: arranca la aplicación bajo prueba en el 5055.
+5. `python -m pentest.doble_asistente`: arranca el doble del asistente en el 5056.
+6. `python -m pentest.sast`: corre `bandit`, `pip-audit` y `gitleaks` y deja sus
+   informes en `evidencias/sast/`.
+7. Los dos escaneos de ZAP, `python -m pentest.dast.ejecutar pasivo` y
+   `python -m pentest.dast.ejecutar autenticado`: el anónimo y el que usa la sesión
+   de administrador, con sus informes en `evidencias/dast/`.
+8. `python -m pentest.manual.pruebas`: la batería guiada por WSTG, con una transcripción
+   `.http` por comprobación y el resumen consolidado.
+9. `python -m pentest.informe verificar` y `python -m pentest.informe pdf`: contrasta el
+   informe contra la evidencia y regenera `docs/pentesting/informe.pdf`.
+10. `python -m pentest.kiwi.importar` y `python -m pentest.kiwi.subir`: el plan, los
+    casos y los adjuntos en Kiwi TCMS.
+11. `python -m pentest.entorno abajo`: baja el stack y borra sus volúmenes.
+
+Hacen falta Docker —para PostgreSQL, ZAP y `gitleaks`— y red para las imágenes. La
+importación a Kiwi necesita además una instancia de Kiwi TCMS, que es un servicio aparte
+y no hace falta para revisar la evidencia ya versionada.
+
 ## Apagar y limpiar
 
 **Detener la aplicación.** En la terminal donde corre `<venv> -m src.web`, `Ctrl+C`. No
@@ -911,9 +965,10 @@ con la clave nueva. El arranque solo siembra cuando la tabla de wallets está va
   OWASP WSTG v4.2 y encontró cuatro hallazgos —tres de severidad media y uno baja—,
   ninguno alto ni crítico. El informe está en `docs/pentesting/informe.md` y
   `docs/pentesting/informe.pdf`. El código de la aplicación (`src/`, `db/`, `tests/` y
-  `red_neuronal/`) no cambió entre ese commit y el `HEAD` actual
-  (`a1327b1`): los commits posteriores son las herramientas del pentest y documentación,
-  así que el informe describe el mismo código que este README.
+  `red_neuronal/`) no cambió desde ese commit. La comparación
+  `git diff --stat 899d252..main -- src/ db/ tests/ red_neuronal/` sale vacía, porque
+  los commits posteriores son las herramientas del pentest, la documentación y las
+  capturas, así que el informe describe el mismo código que este README.
 - **El acceso**: no hay URL pública ni despliegue. El prototipo se levanta en local con
   los comandos de esta página y responde en `http://127.0.0.1:5000`; la corrida fresca
   de pruebas usó un contenedor desechable y no tocó la base de desarrollo ni `.env`.

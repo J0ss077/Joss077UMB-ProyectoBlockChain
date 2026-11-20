@@ -323,6 +323,6 @@ Para reproducirlas sin tocar los datos de la aplicación hace falta una base apa
       guía local, las de wallet con dueño y varias wallets `24` a `27`, y la de la
       auditoría detectando el sello no coincidente `28-auditoria-detecta-sello-no-coincide.png`).
 
-Al momento de esta actualización, el `main` local está por delante de `origin/main`;
-el envío al remoto y la comprobación con `git ls-remote` están declarados como
-pendientes en `docs/entrega-final.md` (P0-2).
+El envío al remoto se completó el 20 de noviembre de 2026: `main` y `origin/main`
+coinciden y el árbol de trabajo quedó limpio, como comprueba `docs/entrega-final.md`
+(P0-2).

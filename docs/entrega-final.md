@@ -6,23 +6,23 @@ Inteligencia Artificial, el guion de la demostración en vivo, el inventario de
 evidencias y los huecos que quedan antes de entregar.
 
 **Nota de alcance.** La documentación del repositorio se alineó el 19 de noviembre de
-2026 sobre el árbol de trabajo del commit
-`a1327b13a01be1756657da6d7468f09c3343c697` (`a1327b1`). Ese commit ya contenía este
+2026 sobre el árbol del commit
+`a1327b13a01be1756657da6d7468f09c3343c697` (`a1327b1`). Ese commit contenía este
 documento, la evidencia fresca de pruebas y las capturas 11 y 23 del ayudante; sobre ese
 árbol se actualizaron el README, la arquitectura y el alcance, el recorrido de los casos
 de uso, las evidencias, el cronograma y el informe de pentest, y se agregó el registro de
-la socialización. El remoto todavía no tiene esos cambios: la rama local está por delante
-de `origin/main` (véase la sección 6).
+la socialización. La ronda documental se subió a `origin/main` el 20 de noviembre de 2026
+y el árbol de trabajo quedó limpio (véase la sección 6.2).
 
 | Campo | Valor |
 | --- | --- |
 | Proyecto | Joss077UMB-ProyectoBlockChain |
 | Documento académico de referencia | `documentacion_proyecto_transaccionales.pdf` (Grupo 1, Universidad Manuela Beltrán) |
-| Commit de referencia | `a1327b13a01be1756657da6d7468f09c3343c697` (`a1327b1`, 19 de noviembre de 2026); las novedades de la ronda documental están en el árbol de trabajo |
+| Commit de referencia | `a1327b13a01be1756657da6d7468f09c3343c697` (`a1327b1`, 19 de noviembre de 2026); la ronda documental ya está en `origin/main` |
 | Fecha de este documento | 19 de noviembre de 2026 |
 | Repositorio | https://github.com/J0ss077/Joss077UMB-ProyectoBlockChain |
 | Alcance | Nodo único de un ledger transaccional; prototipo local sin despliegue público |
-| Estado global | Prototipo y pruebas: cumple. Servicio de IA: parcial. Documentación: alineada. Pendientes: decisión del enlace público, subida de los commits y grabación/acta de la socialización (véase la sección 6) |
+| Estado global | Prototipo y pruebas: cumple. Servicio de IA: parcial. Documentación: alineada. Pendientes: decisión del enlace público y grabación/acta de la socialización (véase la sección 6) |
 
 **Veredicto de conjunto.** El prototipo transaccional está implementado, corriendo y
 probado: la suite completa cierra en `525 passed, 1 skipped` y el lint no reporta
@@ -34,8 +34,9 @@ prototipo, y la evidencia fresca de pruebas y las capturas del ayudante están v
 en el commit `a1327b1`. La entrega no tiene despliegue público: el acceso es local y
 reproducible con los comandos del README. La socialización y la demostración en vivo se
 documentan en [evidencias/socializacion/README.md](evidencias/socializacion/README.md);
-la grabación y el acta todavía no se anexan. Quedan tres pendientes antes de entregar:
-decidir el enlace o despliegue, subir los commits y anexar la grabación y el acta.
+la grabación y el acta todavía no se anexan. Quedaban tres pendientes antes de entregar;
+la subida de los commits se completó el 20 de noviembre, así que quedan dos: decidir el
+enlace o despliegue y anexar la grabación y el acta.
 
 ---
 
@@ -129,16 +130,12 @@ README, sección «Los datos de demostración».
 
 ### 1.4 Estado del repositorio y advertencia
 
-La rama local `main` está **9 commits por delante** de `origin/main`: el remoto apunta a
-`899d252` y la copia local a `a1327b1`. Además, al cierre de este documento quedan sin
-versionar los cambios de la ronda de alineación documental del 19 de noviembre de 2026
-—el README, la arquitectura y el alcance, el recorrido de los casos de uso, las
-evidencias, el cronograma, el informe de pentest, el ajuste en
-`docs/superpowers/specs/2026-10-10-blockchain-transaccional-design.md` y este
-documento—, junto con el nuevo registro de la socialización. Con el commit de esa ronda
-la rama quedará 10 commits por delante. Eso significa que el enlace al repositorio
-público, tal como está hoy, no contiene el estado documentado ni la evidencia fresca: hay
-que subir los commits y los archivos nuevos (véase la sección 6, acción P0-2).
+La ronda de alineación documental del 19 de noviembre de 2026 se subió a `origin/main`
+el 20 de noviembre y el árbol de trabajo quedó limpio: `git rev-list --count
+origin/main..HEAD` da 0 y `git status --short` no informa cambios. Al cierre del 19 la
+rama estaba diez commits por delante y este documento advertía que el remoto no tenía el
+estado documentado ni la evidencia fresca; esa advertencia ya no aplica (véase la sección
+6.2, acción P0-2).
 
 > **PENDIENTE (a): enlace o despliegue público.** El repositorio no tiene despliegue y
 > la entrega no incluye una URL pública. Se entrega acceso local reproducible. Si la
@@ -669,8 +666,8 @@ entorno ya levantado.
 | --- | --- | --- |
 | Documentación del repositorio alineada con el prototipo | Hecho | [README.md](../README.md), [arquitectura-y-decisiones.md](arquitectura-y-decisiones.md), [proceso-y-alcance.md](proceso-y-alcance.md), [recorrido-de-casos-de-uso.md](recorrido-de-casos-de-uso.md) |
 | Informe de pentest actualizado y PDF regenerado | Hecho | [informe.md](pentesting/informe.md) y [informe.pdf](pentesting/informe.pdf), 18 páginas, con la nota de alcance temporal (1.4) |
-| Capturas del ayudante regeneradas y descritas | Hecho | [11-asistente.png](evidencias/capturas/11-asistente.png) y [23-asistente-conversacion.png](evidencias/capturas/23-asistente-conversacion.png), del 19 de noviembre, en modo guía local; versionadas en `a1327b1` |
-| Evidencia fresca de la suite | Hecho | [pruebas-finales-2026-11-19.txt](evidencias/pruebas-finales-2026-11-19.txt), versionada en `a1327b1` (local, todavía sin subir al remoto) |
+| Capturas del ayudante regeneradas y descritas | Hecho | [11-asistente.png](evidencias/capturas/11-asistente.png) y [23-asistente-conversacion.png](evidencias/capturas/23-asistente-conversacion.png), del 19 de noviembre, en modo guía local; versionadas en el repositorio |
+| Evidencia fresca de la suite | Hecho | [pruebas-finales-2026-11-19.txt](evidencias/pruebas-finales-2026-11-19.txt), versionada en el repositorio |
 | Cifras y recuentos corregidos | Hecho | 525 pruebas aprobadas y 1 omitida, 158 unitarias sin base, 47 requerimientos y 28 capturas en los documentos de la sección 5.5 |
 | Registro de la socialización y la demostración en vivo | Hecho | [evidencias/socializacion/README.md](evidencias/socializacion/README.md) |
 
@@ -683,19 +680,14 @@ publicar una instancia con una máquina o un túnel y pegar la URL (2 a 4 horas,
 sembrar la base y probar el acceso desde fuera). No se debe afirmar que hay un
 despliegue que no existe.
 
-**P0-2. Subir los commits.** La rama local está 9 commits por delante de `origin/main`
-(`899d252`) y los cambios de la ronda documental siguen sin commitear; con la subida de
-esta ronda serán 10 commits. Antes de subir conviene revisar `git status --short` y
-confirmar que solo van los archivos de la entrega.
+**P0-2. Subir los commits — hecho el 20 de noviembre de 2026.** La ronda documental está
+en `origin/main` y el árbol de trabajo quedó limpio. Se comprueba con:
 
 ```text
-git add README.md docs/
-git commit -m "docs: alineación documental y registro de socialización"
-git push
+git rev-list --count origin/main..HEAD   # 0
+git status --short                        # sin salida
+git ls-remote origin main                 # coincide con el HEAD local
 ```
-
-Después se comprueba que `git rev-list --count origin/main..HEAD` da 10 y que
-`git ls-remote origin main` coincide con el `HEAD` local. Esfuerzo: 10 a 15 minutos.
 
 **P0-3. Anexar la grabación y completar el acta de la socialización.** El registro de la
 actividad ya existe en [evidencias/socializacion/README.md](evidencias/socializacion/README.md)
