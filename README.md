@@ -845,9 +845,9 @@ documentación y las capturas.
 días: levanta un PostgreSQL desechable en el 55433, la instancia bajo prueba en
 `http://127.0.0.1:5055` y un doble del asistente en el 5056. El `.env` sintético se
 escribe en la raíz del árbol donde se ejecuta la campaña y lleva una `MASTER_KEY` nueva;
-por eso la campaña se corre en un worktree aparte y **nunca** con `--forzar` en la raíz
-de la demostración, donde ese archivo guarda la clave con la que están cifradas las
-wallets sembradas.
+por eso la campaña se corre en un worktree aparte. El módulo reconoce su propio `.env`
+por una marca en la primera línea y se niega a sobrescribir, leer o usar otro: el de la
+demostración guarda la `MASTER_KEY` con la que están cifradas sus wallets sembradas.
 
 ```text
 git worktree add ../pentest-899d252 899d252
@@ -885,6 +885,11 @@ intérprete de `.venv-pentest`, y cada una deja su evidencia en
 Hacen falta Docker —para PostgreSQL, ZAP y `gitleaks`— y red para las imágenes. La
 importación a Kiwi necesita además una instancia de Kiwi TCMS, que es un servicio aparte
 y no hace falta para revisar la evidencia ya versionada.
+
+**El flujo de integración continua.** `.github/workflows/seguridad.yml` corre en GitHub
+en cada push a `main`, en los `pull_request` y una vez por semana, con las cuatro tareas
+que declara; la validación local de ese mismo flujo, con `actionlint` y `act`, está en
+`pentest/ci.py`.
 
 ## Apagar y limpiar
 

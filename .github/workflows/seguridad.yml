@@ -1,8 +1,10 @@
 # Workflow de seguridad del proyecto (T7).
 #
-# No se publica: se valida en local con actionlint y act y el resumen de
-# `docs/pentesting/evidencias/ci/resumen.json` declara que no corrió en
-# GitHub. Los cuatro jobs corresponden a §7.6 del diseño de pentesting:
+# Se construyó y validó en local con actionlint y act; el resumen de
+# `docs/pentesting/evidencias/ci/resumen.json` deja constancia de esa
+# validación. Además corre en GitHub en cada push a `main`, en los `pull_request`
+# y una vez por semana. Los cuatro jobs corresponden a §7.6 del diseño de
+# pentesting:
 #
 # - `lint`: ruff sobre todo el árbol.
 # - `sast`: bandit, pip-audit y gitleaks (árbol e historial) sobre `src/`.
