@@ -1177,14 +1177,3 @@ Antes de proponer un cambio, conviene correr el lint y la suite sin base de dato
 .venv/bin/ruff check .
 env -u DATABASE_URL .venv/bin/pytest tests/unit -q
 ```
-
-## Autores y coautores
-
-| Rol | Cuenta |
-| --- | --- |
-| Autor | [`sebas-archive`](https://github.com/sebas-archive) |
-| Coautor | [`sebas-archive`](https://github.com/sebas-archive) |
-
-## Licencia
-
-El repositorio no incluye todavía un archivo de licencia.
