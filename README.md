@@ -1,9 +1,34 @@
-# Prototipo transaccional basado en blockchain
+<div align="center">
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/banner-oscuro.svg">
+  <img src="docs/assets/banner-claro.svg" alt="Ledger transaccional: prototipo de blockchain con wallets ECDSA, transacciones firmadas y cadena de bloques verificable" width="100%">
+</picture>
+
+<h1>Prototipo transaccional basado en blockchain</h1>
+
+<a href="#requisitos-previos"><img src="https://img.shields.io/badge/Python-%E2%89%A5%203.11-2e46f0?logo=python&logoColor=white" alt="Python 3.11 o superior"></a> <a href="#puesta-en-marcha"><img src="https://img.shields.io/badge/PostgreSQL-16-2e46f0?logo=postgresql&logoColor=white" alt="PostgreSQL 16"></a> <a href="#arquitectura-del-sistema"><img src="https://img.shields.io/badge/Flask-3.1-2e46f0?logo=flask&logoColor=white" alt="Flask 3.1"></a> <a href="https://github.com/J0ss077/Joss077UMB-ProyectoBlockChain"><img src="https://img.shields.io/github/languages/top/J0ss077/Joss077UMB-ProyectoBlockChain?color=1c2fb8" alt="Lenguaje principal del repositorio (dinámico)"></a> <a href="https://github.com/J0ss077/Joss077UMB-ProyectoBlockChain/commits/main"><img src="https://img.shields.io/github/last-commit/J0ss077/Joss077UMB-ProyectoBlockChain?color=c8f54a&labelColor=1a2600" alt="Último commit de la rama main (dinámico)"></a>
+
+</div>
+
+<p align="center">
 Nodo único de un ledger transaccional: wallets con par de llaves ECDSA, transacciones
 firmadas que se validan antes de entrar al pool, agrupación en bloques encadenados por
 hash SHA-256, verificación de integridad que localiza una alteración y una aplicación
 web con las cinco rutas del eje.
+</p>
+
+<p align="center">
+  <a href="#qué-es-y-de-dónde-viene"><b>Qué es</b></a> ·
+  <a href="#características-principales"><b>Características</b></a> ·
+  <a href="#arquitectura-del-sistema"><b>Arquitectura</b></a> ·
+  <a href="#puesta-en-marcha"><b>Puesta en marcha</b></a> ·
+  <a href="#las-cinco-rutas"><b>Rutas</b></a> ·
+  <a href="#cómo-correr-las-pruebas"><b>Pruebas</b></a> ·
+  <a href="#documentos-y-evidencias"><b>Documentos</b></a>
+</p>
+
+<img src="docs/assets/separador.svg" width="100%" alt="">
 
 ## Qué es y de dónde viene
 
@@ -29,6 +54,59 @@ los de las funciones de las fases siguientes, en `docs/superpowers/specs/`.
 La explicación de cómo se ejecuta cada caso de uso está en
 `docs/recorrido-de-casos-de-uso.md`. La consolidación para la entrega y el guion de la
 sustentación están en `docs/entrega-final.md`.
+
+## Características principales
+
+- **Wallets con llaves ECDSA.** Cada wallet es un par sobre `secp256k1`; la llave privada se guarda cifrada con Fernet bajo la `MASTER_KEY` (REQ-01, REQ-02).
+- **Transacciones firmadas y validadas.** Una transacción se verifica antes de entrar al pool: firma, saldo disponible y reglas de admisión (REQ-02 a REQ-06, REQ-11).
+- **Cadena de bloques con SHA-256.** El pool se agrupa en bloques encadenados por hash, en una sola transacción de base de datos (REQ-05 a REQ-10, REQ-18).
+- **Verificación que localiza la alteración.** La cadena señala el primer bloque que no encaja, sin escribir nada en la base (REQ-10, REQ-22).
+- **Auditoría profunda y sello de vigilancia.** Revisa encadenamiento, firmas, montos y wallets; un ancla HMAC-SHA256 detecta el recorte de la cola.
+- **Aplicación web con roles.** Administrador y usuarios comunes, sesiones, perfil con foto, agenda de contactos e idioma (REQ-30 a REQ-47).
+- **Ayudante y proyección.** Un ayudante de solo lectura con guía local, y la proyección del próximo mes con una red neuronal opcional.
+
+## Vista previa
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/evidencias/capturas/02-portada-admin.png" alt="Portada del administrador con los conteos del ledger y el panel de wallets"></td>
+    <td width="50%"><img src="docs/evidencias/capturas/06-verificar.png" alt="Verificación de la cadena con el dictamen y la auditoría"></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/evidencias/capturas/11-asistente.png" alt="Ayudante en modo guía local"></td>
+    <td width="50%"><img src="docs/evidencias/capturas/12-tema-oscuro.png" alt="Interfaz con el tema oscuro"></td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><sub>Portada del administrador, verificación de la cadena, ayudante en guía local y tema oscuro (capturas del 19 de noviembre de 2026).</sub></td>
+  </tr>
+</table>
+
+## Tecnologías
+
+| Capa | Tecnología |
+| --- | --- |
+| Lenguaje | Python 3.11 o superior |
+| Aplicación web | Flask 3.1 con plantillas Jinja |
+| Base de datos | PostgreSQL 16 con psycopg 3; el esquema vive en `db/init.sql` |
+| Criptografía | `cryptography`: ECDSA sobre `secp256k1`, Fernet, SHA-256, HMAC-SHA256 y scrypt para las contraseñas |
+| Proyección (opcional) | TensorFlow / Keras para la red y pandas para el dataset |
+| Calidad | pytest para las pruebas y ruff para el lint |
+
+## Arquitectura del sistema
+
+<div align="center">
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/arquitectura-oscuro.svg">
+  <img src="docs/assets/arquitectura-claro.svg" alt="Capas del sistema: presentación, dominio, persistencia y PostgreSQL, con dependencias en un solo sentido" width="720">
+</picture>
+
+</div>
+
+La presentación habla con una fachada, la fachada con protocolos y los protocolos con
+PostgreSQL. Las dependencias van en un solo sentido, y una prueba automática falla si
+`src/web` nombra el motor. El detalle de cada decisión está en
+[docs/arquitectura-y-decisiones.md](docs/arquitectura-y-decisiones.md).
 
 ## Requisitos previos
 
@@ -179,7 +257,9 @@ la vista en todas las páginas de trabajo; el saldo solo se consulta en la porta
 aplicación arranca sin el depurador interactivo ni el recargador de código; se activan
 con `FLASK_DEBUG=1` en el entorno, solo para desarrollo local.
 
-### Las fotos de perfil
+<details>
+<summary><strong>Las fotos de perfil</strong></summary>
+
 
 La foto de cada cuenta es un archivo aparte: la base guarda su nombre, su tipo y su
 fecha, y los bytes viven en la carpeta de `FOTOS_DIR` (por defecto `datos/fotos/`,
@@ -189,7 +269,11 @@ la interfaz pinta la inicial del nombre en vez de una imagen rota. Cambiar
 `FOTOS_DIR` no mueve los archivos que ya existen: hay que copiarlos a la carpeta
 nueva.
 
-## Problemas conocidos
+</details>
+
+<details>
+<summary><strong>Problemas conocidos</strong></summary>
+
 
 **La aplicación parece quedarse pensando.** El arranque imprime al final, así que una
 conexión que espera se ve igual que un cuelgue. Si el arranque se queda callado, el primer
@@ -211,6 +295,8 @@ contenedor, `DATABASE_URL`— y ofrece un botón de reintentar. El arranque
 La traducción la hace `src/persistence/conexion.py` y la página la registra
 `src/web/app.py`; las pruebas de ese camino están en `tests/integration/test_conexion.py`
 y no necesitan PostgreSQL.
+
+</details>
 
 ## Las cinco rutas
 
@@ -241,7 +327,9 @@ Los formularios de `POST /wallets`, `POST /transacciones` y `POST /bloques` se a
 un `GET` sobre la misma ruta, que sólo pinta la página; el `POST` es el que ejecuta la
 operación del caso de uso.
 
-### La auditoría, el sello y la reparación de la cadena
+<details>
+<summary><strong>La auditoría, el sello y la reparación de la cadena</strong></summary>
+
 
 `GET /verificar` ya no entrega sólo el dictamen: además audita la cadena completa con
 `Blockchain.audit_chain` (`src/domain/blockchain.py:356`), que delega en
@@ -274,7 +362,11 @@ escribe nada: cada rama vuelve a `/verificar` con el aviso en la bandeja, que es
 estado real después de la reparación. Las reparaciones son un `POST` aparte y explícito
 porque `GET /verificar` sólo lee.
 
-### Las rutas de la sesión, del usuario común y del administrador
+</details>
+
+<details>
+<summary><strong>Las rutas de la sesión, del usuario común y del administrador</strong></summary>
+
 
 La barra superior es el menú principal: cambia sus enlaces según el rol de la sesión
 —el logo vuelve a la portada y el botón de tema claro/oscuro queda al final—, y la
@@ -304,7 +396,11 @@ pestaña del ayudante viaja con `?desde=` la pantalla de origen para explicarla.
 | `GET /asistente`, `POST /asistente/preguntar`, `GET /asistente/ahora`                     | El ayudante en palabras simples                                                 | con sesión    |
 | `POST /idioma`                                                                            | Guarda el idioma elegido                                                        | cualquiera    |
 
-### El perfil, los contactos y el idioma
+</details>
+
+<details>
+<summary><strong>El perfil, los contactos y el idioma</strong></summary>
+
 
 `GET /perfil` reúne los datos de la cuenta, sus wallets y el estado de su último cambio
 de contraseña (`src/web/perfil.py:63`). La foto es opcional: se sube con
@@ -323,7 +419,11 @@ de destinatario. El idioma de la interfaz se guarda con `POST /idioma`
 (`src/web/app.py:367`) en una cookie de un año y se puede ver en español o en inglés
 (`src/web/traducciones.py`).
 
-### La wallet con dueño y las varias wallets
+</details>
+
+<details>
+<summary><strong>La wallet con dueño y las varias wallets</strong></summary>
+
 
 Una wallet puede pertenecer a una cuenta (REQ-46): la columna `wallets.owner_id` es nula
 para la wallet sin dueño y apunta a `users` en el resto (`db/init.sql:23`). El registro
@@ -341,7 +441,11 @@ usa la principal, la más antigua (`src/web/user.py:171`). El envío por nombre 
 apunta a la wallet principal del destinatario y las demás sólo se alcanzan por su
 identificador.
 
-### El ayudante y la IA
+</details>
+
+<details>
+<summary><strong>El ayudante y la IA</strong></summary>
+
 
 El ayudante es de sólo lectura: explica lo que la cuenta tiene y lo que la pantalla
 muestra, y no escribe, no firma ni mueve dinero. Sin configurar nada contesta con su
@@ -365,7 +469,11 @@ lo muestran en modo guía local con la cuenta `asociado1` el 19 de noviembre de 
 eso la respuesta lleva el sello «Guía rápida» y no aparece el aviso de privacidad —la
 plantilla sólo lo pinta cuando hay un proveedor externo configurado—.
 
-## La conexión con la base de datos
+</details>
+
+<details>
+<summary><strong>La conexión con la base de datos</strong></summary>
+
 
 La aplicación no escribe SQL: la capa de presentación recibe fábricas y habla con el
 dominio. Quién abre la conexión y con qué cadena está repartido en cuatro archivos, y
@@ -385,7 +493,11 @@ así que un puerto mal puesto se ve como un error en cinco segundos y no como un
 La configuración sensible vive en `.env`, que no se versiona; `.env.example` sólo trae
 valores de plantilla que los lectores rechazan.
 
-## Cómo comprobar los datos en la base
+</details>
+
+<details>
+<summary><strong>Cómo comprobar los datos en la base</strong></summary>
+
 
 `db/consultas.sql` reúne las consultas de evidencia —conteos por tabla, saldo disponible
 por wallet, la cadena eslabonada, el pool y las últimas filas escritas— y se puede
@@ -404,6 +516,8 @@ psql "$DATABASE_URL" -f db/consultas.sql
 Es el camino recomendado para la evidencia de la Fase 4: registrar algo desde la
 interfaz y comprobar la fila con la consulta 8 del archivo. El detalle de qué se hizo y
 qué evidencias acompañan la entrega está en `docs/evidencias-fase4.md`.
+
+</details>
 
 ## La proyección de las estadísticas
 
@@ -453,7 +567,9 @@ documento que explica la red está en `docs/red-neuronal.md`, y el presupuesto y
 cronograma en `docs/presupuesto-y-cronograma.md`; las versiones en `.docx` para pegar en
 el documento maestro se entregan aparte, no se versionan acá.
 
-## Los datos de demostración
+<details>
+<summary><strong>Los datos de demostración</strong></summary>
+
 
 `python -m src.bootstrap` deja **5 wallets, 4 bloques, 10 transacciones y 6 cuentas**
 (las de la sección siguiente). De las transacciones, 7 quedan confirmadas y 3
@@ -535,7 +651,11 @@ La clave pública del fondo se imprime con:
 <venv> -c "from src.bootstrap import FONDO; print(FONDO)"
 ```
 
-## Más historial para las estadísticas
+</details>
+
+<details>
+<summary><strong>Más historial para las estadísticas</strong></summary>
+
 
 La semilla deja movimientos de un solo día, que alcanzan para ver la cadena pero no una
 tendencia. Para que la página de estadísticas y la proyección tengan qué mostrar hay un
@@ -579,6 +699,8 @@ La historia se agrega al final de la cadena con fechas del pasado, así que los 
 nuevos quedan con marcas de tiempo anteriores a las del último bloque que ya existía; la
 verificación sigue siendo válida porque comprueba el encadenamiento, no el orden
 cronológico.
+
+</details>
 
 ## Las cuentas de demostración
 
@@ -706,7 +828,9 @@ configura en `pyproject.toml` (ruff, `line-length = 100`). Para correrlo:
 <venv> -m ruff check .
 ```
 
-## Reproducir la demostración de alteración
+<details>
+<summary><strong>Reproducir la demostración de alteración</strong></summary>
+
 
 El objetivo específico tercero del eje es que **toda** modificación del historial sea
 detectable. La prueba automática es
@@ -744,7 +868,11 @@ La alteración deja la base modificada a propósito. Para volver a los datos de
 demostración, se borra el volumen y se vuelve a sembrar: `docker compose down -v`,
 `docker compose up -d` (o con Podman) y `<venv> -m src.bootstrap`.
 
-## Sabotaje guiado
+</details>
+
+<details>
+<summary><strong>Sabotaje guiado</strong></summary>
+
 
 `python -m src.sabotaje` es una herramienta de verificación y demostración: altera el
 ledger a propósito, por SQL directo, y narra cada caso para que se vea en el navegador
@@ -832,6 +960,8 @@ el volumen de nuevo—, la tercera siembra los datos de demostración y la cuart
 la aplicación. Al final, con la sesión de administrador abierta,
 `http://127.0.0.1:5000/verificar` tiene que decir "La cadena es válida".
 
+</details>
+
 ## El pentesting y su andamiaje
 
 El [informe de pentesting](docs/pentesting/informe.md) no se redactó a mano: lo produjo
@@ -891,7 +1021,9 @@ en cada push a `main`, en los `pull_request` y una vez por semana, con las cuatr
 que declara; la validación local de ese mismo flujo, con `actionlint` y `act`, está en
 `pentest/ci.py`.
 
-## Apagar y limpiar
+<details>
+<summary><strong>Apagar y limpiar</strong></summary>
+
 
 **Detener la aplicación.** En la terminal donde corre `<venv> -m src.web`, `Ctrl+C`. No
 queda nada a medias: cada petición abre su conexión y la cierra al terminar, y la
@@ -937,7 +1069,11 @@ eso, después de cambiar la clave hay que reiniciar los datos —`docker compose
 con la clave nueva. El arranque solo siembra cuando la tabla de wallets está vacía: un
 `.env` nuevo con los datos viejos deja un ledger que no puede firmar.
 
-## Qué está verificado
+</details>
+
+<details>
+<summary><strong>Qué está verificado</strong></summary>
+
 
 - **El esquema en PostgreSQL 16**, la versión del piso: `db/init.sql` se aplicó como
   guion de inicialización de un contenedor `postgres:16-alpine` (PostgreSQL 16.15) y
@@ -969,14 +1105,16 @@ con la clave nueva. El arranque solo siembra cuando la tabla de wallets está va
 - **El pentest del 19 de noviembre de 2026**: se ejecutó sobre el commit `899d252` con
   OWASP WSTG v4.2 y encontró cuatro hallazgos —tres de severidad media y uno baja—,
   ninguno alto ni crítico. El informe está en `docs/pentesting/informe.md` y
-  `docs/pentesting/informe.pdf`. El código de la aplicación (`src/`, `db/`, `tests/` y
-  `red_neuronal/`) no cambió desde ese commit. La comparación
+  `docs/pentesting/Informe_Pentesting_Grupo1.pdf`. El código de la aplicación (`src/`, `db/`, `tests/` y
+  `red_neuronal/`) no cambió desde ese commit: la comparación
   `git diff --stat 899d252..main -- src/ db/ tests/ red_neuronal/` sale vacía, porque
   los commits posteriores son las herramientas del pentest, la documentación y las
   capturas, así que el informe describe el mismo código que este README.
 - **El acceso**: no hay URL pública ni despliegue. El prototipo se levanta en local con
   los comandos de esta página y responde en `http://127.0.0.1:5000`; la corrida fresca
   de pruebas usó un contenedor desechable y no tocó la base de desarrollo ni `.env`.
+
+</details>
 
 ## Documentos y evidencias
 
@@ -987,7 +1125,7 @@ con la clave nueva. El arranque solo siembra cuando la tabla de wallets está va
 | [docs/evidencias/pruebas-finales-2026-11-19.txt](docs/evidencias/pruebas-finales-2026-11-19.txt) | La salida literal de ruff y de las tres corridas de pytest del 19 de noviembre de 2026 (Python 3.14.9 y el piso 3.11), con el entorno y el conteo por archivo                                                                                                                                                   |
 | [docs/evidencias/capturas/](docs/evidencias/capturas/)                                           | Las 28 capturas (26 de interfaz y 2 de terminal); 03, 06 y 24 a 28, del 19 de noviembre de 2026: 06 y 28, la auditoría con el sello coincidente y no coincidente; 24 y 25, el registro de wallet con asignación de dueño; 26 y 27, las varias wallets de una cuenta cliente; 11 y 23, el ayudante en guía local |
 | [docs/pentesting/informe.md](docs/pentesting/informe.md)                                         | El informe de pentesting con los cuatro hallazgos, su remediación propuesta y el procedimiento de retest                                                                                                                                                                                                        |
-| [docs/pentesting/informe.pdf](docs/pentesting/informe.pdf)                                       | El mismo informe en PDF, para adjuntar a la entrega                                                                                                                                                                                                                                                             |
+| [docs/pentesting/Informe_Pentesting_Grupo1.pdf](docs/pentesting/Informe_Pentesting_Grupo1.pdf)                                       | El mismo informe en PDF, para adjuntar a la entrega                                                                                                                                                                                                                                                             |
 | [docs/pentesting/matriz-trazabilidad.md](docs/pentesting/matriz-trazabilidad.md)                 | La trazabilidad de cada requerimiento y cada categoría de WSTG con su prueba, su caso de Kiwi y su hallazgo                                                                                                                                                                                                     |
 | [docs/red-neuronal.md](docs/red-neuronal.md)                                                     | El apartado de la red neuronal para el documento maestro, con el dataset y las métricas del entrenamiento                                                                                                                                                                                                       |
 | [docs/recorrido-de-casos-de-uso.md](docs/recorrido-de-casos-de-uso.md)                           | El camino real de cada caso de uso: ruta, método del dominio, tabla y consulta                                                                                                                                                                                                                                  |
@@ -1028,3 +1166,25 @@ está verificado» lleva a la salida completa de las pruebas.
 9. `tests/`: la explicación ejecutable. Cada prueba se llama `test_req_NN_*` y lleva
    el criterio de aceptación en su docstring, así que para explicar una regla alcanza
    con mostrar la prueba que la demuestra.
+
+## Convenciones y contribuciones
+
+Las convenciones del proyecto están en [AGENTS.md](AGENTS.md): el reparto entre funcionalidad y diseño de interfaces, el registro de la escritura y los comandos de verificación. El sistema de diseño de la interfaz está en [docs/sistema-de-diseno.md](docs/sistema-de-diseno.md).
+
+Antes de proponer un cambio, conviene correr el lint y la suite sin base de datos:
+
+```text
+.venv/bin/ruff check .
+env -u DATABASE_URL .venv/bin/pytest tests/unit -q
+```
+
+## Autores y coautores
+
+| Rol | Cuenta |
+| --- | --- |
+| Autor | [`sebas-archive`](https://github.com/sebas-archive) |
+| Coautor | [`sebas-archive`](https://github.com/sebas-archive) |
+
+## Licencia
+
+El repositorio no incluye todavía un archivo de licencia.

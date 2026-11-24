@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="390" viewBox="0 0 1280 390" role="img" aria-labelledby="t d">
+<title id="t">Ledger transaccional</title>
+<desc id="d">Prototipo de ledger transaccional: wallets, transacciones firmadas y cadena de bloques verificable.</desc>
+<text x="72" y="82" font-family="Geist Mono, SFMono-Regular, Consolas, Liberation Mono, monospace" font-size="16" letter-spacing="3" fill="#4a5275">PROTOTIPO · NODO ÚNICO · BLOCKCHAIN</text>
+<text x="70" y="168" font-family="Bricolage Grotesque, Helvetica Neue, Arial, sans-serif" font-size="84" font-weight="800" letter-spacing="-2.5" fill="#0e1330">Ledger transaccional</text>
+<text x="72" y="212" font-family="Bricolage Grotesque, Helvetica Neue, Arial, sans-serif" font-size="26" fill="#4a5275">Wallets ECDSA, transacciones firmadas y una cadena de bloques</text>
+<text x="72" y="246" font-family="Bricolage Grotesque, Helvetica Neue, Arial, sans-serif" font-size="26" fill="#4a5275">que cualquier alteración del historial deja al descubierto.</text>
+<line x1="314" y1="322.0" x2="370" y2="322.0" stroke="#5468ff" stroke-width="3"/>
+<circle cx="314" cy="322.0" r="5" fill="#5468ff"/>
+<circle cx="370" cy="322.0" r="5" fill="#5468ff"/>
+<line x1="612" y1="322.0" x2="668" y2="322.0" stroke="#5468ff" stroke-width="3"/>
+<circle cx="612" cy="322.0" r="5" fill="#5468ff"/>
+<circle cx="668" cy="322.0" r="5" fill="#5468ff"/>
+<line x1="910" y1="322.0" x2="966" y2="322.0" stroke="#5468ff" stroke-width="3"/>
+<circle cx="910" cy="322.0" r="5" fill="#5468ff"/>
+<circle cx="966" cy="322.0" r="5" fill="#5468ff"/>
+<rect x="72" y="282" width="242" height="80" rx="18" fill="#2e46f0"/>
+<text x="94" y="314" font-family="Geist Mono, SFMono-Regular, Consolas, Liberation Mono, monospace" font-size="14" letter-spacing="2" fill="#ffffff" opacity="0.9">BLOQUE 0</text>
+<text x="94" y="346" font-family="Bricolage Grotesque, Helvetica Neue, Arial, sans-serif" font-size="26" font-weight="700" fill="#ffffff">génesis</text>
+<rect x="370" y="282" width="242" height="80" rx="18" fill="#2e46f0"/>
+<text x="392" y="314" font-family="Geist Mono, SFMono-Regular, Consolas, Liberation Mono, monospace" font-size="14" letter-spacing="2" fill="#ffffff" opacity="0.9">BLOQUE 1</text>
+<text x="392" y="346" font-family="Bricolage Grotesque, Helvetica Neue, Arial, sans-serif" font-size="26" font-weight="700" fill="#ffffff">agrupado</text>
+<rect x="668" y="282" width="242" height="80" rx="18" fill="#2e46f0"/>
+<text x="690" y="314" font-family="Geist Mono, SFMono-Regular, Consolas, Liberation Mono, monospace" font-size="14" letter-spacing="2" fill="#ffffff" opacity="0.9">BLOQUE 2</text>
+<text x="690" y="346" font-family="Bricolage Grotesque, Helvetica Neue, Arial, sans-serif" font-size="26" font-weight="700" fill="#ffffff">agrupado</text>
+<rect x="966" y="282" width="242" height="80" rx="18" fill="#c8f54a"/>
+<text x="988" y="314" font-family="Geist Mono, SFMono-Regular, Consolas, Liberation Mono, monospace" font-size="14" letter-spacing="2" fill="#1a2600" opacity="0.9">BLOQUE 3</text>
+<text x="988" y="346" font-family="Bricolage Grotesque, Helvetica Neue, Arial, sans-serif" font-size="26" font-weight="700" fill="#1a2600">reciente</text>
+</svg>
